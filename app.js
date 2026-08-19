@@ -50,22 +50,26 @@ function updateRelationsMappings() {
     };
 
     // 1. Processar Bases e Responsáveis Vinculados
-    state.customBases.forEach(line => {
-        const idx = line.indexOf(' - ');
+    (state.customBases || []).forEach(line => {
+        if (!line) return;
+        const strLine = line.toString();
+        const idx = strLine.indexOf(' - ');
         if (idx !== -1) {
-            const base = line.substring(0, idx).trim();
-            const resp = line.substring(idx + 3).trim();
+            const base = strLine.substring(0, idx).trim();
+            const resp = strLine.substring(idx + 3).trim();
             state.mappings.baseToResponsavel[base.toLowerCase()] = resp;
             state.mappings.responsavelToBase[resp.toLowerCase()] = base;
         }
     });
 
     // 2. Processar Placas e Veículos Vinculados
-    state.customVeiculos.forEach(line => {
-        const idx = line.indexOf(' - ');
+    (state.customVeiculos || []).forEach(line => {
+        if (!line) return;
+        const strLine = line.toString();
+        const idx = strLine.indexOf(' - ');
         if (idx !== -1) {
-            const placa = line.substring(0, idx).trim().toUpperCase();
-            const veiculo = line.substring(idx + 3).trim();
+            const placa = strLine.substring(0, idx).trim().toUpperCase();
+            const veiculo = strLine.substring(idx + 3).trim();
             state.mappings.placaToVeiculo[placa] = veiculo;
 
             if (!state.mappings.veiculoToPlacas[veiculo.toLowerCase()]) {
@@ -1049,14 +1053,16 @@ function buildFilterButtons() {
 
     // Determinar quais bases/postos são válidos
     const validBases = new Set(
-        state.customBases.map(line => {
-            const idx = line.indexOf(' - ');
-            return idx !== -1 ? line.substring(0, idx).trim().toLowerCase() : line.trim().toLowerCase();
+        (state.customBases || []).map(line => {
+            if (!line) return '';
+            const strLine = line.toString();
+            const idx = strLine.indexOf(' - ');
+            return idx !== -1 ? strLine.substring(0, idx).trim().toLowerCase() : strLine.trim().toLowerCase();
         }).filter(Boolean)
     );
 
     const validPostos = new Set(
-        state.customPostos.map(p => p.trim().toLowerCase()).filter(Boolean)
+        (state.customPostos || []).map(p => p ? p.toString().trim().toLowerCase() : '').filter(Boolean)
     );
 
     if (state.rawData && state.rawData.length > 0) {
@@ -1177,10 +1183,12 @@ function buildFilterButtons() {
 
     // 1. Popular Bases
     let basesList = [];
-    if (state.customBases.length > 0) {
+    if (state.customBases && state.customBases.length > 0) {
         basesList = state.customBases.map(line => {
-            const idx = line.indexOf(' - ');
-            return idx !== -1 ? line.substring(0, idx).trim() : line.trim();
+            if (!line) return '';
+            const strLine = line.toString();
+            const idx = strLine.indexOf(' - ');
+            return idx !== -1 ? strLine.substring(0, idx).trim() : strLine.trim();
         }).filter(Boolean);
     } else {
         basesList = sortedZonas;
@@ -1189,10 +1197,12 @@ function buildFilterButtons() {
 
     // 2. Popular Responsáveis
     let respList = [];
-    if (state.customBases.length > 0) {
+    if (state.customBases && state.customBases.length > 0) {
         respList = state.customBases.map(line => {
-            const idx = line.indexOf(' - ');
-            return idx !== -1 ? line.substring(idx + 3).trim() : '';
+            if (!line) return '';
+            const strLine = line.toString();
+            const idx = strLine.indexOf(' - ');
+            return idx !== -1 ? strLine.substring(idx + 3).trim() : '';
         }).filter(Boolean);
     } else {
         const respSet = new Set();
@@ -1205,8 +1215,8 @@ function buildFilterButtons() {
 
     // 3. Popular Postos
     let postList = [];
-    if (state.customPostos.length > 0) {
-        postList = state.customPostos;
+    if (state.customPostos && state.customPostos.length > 0) {
+        postList = state.customPostos.map(p => p ? p.toString().trim() : '').filter(Boolean);
     } else {
         const postSet = new Set();
         state.rawData.forEach(row => {
@@ -1218,8 +1228,8 @@ function buildFilterButtons() {
 
     // 4. Popular Motoristas
     let motoristasList = [];
-    if (state.customMotoristas.length > 0) {
-        motoristasList = state.customMotoristas;
+    if (state.customMotoristas && state.customMotoristas.length > 0) {
+        motoristasList = state.customMotoristas.map(m => m ? m.toString().trim() : '').filter(Boolean);
     } else {
         const motoristaSet = new Set();
         state.rawData.forEach(row => {
@@ -1231,10 +1241,12 @@ function buildFilterButtons() {
 
     // 5. Popular Veículos
     let veicList = [];
-    if (state.customVeiculos.length > 0) {
+    if (state.customVeiculos && state.customVeiculos.length > 0) {
         veicList = state.customVeiculos.map(line => {
-            const idx = line.indexOf(' - ');
-            return idx !== -1 ? line.substring(idx + 3).trim() : '';
+            if (!line) return '';
+            const strLine = line.toString();
+            const idx = strLine.indexOf(' - ');
+            return idx !== -1 ? strLine.substring(idx + 3).trim() : '';
         }).filter(Boolean);
     } else {
         const veicSet = new Set();
@@ -1265,18 +1277,29 @@ function buildFilterButtons() {
 
 function updatePlacaDatalistOptions(selectedVeiculo = '') {
     let placaList = [];
-    if (state.customVeiculos.length > 0) {
+    if (state.customVeiculos && state.customVeiculos.length > 0) {
         if (selectedVeiculo) {
             // Filtrar apenas placas associadas a este veículo
             state.customVeiculos.forEach(line => {
-                const parts = line.split('-').map(s => s.trim());
-                if (parts.length >= 2 && parts[1].toLowerCase() === selectedVeiculo.toLowerCase()) {
-                    placaList.push(parts[0].toUpperCase());
+                if (!line) return;
+                const strLine = line.toString();
+                const idx = strLine.indexOf(' - ');
+                if (idx !== -1) {
+                    const placa = strLine.substring(0, idx).trim().toUpperCase();
+                    const veiculo = strLine.substring(idx + 3).trim();
+                    if (veiculo.toLowerCase() === selectedVeiculo.toLowerCase()) {
+                        placaList.push(placa);
+                    }
                 }
             });
         } else {
             // Exibir todas as placas
-            placaList = state.customVeiculos.map(line => line.split('-')[0].trim().toUpperCase()).filter(Boolean);
+            placaList = state.customVeiculos.map(line => {
+                if (!line) return '';
+                const strLine = line.toString();
+                const idx = strLine.indexOf(' - ');
+                return idx !== -1 ? strLine.substring(0, idx).trim().toUpperCase() : '';
+            }).filter(Boolean);
         }
     } else {
         // Fallback para as placas presentes nos dados da planilha
