@@ -57,12 +57,36 @@ function updateRelationsMappings() {
         veiculoToPlacas: {}
     };
 
+    // Obter bases e responsáveis conhecidos dos dados brutos para auto-correção de inversão
+    const knownBases = new Set();
+    const knownResps = new Set();
+    if (state.rawData) {
+        state.rawData.forEach(row => {
+            if (row.zona && row.zona !== 'Não Informado') knownBases.add(row.zona.toLowerCase().trim());
+            if (row.responsavel && row.responsavel !== 'Não Informado') knownResps.add(row.responsavel.toLowerCase().trim());
+        });
+    }
+
     // 1. Processar Bases e Responsáveis Vinculados
     (state.customBases || []).forEach(line => {
         const parts = splitByRelationalHyphen(line);
         if (parts.length >= 2) {
-            const base = parts[0];
-            const resp = parts[1];
+            let base = parts[0];
+            let resp = parts[1];
+
+            // Auto-correção se o usuário inseriu invertido "Responsável - Base"
+            const p0 = base.toLowerCase().trim();
+            const p1 = resp.toLowerCase().trim();
+            const p0IsBase = knownBases.has(p0) || p0.includes('zona') || p0.includes('base');
+            const p1IsBase = knownBases.has(p1) || p1.includes('zona') || p1.includes('base');
+            const p0IsResp = knownResps.has(p0);
+            const p1IsResp = knownResps.has(p1);
+
+            if ((p1IsBase && !p0IsBase) || (p0IsResp && !p1IsResp)) {
+                base = parts[1];
+                resp = parts[0];
+            }
+
             state.mappings.baseToResponsavel[base.toLowerCase()] = resp;
             state.mappings.responsavelToBase[resp.toLowerCase()] = base;
         }
@@ -72,14 +96,28 @@ function updateRelationsMappings() {
     (state.customVeiculos || []).forEach(line => {
         const parts = splitByRelationalHyphen(line);
         if (parts.length >= 2) {
-            const placa = parts[0].toUpperCase();
-            const veiculo = parts[1];
-            state.mappings.placaToVeiculo[placa] = veiculo;
+            let placa = parts[0];
+            let veiculo = parts[1];
 
-            if (!state.mappings.veiculoToPlacas[veiculo.toLowerCase()]) {
-                state.mappings.veiculoToPlacas[veiculo.toLowerCase()] = [];
+            // Auto-correção se o usuário inseriu invertido "Veículo - Placa"
+            // Placas geralmente contém números (ex: ABC-1234 ou ABC1D23)
+            const p0HasDigits = /[0-9]/.test(placa);
+            const p1HasDigits = /[0-9]/.test(veiculo);
+
+            if (p1HasDigits && !p0HasDigits) {
+                placa = parts[1];
+                veiculo = parts[0];
             }
-            state.mappings.veiculoToPlacas[veiculo.toLowerCase()].push(placa);
+
+            const placaUpper = placa.trim().toUpperCase();
+            const veiculoTrim = veiculo.trim();
+
+            state.mappings.placaToVeiculo[placaUpper] = veiculoTrim;
+
+            if (!state.mappings.veiculoToPlacas[veiculoTrim.toLowerCase()]) {
+                state.mappings.veiculoToPlacas[veiculoTrim.toLowerCase()] = [];
+            }
+            state.mappings.veiculoToPlacas[veiculoTrim.toLowerCase()].push(placaUpper);
         }
     });
 }
