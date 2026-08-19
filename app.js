@@ -62,8 +62,8 @@ function updateRelationsMappings() {
     const knownResps = new Set();
     if (state.rawData) {
         state.rawData.forEach(row => {
-            if (row.zona && row.zona !== 'Não Informado') knownBases.add(row.zona.toLowerCase().trim());
-            if (row.responsavel && row.responsavel !== 'Não Informado') knownResps.add(row.responsavel.toLowerCase().trim());
+            if (row.zona && row.zona !== 'Não Informado') knownBases.add(row.zona.toString().toLowerCase().trim());
+            if (row.responsavel && row.responsavel !== 'Não Informado') knownResps.add(row.responsavel.toString().toLowerCase().trim());
         });
     }
 
