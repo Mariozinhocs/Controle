@@ -50,10 +50,10 @@ function updateRelationsMappings() {
 
     // 1. Processar Bases e Responsáveis Vinculados
     state.customBases.forEach(line => {
-        const parts = line.split('-').map(s => s.trim());
-        if (parts.length >= 2 && parts[0] && parts[1]) {
-            const base = parts[0];
-            const resp = parts[1];
+        const idx = line.indexOf(' - ');
+        if (idx !== -1) {
+            const base = line.substring(0, idx).trim();
+            const resp = line.substring(idx + 3).trim();
             state.mappings.baseToResponsavel[base.toLowerCase()] = resp;
             state.mappings.responsavelToBase[resp.toLowerCase()] = base;
         }
@@ -61,10 +61,10 @@ function updateRelationsMappings() {
 
     // 2. Processar Placas e Veículos Vinculados
     state.customVeiculos.forEach(line => {
-        const parts = line.split('-').map(s => s.trim());
-        if (parts.length >= 2 && parts[0] && parts[1]) {
-            const placa = parts[0].toUpperCase();
-            const veiculo = parts[1];
+        const idx = line.indexOf(' - ');
+        if (idx !== -1) {
+            const placa = line.substring(0, idx).trim().toUpperCase();
+            const veiculo = line.substring(idx + 3).trim();
             state.mappings.placaToVeiculo[placa] = veiculo;
 
             if (!state.mappings.veiculoToPlacas[veiculo.toLowerCase()]) {
@@ -1092,7 +1092,10 @@ function buildFilterButtons() {
     // 1. Popular Bases
     let basesList = [];
     if (state.customBases.length > 0) {
-        basesList = state.customBases.map(line => line.split('-')[0].trim()).filter(Boolean);
+        basesList = state.customBases.map(line => {
+            const idx = line.indexOf(' - ');
+            return idx !== -1 ? line.substring(0, idx).trim() : line.trim();
+        }).filter(Boolean);
     } else {
         basesList = sortedZonas;
     }
@@ -1102,8 +1105,8 @@ function buildFilterButtons() {
     let respList = [];
     if (state.customBases.length > 0) {
         respList = state.customBases.map(line => {
-            const parts = line.split('-');
-            return parts.length >= 2 ? parts[1].trim() : '';
+            const idx = line.indexOf(' - ');
+            return idx !== -1 ? line.substring(idx + 3).trim() : '';
         }).filter(Boolean);
     } else {
         const respSet = new Set();
@@ -1144,8 +1147,8 @@ function buildFilterButtons() {
     let veicList = [];
     if (state.customVeiculos.length > 0) {
         veicList = state.customVeiculos.map(line => {
-            const parts = line.split('-');
-            return parts.length >= 2 ? parts[1].trim() : '';
+            const idx = line.indexOf(' - ');
+            return idx !== -1 ? line.substring(idx + 3).trim() : '';
         }).filter(Boolean);
     } else {
         const veicSet = new Set();
