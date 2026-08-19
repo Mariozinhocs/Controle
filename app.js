@@ -405,6 +405,9 @@ function initEventListeners() {
         document.getElementById('group-litros').style.display = 'flex';
         document.getElementById('group-valor-total').style.display = 'none';
 
+        // Atualizar range de datas para contemplar a nova requisição
+        initDateFilterRange();
+
         buildFilterButtons();
         updateDashboard();
     });
@@ -575,6 +578,23 @@ function loadInitialData(forceFetch = false) {
         updateRelationsMappings();
     } catch (e) {}
 
+    const savedData = localStorage.getItem('combustivel_dashboard_data');
+    const savedFilename = localStorage.getItem('combustivel_dashboard_filename');
+
+    // Se não for carregamento forçado e tivermos dados no cache local, prioriza o cache
+    if (!forceFetch && savedData) {
+        try {
+            showLoading('Carregando dados do cache local...');
+            state.rawData = JSON.parse(savedData);
+            state.filename = savedFilename || 'Arquivo salvo no cache';
+            updateFilenameDisplay();
+            processData(state.rawData, false);
+            return;
+        } catch (err) {
+            console.error('Erro ao ler cache do navegador, recaindo para arquivo físico.', err);
+        }
+    }
+
     const suffix = forceFetch ? `?t=${Date.now()}` : '';
     showLoading(forceFetch ? 'Re-lendo planilha local de dados...' : 'Buscando planilha local de dados...');
 
@@ -600,9 +620,6 @@ function loadInitialData(forceFetch = false) {
                     parseCsvText(csvText);
                 })
                 .catch((e) => {
-                    const savedData = localStorage.getItem('combustivel_dashboard_data');
-                    const savedFilename = localStorage.getItem('combustivel_dashboard_filename');
-                    
                     if (forceFetch && !savedData) {
                         alert('Não foi possível ler dados.xlsx ou dados.csv na pasta local do projeto. Certifique-se de que o arquivo existe nessa pasta.');
                     }
