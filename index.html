@@ -1,0 +1,802 @@
+<!-- 
+  Desenvolvido por Mario Henrique (mariozinhocs@gmail.com)
+  "si vis pacem para bellum"
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Requisições - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Bibliotecas Locais para funcionamento Offline -->
+    <script src="libs/xlsx.mini.min.js"></script>
+    <script src="libs/papaparse.min.js"></script>
+    <script src="libs/apexcharts.js"></script>
+</head>
+
+<body>
+
+    <!-- OVERLAY DE CARREGAMENTO (LOADING SPINNER) -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner"></div>
+        <span class="loading-text">Processando planilha de dados...</span>
+    </div>
+
+    <div class="app-container">
+
+        <!-- SIDEBAR LATERAL (Métricas Principais) -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12V4H5v18h14v-4" />
+                    <path d="M21 16v-2a2 2 0 0 0-2-2h-3v8h3a2 2 0 0 0 2-2v-2" />
+                    <circle cx="12" cy="11" r="3" />
+                </svg>
+                <h2>Controle</h2>
+            </div>
+
+            <div class="kpi-group">
+                <div class="kpi-card" id="kpi-gasto" draggable="true">
+                    <span class="kpi-value">R$ 0,00</span>
+                    <span class="kpi-label">TOTAL GASTO</span>
+                </div>
+
+                <div class="kpi-card" id="kpi-litros" draggable="true">
+                    <span class="kpi-value">0 L</span>
+                    <span class="kpi-label">TOTAL LITROS</span>
+                </div>
+
+                <div class="kpi-card" id="kpi-requisicoes" draggable="true">
+                    <span class="kpi-value">0</span>
+                    <span class="kpi-label">QTD REQUISIÇÕES</span>
+                </div>
+
+                <div class="kpi-card" id="kpi-preco-medio" draggable="true">
+                    <span class="kpi-value">R$ 0,00</span>
+                    <span class="kpi-label">PREÇO MÉDIO / L</span>
+                </div>
+
+                <div class="kpi-card highlight-card" id="kpi-maior-gasto" draggable="true">
+                    <span class="kpi-value">-</span>
+                    <span class="kpi-label">MAIOR CONSUMO (VEÍCULO)</span>
+                </div>
+
+                <div class="kpi-card highlight-card" id="kpi-maior-gasto-base" draggable="true">
+                    <span class="kpi-value">-</span>
+                    <span class="kpi-label">MAIOR CONSUMO (BASE)</span>
+                </div>
+            </div>
+
+            <!-- Assinatura Pessoal -->
+            <div class="sidebar-signature">
+                <p class="sig-author">Desenvolvido por Mario Henrique</p>
+                <p class="sig-email">mariozinhocs@gmail.com</p>
+                <p class="sig-quote">"si vis pacem para bellum"</p>
+            </div>
+        </aside>
+
+        <!-- CONTEÚDO PRINCIPAL -->
+        <main class="main-content">
+            <!-- HEADER -->
+            <header class="header">
+                <div class="header-title">
+                    <h1>Controle de Requisições - MGP</h1>
+                    <div class="header-meta">
+                        <span class="subtitle">Análise de abastecimentos e gastos</span>
+                        <span class="file-badge">
+                            <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5"
+                                fill="none" style="margin-right: 4px; vertical-align: middle;">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <span id="active-filename">Nenhum arquivo carregado</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <!-- Botão de Recarregar Rápido -->
+                    <!-- Botão de Gerar Infográfico -->
+                    <button class="btn btn-secondary btn-icon" id="btn-open-infografico" title="Gerar infográfico visual de dados">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle;">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="9" y1="17" x2="9" y2="8"/>
+                            <line x1="13" y1="17" x2="13" y2="11"/>
+                            <line x1="17" y1="17" x2="17" y2="14"/>
+                        </svg>
+                        Gerar Infográfico
+                    </button>
+                    <!-- Botão de Imprimir/PDF -->
+                    <button class="btn btn-secondary btn-icon" id="btn-print" title="Gerar relatório em PDF / Imprimir">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2"
+                            fill="none" style="vertical-align: middle;">
+                            <polyline points="6 9 6 2 18 2 18 9" />
+                            <path d="M6 18H4a2 2 0 0 0-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                            <rect x="6" y="14" width="12" height="8" />
+                        </svg>
+                        Gerar Relatório
+                    </button>
+                    <!-- Botão de Exportar Excel -->
+                    <button class="btn btn-secondary btn-icon" id="btn-export-excel"
+                        title="Baixar base de dados atualizada em Excel (.xlsx)">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2"
+                            fill="none" style="vertical-align: middle;">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Baixar Excel
+                    </button>
+                    <!-- Botão de Cadastros -->
+                    <button class="btn btn-secondary btn-icon" id="btn-open-cadastros" title="Gerenciar cadastros de Bases, Postos e Responsáveis">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle;">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        Cadastros
+                    </button>
+                    <!-- Botão de Nova Requisição -->
+                    <button class="btn btn-primary btn-icon" id="btn-open-add-requisicao"
+                        title="Registrar novo abastecimento diretamente no painel">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2"
+                            fill="none" style="vertical-align: middle;">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Nova Requisição
+                    </button>
+                    <!-- Botão de Importar Planilha -->
+                    <button class="btn btn-primary" id="btn-open-upload"
+                        title="Carregar nova planilha Excel (.xlsx) ou CSV para atualizar a base">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2"
+                            fill="none" style="vertical-align: middle;">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        Importar Planilha
+                    </button>
+                    <!-- Botão de Recarregar Rápido -->
+                    <button class="btn btn-secondary btn-icon" id="btn-refresh"
+                        title="Recarregar planilha local do disco">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2"
+                            fill="none" style="vertical-align: middle;">
+                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                        </svg>
+                        Recarregar
+                    </button>
+                </div>
+            </header>
+
+            <!-- FILTROS (SLICERS INTERATIVOS) -->
+            <section class="filters-section">
+                <!-- ASSISTENTE NATURAL DE FILTROS (NLQ) -->
+                <div class="nlq-container collapsed" id="nlq-container">
+                    <div class="nlq-header" id="nlq-toggle" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <svg class="nlq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+                                <line x1="12" y1="22" x2="12" y2="12"/>
+                                <line x1="12" y1="12" x2="22" y2="8.5"/>
+                                <line x1="12" y1="12" x2="2" y2="8.5"/>
+                            </svg>
+                            <h3>🤖 Assistente de Busca (Pergunte ao Dashboard)</h3>
+                        </div>
+                        <svg class="toggle-arrow" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="transition: transform 0.3s; color: var(--text-secondary);">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                    <div class="nlq-content">
+                        <div class="nlq-input-group">
+                            <input type="text" id="nlq-input" placeholder="Ex: 'Gasto de Diesel na Zona Sul nos últimos 7 dias', 'abastecimentos de ontem' ou 'limpar filtros'">
+                            <button class="btn btn-primary" id="btn-nlq-apply">Aplicar</button>
+                        </div>
+                        <div class="nlq-feedback" id="nlq-feedback">Aguardando pergunta para ajustar os filtros...</div>
+                    </div>
+                </div>
+
+                <!-- Filtro Bases -->
+                <div class="filter-group">
+                    <h3>Bases / Postos</h3>
+                    <div class="slicers" id="filter-zonas">
+                        <!-- Gerado dinamicamente -->
+                    </div>
+                </div>
+
+                <!-- Filtro Combustível -->
+                <div class="filter-group">
+                    <h3>Tipo de Combustível</h3>
+                    <div class="slicers" id="filter-combustiveis">
+                        <!-- Gerado dinamicamente -->
+                    </div>
+                </div>
+
+                <!-- Filtro de Período -->
+                <div class="filter-group date-filter-group">
+                    <h3>Período de Análise</h3>
+                    <div class="date-controls-trigger-wrapper">
+                        <!-- Botão gatilho para abrir o painel flutuante -->
+                        <button type="button" class="btn btn-secondary btn-icon" id="btn-open-calendar" style="min-width: 240px; text-align: left; justify-content: flex-start; gap: 0.5rem;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" style="color: var(--accent-yellow);">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            <span id="calendar-trigger-text">Todo o Período</span>
+                        </button>
+                        
+                        <!-- Inputs ocultos para compatibilidade com a leitura do JS -->
+                        <input type="date" id="date-start" style="display: none;">
+                        <input type="date" id="date-end" style="display: none;">
+                        
+                        <!-- PAINEL DO CALENDÁRIO FLUTUANTE -->
+                        <div class="calendar-dropdown" id="calendar-dropdown" style="display: none;">
+                            <div class="date-presets" style="margin-bottom: 0.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                                <button class="preset-btn active" id="preset-all">Todo Período</button>
+                                <button class="preset-btn" id="preset-today">Hoje</button>
+                                <button class="preset-btn" id="preset-7d">7 dias</button>
+                                <button class="preset-btn" id="preset-30d">30 dias</button>
+                            </div>
+                            
+                            <div class="calendar-widget" id="calendar-widget">
+                                <div class="calendar-header">
+                                    <button type="button" class="calendar-nav-btn" id="calendar-prev-month">&lt;</button>
+                                    <span class="calendar-current-month" id="calendar-month-year">Setembro 2026</span>
+                                    <button type="button" class="calendar-nav-btn" id="calendar-next-month">&gt;</button>
+                                </div>
+                                <div class="calendar-grid">
+                                    <div class="calendar-day-header">Dom</div>
+                                    <div class="calendar-day-header">Seg</div>
+                                    <div class="calendar-day-header">Ter</div>
+                                    <div class="calendar-day-header">Qua</div>
+                                    <div class="calendar-day-header">Qui</div>
+                                    <div class="calendar-day-header">Sex</div>
+                                    <div class="calendar-day-header">Sáb</div>
+                                </div>
+                                <div class="calendar-grid" id="calendar-days-container">
+                                    <!-- Dias gerados dinamicamente no JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- GRID DE GRÁFICOS -->
+            <section class="charts-grid">
+                <!-- Rosca: Gasto por Tipo de Combustível -->
+                <div class="chart-card donut-card" id="card-combustivel-donut" draggable="true">
+                    <div class="chart-card-header">
+                        <h3 class="chart-title">GASTO POR TIPO DE COMBUSTÍVEL</h3>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <button type="button" class="btn-config-chart" onclick="toggleChartConfig(this)" title="Personalizar gráfico">
+                                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn-maximize-chart" onclick="toggleMaximizeChart(this)" title="Maximizar gráfico">
+                                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <polyline points="9 21 3 21 3 15"></polyline>
+                                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Painel de Configuração Flutuante -->
+                    <div class="chart-config-panel" style="display: none;">
+                        <h4>Personalizar</h4>
+                        <div class="config-row">
+                            <label>Visual:</label>
+                            <select class="select-chart-type" onchange="changeChartType(this)">
+                                <option value="donut">Rosca (Donut)</option>
+                                <option value="pie">Pizza</option>
+                                <option value="polarArea">Área Polar</option>
+                            </select>
+                        </div>
+                        <div class="config-row checkbox-row">
+                            <label><input type="checkbox" class="chk-data-labels" checked onchange="toggleChartLabels(this)"> Rótulos</label>
+                            <label><input type="checkbox" class="chk-legend" checked onchange="toggleChartLegend(this)"> Legenda</label>
+                        </div>
+                    </div>
+                    <div id="chart-combustivel-donut"></div>
+                </div>
+
+                <!-- Barra Horizontal: Ranking de Gasto por Base -->
+                <div class="chart-card donut-card" id="card-zona-donut" draggable="true">
+                    <div class="chart-card-header">
+                        <h3 class="chart-title">RANKING DE GASTO POR BASE / POSTO</h3>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <button type="button" class="btn-config-chart" onclick="toggleChartConfig(this)" title="Personalizar gráfico">
+                                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn-maximize-chart" onclick="toggleMaximizeChart(this)" title="Maximizar gráfico">
+                                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <polyline points="9 21 3 21 3 15"></polyline>
+                                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Painel de Configuração Flutuante -->
+                    <div class="chart-config-panel" style="display: none;">
+                        <h4>Personalizar</h4>
+                        <div class="config-row">
+                            <label>Visual:</label>
+                            <select class="select-chart-type" onchange="changeChartType(this)">
+                                <option value="bar">Barra Horizontal</option>
+                                <option value="bar-v">Barra Vertical</option>
+                                <option value="line">Linhas</option>
+                            </select>
+                        </div>
+                        <div class="config-row checkbox-row">
+                            <label><input type="checkbox" class="chk-data-labels" checked onchange="toggleChartLabels(this)"> Rótulos</label>
+                            <label><input type="checkbox" class="chk-legend" onchange="toggleChartLegend(this)"> Legenda</label>
+                        </div>
+                    </div>
+                    <div id="chart-zona-donut"></div>
+                </div>
+
+                <!-- Barras: Gasto Mensal -->
+                <div class="chart-card bar-card" id="card-gasto-mensal" draggable="true">
+                    <div class="chart-card-header">
+                        <h3 class="chart-title">TOTAL GASTO POR MÊS</h3>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <button type="button" class="btn-config-chart" onclick="toggleChartConfig(this)" title="Personalizar gráfico">
+                                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn-maximize-chart" onclick="toggleMaximizeChart(this)" title="Maximizar gráfico">
+                                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <polyline points="9 21 3 21 3 15"></polyline>
+                                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Painel de Configuração Flutuante -->
+                    <div class="chart-config-panel" style="display: none;">
+                        <h4>Personalizar</h4>
+                        <div class="config-row">
+                            <label>Visual:</label>
+                            <select class="select-chart-type" onchange="changeChartType(this)">
+                                <option value="bar">Barras</option>
+                                <option value="line">Linhas</option>
+                                <option value="area">Área</option>
+                            </select>
+                        </div>
+                        <div class="config-row checkbox-row">
+                            <label><input type="checkbox" class="chk-data-labels" checked onchange="toggleChartLabels(this)"> Rótulos</label>
+                            <label><input type="checkbox" class="chk-legend" onchange="toggleChartLegend(this)"> Legenda</label>
+                        </div>
+                    </div>
+                    <div id="chart-gasto-mensal"></div>
+                </div>
+
+                <!-- Área: Volume Mensal -->
+                <div class="chart-card area-card" id="card-volume-mensal" draggable="true">
+                    <div class="chart-card-header">
+                        <h3 class="chart-title">VOLUME CONSUMIDO POR MÊS (LITROS)</h3>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <button type="button" class="btn-config-chart" onclick="toggleChartConfig(this)" title="Personalizar gráfico">
+                                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn-maximize-chart" onclick="toggleMaximizeChart(this)" title="Maximizar gráfico">
+                                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <polyline points="9 21 3 21 3 15"></polyline>
+                                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Painel de Configuração Flutuante -->
+                    <div class="chart-config-panel" style="display: none;">
+                        <h4>Personalizar</h4>
+                        <div class="config-row">
+                            <label>Visual:</label>
+                            <select class="select-chart-type" onchange="changeChartType(this)">
+                                <option value="area">Área</option>
+                                <option value="line">Linhas</option>
+                                <option value="bar">Barras</option>
+                            </select>
+                        </div>
+                        <div class="config-row checkbox-row">
+                            <label><input type="checkbox" class="chk-data-labels" checked onchange="toggleChartLabels(this)"> Rótulos</label>
+                            <label><input type="checkbox" class="chk-legend" onchange="toggleChartLegend(this)"> Legenda</label>
+                        </div>
+                    </div>
+                    <div id="chart-volume-mensal"></div>
+                </div>
+            </section>
+
+            <!-- TABELA DETALHADA E RANKINGS DE BUSCA -->
+            <section class="table-section">
+                <div class="table-header">
+                    <div class="table-title-group">
+                        <h2>Detalhamento & Rankings</h2>
+                        <span class="subtitle">Visualize lançamentos individuais ou analise rankings de consumo</span>
+                    </div>
+                    <div class="table-search-group" style="display: flex; gap: 0.75rem; align-items: center;">
+                        <button class="btn btn-secondary btn-icon" id="btn-clear-table-filters"
+                            title="Limpar todos os filtros, datas e pesquisas">
+                            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2"
+                                fill="none" style="vertical-align: middle;">
+                                <path
+                                    d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                <line x1="10" y1="11" x2="10" y2="17" />
+                                <line x1="14" y1="11" x2="14" y2="17" />
+                            </svg>
+                            Limpar Filtros
+                        </button>
+                        <div class="search-input-wrapper" style="flex: 1;">
+                            <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor"
+                                stroke-width="2" fill="none">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="text" id="table-search"
+                                placeholder="Pesquisar motorista, placa, veículo, base...">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-tabs">
+                    <button class="tab-btn active" id="tab-lancamentos" data-tab="lancamentos">Lançamentos</button>
+                    <button class="tab-btn" id="tab-responsaveis" data-tab="responsaveis">Ranking Motoristas</button>
+                    <button class="tab-btn" id="tab-veiculos" data-tab="veiculos">Ranking Veículos</button>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="data-table" id="data-table">
+                        <thead>
+                            <!-- Gerado dinamicamente -->
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- Gerado dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <!-- Rodapé exclusivo para impressão -->
+            <div class="print-only-footer">
+                Gerado pelo sistema de controle • <span class="print-generation-timestamp">-</span>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- MODAL DE UPLOAD / CONFIGURAÇÃO -->
+    <div class="modal-overlay" id="upload-modal">
+        <div class="modal-content">
+            <button class="modal-close" id="btn-close-upload">&times;</button>
+            <h2>Importar Planilha de Dados</h2>
+            <p>Selecione ou arraste o arquivo Excel (.xlsx) ou CSV de controle de combustível para carregar dados para o
+                dashboard.</p>
+
+            <div class="drop-zone" id="drop-zone">
+                <svg class="drop-icon" viewBox="0 0 24 24" width="48" height="48" stroke="currentColor"
+                    stroke-width="1.5" fill="none">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="12" y1="18" x2="12" y2="12" />
+                    <polyline points="9 15 12 12 15 15" />
+                </svg>
+                <p>Arraste o arquivo Excel aqui ou</p>
+                <label class="btn btn-secondary" for="file-input">
+                    Procurar Arquivo
+                </label>
+                <input type="file" id="file-input" accept=".xlsx, .csv" style="display: none;">
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-text" id="btn-generate-mock">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+                        style="margin-right: 6px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    Gerar Planilha de Teste (.xlsx)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE NOVA REQUISIÇÃO (FORMULÁRIO CRUD) -->
+    <div class="modal-overlay" id="add-requisicao-modal">
+        <div class="modal-content form-modal" style="max-width: 650px;">
+            <button class="modal-close" id="btn-close-add-requisicao">&times;</button>
+            <h2>Nova Requisição</h2>
+            <p style="margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                Preencha os campos abaixo para registrar um novo abastecimento diretamente no painel. O valor total será
+                calculado automaticamente.
+            </p>
+
+            <form id="form-add-requisicao">
+                <div class="form-grid">
+                    <!-- Modo de abastecimento (Litros ou Valor) -->
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Modo de Abastecimento</label>
+                        <div style="display: flex; gap: 1.5rem; margin-top: 0.25rem;">
+                            <label style="display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; text-transform: none; font-weight: normal; color: var(--text-primary);">
+                                <input type="radio" name="input-modo-abastecimento" value="litros" checked style="width: auto; margin: 0;"> Por Litros (Litragem)
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; text-transform: none; font-weight: normal; color: var(--text-primary);">
+                                <input type="radio" name="input-modo-abastecimento" value="valor" style="width: auto; margin: 0;"> Por Valor Total (R$)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-date">Data</label>
+                        <input type="date" id="input-date">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-zona">Base</label>
+                        <input type="text" id="input-zona" list="datalist-bases" placeholder="Digite ou selecione a base...">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-responsavel">Responsável</label>
+                        <input type="text" id="input-responsavel" list="datalist-responsaveis" placeholder="Digite ou selecione o responsável...">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-posto">Posto</label>
+                        <input type="text" id="input-posto" list="datalist-postos" placeholder="Digite ou selecione o posto...">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-motorista">Motorista</label>
+                        <input type="text" id="input-motorista" list="datalist-motoristas" placeholder="Digite ou selecione o motorista...">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-veiculo">Veículo (Modelo)</label>
+                        <input type="text" id="input-veiculo" list="datalist-veiculos" placeholder="Digite ou selecione o modelo...">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-placa">Placa</label>
+                        <input type="text" id="input-placa" list="datalist-placas" placeholder="Digite ou selecione a placa...">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-combustivel">Tipo de Combustível</label>
+                        <select id="input-combustivel">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-inicio-seq">Início Seq</label>
+                        <input type="number" id="input-inicio-seq" placeholder="Ex: 1001">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-fim-seq">Fim Seq</label>
+                        <input type="number" id="input-fim-seq" placeholder="Ex: 1010">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-qtd-req">Qtd Requisições</label>
+                        <input type="number" id="input-qtd-req" value="1" min="1">
+                    </div>
+
+                    <div class="form-group" id="group-litros">
+                        <label for="input-litros">Litros por Requisição</label>
+                        <input type="number" id="input-litros" step="0.01" min="0" placeholder="Ex: 50.00">
+                    </div>
+
+                    <div class="form-group" id="group-valor-total" style="display: none;">
+                        <label for="input-valor-total">Valor por Requisição (R$)</label>
+                        <input type="number" id="input-valor-total" step="0.01" min="0" placeholder="Ex: 250.00">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-preco-litro">Preço por Litro</label>
+                        <input type="number" id="input-preco-litro" step="0.001" min="0" placeholder="Ex: 5.890">
+                    </div>
+                </div>
+
+                <div class="form-actions"
+                    style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-add-requisicao">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE GERENCIAR CADASTROS -->
+    <div class="modal-overlay" id="cadastros-modal">
+        <div class="modal-content" style="max-width: 550px;">
+            <button class="modal-close" id="btn-close-cadastros">&times;</button>
+            <h2>Cadastros de Apoio</h2>
+            <p style="margin-bottom: 1.25rem; font-size: 0.85rem; color: var(--text-secondary);">
+                Gerencie as listas auxiliares do sistema. Elas serão disponibilizadas como sugestões na tela de Nova Requisição.
+            </p>
+            
+            <!-- Abas do Cadastro -->
+            <div class="cadastro-tabs">
+                <button type="button" class="cadastro-tab-btn active" data-tab-id="tab-cad-bases">🏢 Bases & Resp.</button>
+                <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-postos">⛽ Postos</button>
+                <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-motoristas">🧑‍✈️ Motoristas</button>
+                <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-veiculos">🚗 Placas & Veículos</button>
+            </div>
+            
+            <form id="form-cadastros" style="margin-top: 1rem;">
+                <!-- Conteúdo Aba: Bases & Responsáveis -->
+                <div class="cadastro-tab-content active" id="tab-cad-bases">
+                    <div class="form-group">
+                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Bases e Responsáveis Vinculados (um por linha)</label>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Formato: <code>Nome da Base - Nome do Responsável</code></p>
+                        <textarea id="textarea-custom-bases" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: Zona Sul - João Silva&#10;Zona Norte - Maria Souza"></textarea>
+                    </div>
+                </div>
+
+                <!-- Conteúdo Aba: Postos -->
+                <div class="cadastro-tab-content" id="tab-cad-postos" style="display: none;">
+                    <div class="form-group">
+                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Postos de Gasolina autorizados (um por linha)</label>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Digite o nome de cada posto.</p>
+                        <textarea id="textarea-custom-postos" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: Posto Ipiranga&#10;Posto Shell"></textarea>
+                    </div>
+                </div>
+                
+                <!-- Conteúdo Aba: Motoristas -->
+                <div class="cadastro-tab-content" id="tab-cad-motoristas" style="display: none;">
+                    <div class="form-group">
+                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Motoristas autorizados (um por linha)</label>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Digite o nome de cada motorista.</p>
+                        <textarea id="textarea-custom-motoristas" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: Lucas Santos&#10;Rodrigo Lima"></textarea>
+                    </div>
+                </div>
+
+                <!-- Conteúdo Aba: Placas & Veículos -->
+                <div class="cadastro-tab-content" id="tab-cad-veiculos" style="display: none;">
+                    <div class="form-group">
+                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Placas e Modelos de Carro Vinculados (um por linha)</label>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Formato: <code>Placa - Modelo do Veículo</code></p>
+                        <textarea id="textarea-custom-veiculos" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: ABC-1234 - Caminhão F-4000&#10;XYZ-5678 - Van Frota"></textarea>
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-cadastros">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Cadastros</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Overlay de Gráficos Maximizados -->
+    <div class="chart-overlay" id="chart-overlay"></div>
+
+    <!-- MODAL DE INFOGRÁFICO -->
+    <div class="modal-overlay" id="infografico-modal">
+        <div class="modal-content infografico-content" style="max-width: 700px; padding: 0;">
+            <!-- Botão fechar -->
+            <button class="modal-close" id="btn-close-infografico" style="top: 1rem; right: 1rem;">&times;</button>
+            
+            <!-- Área imprimível do Infográfico -->
+            <div id="print-infografico-area" class="infografico-print-wrapper">
+                <div class="info-header" style="position: relative;">
+                    <!-- Botão de impressão rápido no topo, ocultado na impressão -->
+                    <button class="btn btn-secondary btn-icon btn-print-top" id="btn-print-infografico-top" title="Imprimir Infográfico" style="position: absolute; right: 0; top: 0; padding: 0.4rem 0.6rem; border-color: rgba(255, 255, 255, 0.15);">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" style="vertical-align: middle;">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 0-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                    </button>
+                    <h2>Controle de Requisições - MGP</h2>
+                    <p>Infográfico de Consumo & Abastecimento</p>
+                    <div class="info-period" id="info-period-text">Período: -</div>
+                </div>
+                
+                <div class="info-grid-kpis">
+                    <div class="info-kpi-card">
+                        <span class="info-kpi-label">Total Gasto</span>
+                        <span class="info-kpi-val" id="info-kpi-gasto">R$ 0,00</span>
+                    </div>
+                    <div class="info-kpi-card">
+                        <span class="info-kpi-label">Volume Consumido</span>
+                        <span class="info-kpi-val" id="info-kpi-litros">0 L</span>
+                    </div>
+                    <div class="info-kpi-card">
+                        <span class="info-kpi-label">Preço Médio</span>
+                        <span class="info-kpi-val" id="info-kpi-preco-medio">R$ 0,00</span>
+                    </div>
+                    <div class="info-kpi-card">
+                        <span class="info-kpi-label">Requisições</span>
+                        <span class="info-kpi-val" id="info-kpi-req">0</span>
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <h3>PARTICIPAÇÃO POR COMBUSTÍVEL</h3>
+                    <div class="info-chart-list" id="info-combustivel-bars">
+                        <!-- Gerado dinamicamente no JS -->
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <h3>GASTO POR BASE / POSTO</h3>
+                    <div class="info-chart-list" id="info-zona-bars">
+                        <!-- Gerado dinamicamente no JS -->
+                    </div>
+                </div>
+                
+                <div class="info-section grid-2-col">
+                    <div>
+                        <h3>Maior Consumo (Responsável)</h3>
+                        <div class="leader-box">
+                            <span class="leader-title" id="info-leader-motorista">-</span>
+                            <span class="leader-subtitle" id="info-leader-motorista-val">R$ 0,00</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h3>Maior Consumo (Veículo)</h3>
+                        <div class="leader-box">
+                            <span class="leader-title" id="info-leader-veiculo">-</span>
+                            <span class="leader-subtitle" id="info-leader-veiculo-val">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-footer-brand" id="info-footer-brand-text">
+                    Gerado pelo sistema de controle • <span id="info-generation-timestamp">-</span>
+                </div>
+            </div>
+
+            <!-- Ações do Modal (Não aparecem na impressão) -->
+            <div class="info-modal-actions">
+                <button class="btn btn-secondary" id="btn-cancel-infografico">Fechar</button>
+                <button class="btn btn-primary" id="btn-print-infografico">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle;">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 0-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                    Imprimir / Salvar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Datalists para Autocomplete do Formulário de Nova Requisição -->
+    <datalist id="datalist-bases"></datalist>
+    <datalist id="datalist-responsaveis"></datalist>
+    <datalist id="datalist-postos"></datalist>
+    <datalist id="datalist-motoristas"></datalist>
+    <datalist id="datalist-veiculos"></datalist>
+    <datalist id="datalist-placas"></datalist>
+
+    <!-- Script principal da aplicação -->
+    <script src="app.js?v=2" defer></script>
+</body>
+
+</html>
