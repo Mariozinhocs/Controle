@@ -739,7 +739,7 @@ function parseExcelBuffer(buffer) {
     } catch (e) {
         hideLoading();
         console.error(e);
-        alert('Erro ao processar arquivo Excel. Certifique-se de que é um arquivo válido.');
+        alert('Erro ao processar arquivo Excel: ' + e.message + '\n' + e.stack);
     }
 }
 
