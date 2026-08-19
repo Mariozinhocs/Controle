@@ -1087,6 +1087,9 @@ function buildFilterButtons() {
         });
     }
 
+    const sortedZonas = Array.from(zonasUnicas).sort();
+    const sortedComb = Array.from(combustiveisUnicos).sort();
+
     // Zonas (Bases)
     const containerZonas = document.getElementById('filter-zonas');
     if (containerZonas) {
@@ -1104,7 +1107,6 @@ function buildFilterButtons() {
         containerZonas.appendChild(btnTodasZonas);
 
         // Ordenar bases alfabeticamente para um visual mais organizado
-        const sortedZonas = Array.from(zonasUnicas).sort();
         sortedZonas.forEach(zona => {
             const btn = document.createElement('button');
             btn.className = `slicer-btn ${state.filters.zonas.has(zona) ? 'active' : ''}`;
@@ -1158,7 +1160,6 @@ function buildFilterButtons() {
         containerCombustiveis.appendChild(btnTodosComb);
 
         // Ordenar combustíveis alfabeticamente
-        const sortedComb = Array.from(combustiveisUnicos).sort();
         sortedComb.forEach(comb => {
             const btn = document.createElement('button');
             btn.className = `slicer-btn ${state.filters.combustiveis.has(comb) ? 'active' : ''}`;
