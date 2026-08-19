@@ -9,6 +9,7 @@ const state = {
     filename: 'Nenhum arquivo carregado',
     filters: {
         zonas: new Set(),
+        postos: new Set(),
         combustiveis: new Set()
     },
     dateRange: {
@@ -1024,14 +1025,38 @@ function setActivePreset(presetId) {
 
 // 8. BOTOES FILTROS (SLICERS)
 function buildFilterButtons() {
-    // Analisar a planilha para definir os botões de Bases (Zonas) e Combustíveis
+    // Analisar a planilha para definir os botões de Bases (Zonas), Postos e Combustíveis
     const zonasUnicas = new Set();
+    const postosUnicos = new Set();
     const combustiveisUnicos = new Set();
+
+    // Determinar quais bases/postos são válidos
+    const validBases = new Set(
+        state.customBases.map(line => {
+            const idx = line.indexOf(' - ');
+            return idx !== -1 ? line.substring(0, idx).trim().toLowerCase() : line.trim().toLowerCase();
+        }).filter(Boolean)
+    );
+
+    const validPostos = new Set(
+        state.customPostos.map(p => p.trim().toLowerCase()).filter(Boolean)
+    );
 
     if (state.rawData && state.rawData.length > 0) {
         state.rawData.forEach(row => {
-            if (row.zona && row.zona !== 'Não Informado') {
-                zonasUnicas.add(row.zona);
+            const zLower = row.zona ? row.zona.trim().toLowerCase() : '';
+            const pLower = row.posto ? row.posto.trim().toLowerCase() : '';
+
+            // Se houver lista customizada, filtra por ela; caso contrário, aceita qualquer valor não-vazio
+            if (zLower && zLower !== 'não informado') {
+                if (validBases.size === 0 || validBases.has(zLower)) {
+                    zonasUnicas.add(row.zona);
+                }
+            }
+            if (pLower && pLower !== 'não informado') {
+                if (validPostos.size === 0 || validPostos.has(pLower)) {
+                    postosUnicos.add(row.posto);
+                }
             }
             if (row.combustivel && row.combustivel !== 'Não Informado') {
                 combustiveisUnicos.add(row.combustivel);
@@ -1041,53 +1066,84 @@ function buildFilterButtons() {
 
     // Zonas (Bases)
     const containerZonas = document.getElementById('filter-zonas');
-    containerZonas.innerHTML = '';
+    if (containerZonas) {
+        containerZonas.innerHTML = '';
 
-    // Botão "Todas"
-    const btnTodasZonas = document.createElement('button');
-    btnTodasZonas.className = `slicer-btn ${state.filters.zonas.size === 0 ? 'active' : ''}`;
-    btnTodasZonas.textContent = 'Todas';
-    btnTodasZonas.addEventListener('click', () => {
-        state.filters.zonas.clear();
-        buildFilterButtons();
-        updateDashboard();
-    });
-    containerZonas.appendChild(btnTodasZonas);
+        // Botão "Todas"
+        const btnTodasZonas = document.createElement('button');
+        btnTodasZonas.className = `slicer-btn ${state.filters.zonas.size === 0 ? 'active' : ''}`;
+        btnTodasZonas.textContent = 'Todas';
+        btnTodasZonas.addEventListener('click', () => {
+            state.filters.zonas.clear();
+            buildFilterButtons();
+            updateDashboard();
+        });
+        containerZonas.appendChild(btnTodasZonas);
 
-    // Ordenar bases alfabeticamente para um visual mais organizado
-    const sortedZonas = Array.from(zonasUnicas).sort();
-    sortedZonas.forEach(zona => {
-        const btn = document.createElement('button');
-        btn.className = `slicer-btn ${state.filters.zonas.has(zona) ? 'active' : ''}`;
-        btn.textContent = zona;
-        btn.addEventListener('click', () => toggleFilter('zonas', zona));
-        containerZonas.appendChild(btn);
-    });
+        // Ordenar bases alfabeticamente para um visual mais organizado
+        const sortedZonas = Array.from(zonasUnicas).sort();
+        sortedZonas.forEach(zona => {
+            const btn = document.createElement('button');
+            btn.className = `slicer-btn ${state.filters.zonas.has(zona) ? 'active' : ''}`;
+            btn.textContent = zona;
+            btn.addEventListener('click', () => toggleFilter('zonas', zona));
+            containerZonas.appendChild(btn);
+        });
+    }
+
+    // Postos
+    const containerPostos = document.getElementById('filter-postos');
+    if (containerPostos) {
+        containerPostos.innerHTML = '';
+
+        // Botão "Todos"
+        const btnTodosPostos = document.createElement('button');
+        btnTodosPostos.className = `slicer-btn ${state.filters.postos.size === 0 ? 'active' : ''}`;
+        btnTodosPostos.textContent = 'Todos';
+        btnTodosPostos.addEventListener('click', () => {
+            state.filters.postos.clear();
+            buildFilterButtons();
+            updateDashboard();
+        });
+        containerPostos.appendChild(btnTodosPostos);
+
+        // Ordenar postos alfabeticamente
+        const sortedPostos = Array.from(postosUnicos).sort();
+        sortedPostos.forEach(posto => {
+            const btn = document.createElement('button');
+            btn.className = `slicer-btn ${state.filters.postos.has(posto) ? 'active' : ''}`;
+            btn.textContent = posto;
+            btn.addEventListener('click', () => toggleFilter('postos', posto));
+            containerPostos.appendChild(btn);
+        });
+    }
 
     // Combustíveis
     const containerCombustiveis = document.getElementById('filter-combustiveis');
-    containerCombustiveis.innerHTML = '';
+    if (containerCombustiveis) {
+        containerCombustiveis.innerHTML = '';
 
-    // Botão "Todos"
-    const btnTodosComb = document.createElement('button');
-    btnTodosComb.className = `slicer-btn ${state.filters.combustiveis.size === 0 ? 'active' : ''}`;
-    btnTodosComb.textContent = 'Todos';
-    btnTodosComb.addEventListener('click', () => {
-        state.filters.combustiveis.clear();
-        buildFilterButtons();
-        updateDashboard();
-    });
-    containerCombustiveis.appendChild(btnTodosComb);
+        // Botão "Todos"
+        const btnTodosComb = document.createElement('button');
+        btnTodosComb.className = `slicer-btn ${state.filters.combustiveis.size === 0 ? 'active' : ''}`;
+        btnTodosComb.textContent = 'Todos';
+        btnTodosComb.addEventListener('click', () => {
+            state.filters.combustiveis.clear();
+            buildFilterButtons();
+            updateDashboard();
+        });
+        containerCombustiveis.appendChild(btnTodosComb);
 
-    // Ordenar combustíveis alfabeticamente
-    const sortedComb = Array.from(combustiveisUnicos).sort();
-    sortedComb.forEach(comb => {
-        const btn = document.createElement('button');
-        btn.className = `slicer-btn ${state.filters.combustiveis.has(comb) ? 'active' : ''}`;
-        btn.textContent = comb;
-        btn.addEventListener('click', () => toggleFilter('combustiveis', comb));
-        containerCombustiveis.appendChild(btn);
-    });
+        // Ordenar combustíveis alfabeticamente
+        const sortedComb = Array.from(combustiveisUnicos).sort();
+        sortedComb.forEach(comb => {
+            const btn = document.createElement('button');
+            btn.className = `slicer-btn ${state.filters.combustiveis.has(comb) ? 'active' : ''}`;
+            btn.textContent = comb;
+            btn.addEventListener('click', () => toggleFilter('combustiveis', comb));
+            containerCombustiveis.appendChild(btn);
+        });
+    }
 
     // Auxiliar para preencher datalist
     function populateDatalist(id, list) {
@@ -1448,13 +1504,14 @@ function applyNlqQuery() {
 function updateDashboard() {
     state.filteredData = state.rawData.filter(row => {
         const matchZona = state.filters.zonas.size === 0 || state.filters.zonas.has(row.zona);
+        const matchPosto = state.filters.postos.size === 0 || state.filters.postos.has(row.posto);
         const matchComb = state.filters.combustiveis.size === 0 || state.filters.combustiveis.has(row.combustivel);
 
         const rowDate = normalizeDate(row.date);
         const matchStart = !state.dateRange.start || rowDate >= normalizeDate(state.dateRange.start);
         const matchEnd = !state.dateRange.end || rowDate <= normalizeDate(state.dateRange.end);
 
-        return matchZona && matchComb && matchStart && matchEnd;
+        return matchZona && matchPosto && matchComb && matchStart && matchEnd;
     });
 
     calculateKPIs();
