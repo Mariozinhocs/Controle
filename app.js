@@ -3183,6 +3183,12 @@ function initLicenseValidation() {
 async function checkKeyOnGithub(targetKey) {
     let keysData = null;
 
+    // Normalizador de chave: remove hífens, espaços e caracteres especiais para comparação insensível a formato
+    const cleanKey = (str) => (str || '').toString().replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    const targetClean = cleanKey(targetKey);
+
+    if (!targetClean) return false;
+
     // 1. Tentar buscar da URL online do GitHub
     try {
         const response = await fetch(GITHUB_KEYS_URL, { cache: 'no-cache' });
@@ -3211,11 +3217,11 @@ async function checkKeyOnGithub(targetKey) {
     if (Array.isArray(keysData)) {
         return keysData.some(item => {
             if (typeof item === 'string') {
-                return item.trim().toUpperCase() === targetKey;
+                return cleanKey(item) === targetClean;
             } else if (typeof item === 'object' && item !== null) {
-                const itemKey = (item.key || item.chave || '').trim().toUpperCase();
+                const itemKeyClean = cleanKey(item.key || item.chave);
                 const isActive = item.active !== false && item.ativo !== false;
-                return itemKey === targetKey && isActive;
+                return itemKeyClean === targetClean && isActive;
             }
             return false;
         });
@@ -3223,6 +3229,7 @@ async function checkKeyOnGithub(targetKey) {
 
     return false;
 }
+
 
 // ==========================================
 // 20. SISTEMA DE SIDEBAR RETRÁTIL (ÍCONE)
