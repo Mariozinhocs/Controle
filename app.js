@@ -145,6 +145,10 @@ function hideLoading() {
 
 // FUNÇÕES DE INICIALIZAÇÃO
 document.addEventListener('DOMContentLoaded', () => {
+    initSplashScreen();       // Animação de Splash Screen de Inicialização
+    initLicenseValidation(); // Sistema de Validação de Chave de Acesso (GitHub)
+    initSidebarToggle();     // Sistema de Sidebar Retrátil (Ícone)
+    initFullscreenToggle();  // Sistema de Painel em Tela Cheia
     initEventListeners();
     checkUrlParams();
     buildFilterButtons(); // Carrega os botões de filtros imediatamente
@@ -152,6 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initCalendarWidget(); // Inicializa o calendário
     loadInitialData();
 });
+
+
 
 // 1. EVENT LISTENERS
 function initEventListeners() {
@@ -3105,4 +3111,207 @@ function updatePrintTimestamps() {
     document.querySelectorAll('.print-generation-timestamp').forEach(el => {
         el.textContent = ts;
     });
+}
+
+// ==========================================
+// 19. SISTEMA DE LICENÇA E VALIDAÇÃO GITHUB
+// ==========================================
+// URL do repositório/gist do GitHub contendo a lista de chaves de acesso válidas em JSON.
+// Altere para a URL Raw do seu repositório público ou GitHub Gist.
+const GITHUB_KEYS_URL = 'https://raw.githubusercontent.com/Mariozinhocs/Controle/main/keys.json';
+const LOCAL_KEYS_FALLBACK = './keys.json';
+
+function initLicenseValidation() {
+    const overlay = document.getElementById('license-overlay');
+    const form = document.getElementById('license-form');
+    const input = document.getElementById('license-key-input');
+    const statusMsg = document.getElementById('license-status-msg');
+    const btnSubmit = document.getElementById('btn-validate-license');
+
+    if (!overlay || !form || !input) return;
+
+    // Verificar se já possui chave validada e salva no localStorage
+    const savedKey = localStorage.getItem('controle_license_key');
+    if (savedKey) {
+        // Já autenticado previamente - oculta o modal e libera uso offline
+        overlay.style.display = 'none';
+    } else {
+        // Exibe o modal de bloqueio
+        overlay.style.display = 'flex';
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const enteredKey = input.value.trim().toUpperCase();
+        if (!enteredKey) {
+            showLicenseStatus('Por favor, informe a chave de acesso.', 'error');
+            return;
+        }
+
+        btnSubmit.disabled = true;
+        showLicenseStatus('Conectando ao GitHub para validar chave...', 'info');
+
+        try {
+            const isValid = await checkKeyOnGithub(enteredKey);
+            if (isValid) {
+                localStorage.setItem('controle_license_key', enteredKey);
+                localStorage.setItem('controle_license_validated_at', new Date().toISOString());
+                showLicenseStatus('Chave validada com sucesso! Liberando acesso...', 'success');
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    btnSubmit.disabled = false;
+                }, 1000);
+            } else {
+                showLicenseStatus('Chave de acesso inválida, inativa ou não encontrada no GitHub.', 'error');
+                btnSubmit.disabled = false;
+            }
+        } catch (err) {
+            console.error('Erro na validação da licença:', err);
+            showLicenseStatus('Falha de conexão com o GitHub. Verifique sua rede.', 'error');
+            btnSubmit.disabled = false;
+        }
+    });
+
+    function showLicenseStatus(msg, type) {
+        if (!statusMsg) return;
+        statusMsg.textContent = msg;
+        statusMsg.className = `license-status-msg ${type}`;
+    }
+}
+
+async function checkKeyOnGithub(targetKey) {
+    let keysData = null;
+
+    // 1. Tentar buscar da URL online do GitHub
+    try {
+        const response = await fetch(GITHUB_KEYS_URL, { cache: 'no-cache' });
+        if (response.ok) {
+            keysData = await response.json();
+        }
+    } catch (e) {
+        console.warn('Não foi possível acessar a URL principal do GitHub. Tentando fallback local...', e);
+    }
+
+    // 2. Se falhar, tentar buscar do arquivo local keys.json de contingência
+    if (!keysData) {
+        try {
+            const responseLocal = await fetch(LOCAL_KEYS_FALLBACK, { cache: 'no-cache' });
+            if (responseLocal.ok) {
+                keysData = await responseLocal.json();
+            }
+        } catch (e) {
+            console.warn('Fallback local keys.json também não encontrado.', e);
+        }
+    }
+
+    if (!keysData) return false;
+
+    // Tratar se keysData é um Array de strings ou Array de Objetos
+    if (Array.isArray(keysData)) {
+        return keysData.some(item => {
+            if (typeof item === 'string') {
+                return item.trim().toUpperCase() === targetKey;
+            } else if (typeof item === 'object' && item !== null) {
+                const itemKey = (item.key || item.chave || '').trim().toUpperCase();
+                const isActive = item.active !== false && item.ativo !== false;
+                return itemKey === targetKey && isActive;
+            }
+            return false;
+        });
+    }
+
+    return false;
+}
+
+// ==========================================
+// 20. SISTEMA DE SIDEBAR RETRÁTIL (ÍCONE)
+// ==========================================
+function initSidebarToggle() {
+    const btnToggle = document.getElementById('btn-toggle-sidebar');
+    const container = document.getElementById('app-container');
+
+    if (!btnToggle || !container) return;
+
+    // Restaurar estado salvo no localStorage
+    const savedState = localStorage.getItem('controle_sidebar_collapsed');
+    if (savedState === 'true') {
+        container.classList.add('sidebar-collapsed');
+    }
+
+    btnToggle.addEventListener('click', () => {
+        container.classList.toggle('sidebar-collapsed');
+        const isCollapsed = container.classList.contains('sidebar-collapsed');
+        localStorage.setItem('controle_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+
+        // Disparar evento de resize da janela para redimensionar os gráficos ApexCharts automaticamente
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 300);
+    });
+}
+
+// ==========================================
+// 21. SISTEMA DE PAINEL EM TELA CHEIA (FULLSCREEN)
+// ==========================================
+function initFullscreenToggle() {
+    const btnFullscreen = document.getElementById('btn-fullscreen');
+    const iconSvg = document.getElementById('icon-fullscreen');
+    const labelSpan = document.querySelector('.btn-fullscreen-label');
+
+    if (!btnFullscreen) return;
+
+    btnFullscreen.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.error(`Erro ao ativar tela cheia: ${err.message}`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+        const isFS = !!document.fullscreenElement;
+        if (labelSpan) {
+            labelSpan.textContent = isFS ? 'Sair Tela Cheia' : 'Tela Cheia';
+        }
+        if (iconSvg) {
+            iconSvg.innerHTML = isFS ?
+                `<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>` :
+                `<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>`;
+        }
+    });
+}
+
+// ==========================================
+// 22. SISTEMA DE SPLASH SCREEN
+// ==========================================
+function initSplashScreen() {
+    const splash = document.getElementById('splash-screen');
+    const fill = document.getElementById('splash-progress-fill');
+    const statusText = document.getElementById('splash-status-text');
+
+    if (!splash || !fill) return;
+
+    // Etapas da animação de carregamento do Splash Screen
+    setTimeout(() => {
+        fill.style.width = '45%';
+        if (statusText) statusText.textContent = 'Carregando Módulos e Gráficos...';
+    }, 250);
+
+    setTimeout(() => {
+        fill.style.width = '85%';
+        if (statusText) statusText.textContent = 'Processando Dados Locais...';
+    }, 600);
+
+    setTimeout(() => {
+        fill.style.width = '100%';
+        if (statusText) statusText.textContent = 'Inicialização Concluída!';
+    }, 950);
+
+    setTimeout(() => {
+        splash.classList.add('fade-out');
+    }, 1250);
 }

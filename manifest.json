@@ -1,0 +1,16 @@
+{
+  "name": "Controle de Requisições",
+  "short_name": "Controle",
+  "description": "Análise de Abastecimentos e Gestão de Frota",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0e17",
+  "theme_color": "#ffb703",
+  "icons": [
+    {
+      "src": "app_icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

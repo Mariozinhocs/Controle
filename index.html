@@ -8,7 +8,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Requisições - Dashboard</title>
+    <title>Controle de Requisições - MGP</title>
+    <link rel="icon" type="image/png" href="app_icon.png">
+    <link rel="shortcut icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="app_icon.png">
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="styles.css">
 
     <!-- Bibliotecas Locais para funcionamento Offline -->
@@ -19,52 +23,107 @@
 
 <body>
 
+    <!-- SPLASH SCREEN DE INICIALIZAÇÃO NATIVA -->
+    <div class="splash-screen" id="splash-screen">
+        <div class="splash-content">
+            <div class="splash-logo-wrap">
+                <img src="app_icon.png" alt="Controle Logo" class="splash-logo-img">
+            </div>
+            <h1 class="splash-title">CONTROLE DE REQUIOSIÇÕES</h1>
+            <p class="splash-subtitle">MGP • Gestão de Abastecimentos & Frota</p>
+            <div class="splash-progress-bar">
+                <div class="splash-progress-fill" id="splash-progress-fill"></div>
+            </div>
+            <span class="splash-status-text" id="splash-status-text">Inicializando Software Nativo...</span>
+        </div>
+    </div>
+
+    <!-- OVERLAY DE VALIDAÇÃO DE CHAVE DE ACESSO (GITHUB LICENSE) -->
+    <div class="license-overlay" id="license-overlay" style="display: none;">
+        <div class="license-card">
+            <div class="license-header">
+                <div class="license-icon-wrap">
+                    <img src="app_icon.png" alt="Controle Icon" style="width: 44px; height: 44px; border-radius: 8px;">
+                </div>
+                <h2>Autenticação de Acesso</h2>
+                <p>Insira a Chave de Licença para liberar a utilização do <strong>Controle de Requisições</strong>.</p>
+            </div>
+            <form id="license-form" class="license-form" onsubmit="return false;">
+                <div class="license-input-group">
+                    <label for="license-key-input">CHAVE DE ACESSO</label>
+                    <div class="input-with-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 2l-2 2m-2-2l2 2m2 0l-7 7m-1.5-1.5L4 16.5V20h3.5l7.5-7.5"/>
+                        </svg>
+                        <input type="text" id="license-key-input" placeholder="CTRL-XXXX-YYYY-ZZZZ" autocomplete="off" spellcheck="false" required>
+                    </div>
+                    <span class="license-status-msg" id="license-status-msg"></span>
+                </div>
+                <div class="license-actions">
+                    <button type="submit" class="btn btn-primary btn-block" id="btn-validate-license">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 6L9 17l-5-5"/>
+                        </svg>
+                        Validar Acesso (GitHub)
+                    </button>
+                </div>
+            </form>
+            <div class="license-footer">
+                <small>🔒 Validação via GitHub | Execução local e privada</small>
+            </div>
+        </div>
+    </div>
+
     <!-- OVERLAY DE CARREGAMENTO (LOADING SPINNER) -->
     <div class="loading-overlay" id="loading-overlay">
         <div class="spinner"></div>
         <span class="loading-text">Processando planilha de dados...</span>
     </div>
 
-    <div class="app-container">
+    <div class="app-container" id="app-container">
 
         <!-- SIDEBAR LATERAL (Métricas Principais) -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="logo-container">
-                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 12V4H5v18h14v-4" />
-                    <path d="M21 16v-2a2 2 0 0 0-2-2h-3v8h3a2 2 0 0 0 2-2v-2" />
-                    <circle cx="12" cy="11" r="3" />
-                </svg>
-                <h2>Controle</h2>
+                <div class="logo-brand">
+                    <img src="app_icon.png" alt="Controle Icon" class="logo-img-icon">
+                    <h2 class="logo-text">Controle</h2>
+                </div>
+                <button class="btn-sidebar-toggle" id="btn-toggle-sidebar" title="Contrair / Expandir Barra Lateral">
+                    <svg id="sidebar-toggle-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                    </svg>
+                </button>
             </div>
 
+
             <div class="kpi-group">
-                <div class="kpi-card" id="kpi-gasto" draggable="true">
+                <div class="kpi-card" id="kpi-gasto" draggable="true" title="Total Gasto">
                     <span class="kpi-value">R$ 0,00</span>
                     <span class="kpi-label">TOTAL GASTO</span>
                 </div>
 
-                <div class="kpi-card" id="kpi-litros" draggable="true">
+                <div class="kpi-card" id="kpi-litros" draggable="true" title="Total Litros">
                     <span class="kpi-value">0 L</span>
                     <span class="kpi-label">TOTAL LITROS</span>
                 </div>
 
-                <div class="kpi-card" id="kpi-requisicoes" draggable="true">
+                <div class="kpi-card" id="kpi-requisicoes" draggable="true" title="Qtd Requisições">
                     <span class="kpi-value">0</span>
                     <span class="kpi-label">QTD REQUISIÇÕES</span>
                 </div>
 
-                <div class="kpi-card" id="kpi-preco-medio" draggable="true">
+                <div class="kpi-card" id="kpi-preco-medio" draggable="true" title="Preço Médio / L">
                     <span class="kpi-value">R$ 0,00</span>
                     <span class="kpi-label">PREÇO MÉDIO / L</span>
                 </div>
 
-                <div class="kpi-card highlight-card" id="kpi-maior-gasto" draggable="true">
+                <div class="kpi-card highlight-card" id="kpi-maior-gasto" draggable="true" title="Maior Consumo (Veículo)">
                     <span class="kpi-value">-</span>
                     <span class="kpi-label">MAIOR CONSUMO (VEÍCULO)</span>
                 </div>
 
-                <div class="kpi-card highlight-card" id="kpi-maior-gasto-base" draggable="true">
+                <div class="kpi-card highlight-card" id="kpi-maior-gasto-base" draggable="true" title="Maior Consumo (Base)">
                     <span class="kpi-value">-</span>
                     <span class="kpi-label">MAIOR CONSUMO (BASE)</span>
                 </div>
@@ -97,7 +156,13 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <!-- Botão de Recarregar Rápido -->
+                    <!-- Botão de Tela Cheia -->
+                    <button class="btn btn-secondary btn-icon" id="btn-fullscreen" title="Alternar Modo Tela Cheia (Fullscreen)">
+                        <svg id="icon-fullscreen" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle;">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                        </svg>
+                        <span class="btn-fullscreen-label">Tela Cheia</span>
+                    </button>
                     <!-- Botão de Gerar Infográfico -->
                     <button class="btn btn-secondary btn-icon" id="btn-open-infografico" title="Gerar infográfico visual de dados">
                         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle;">
@@ -128,6 +193,7 @@
                             <line x1="12" y1="15" x2="12" y2="3" />
                         </svg>
                         Baixar Excel
+
                     </button>
                     <!-- Botão de Cadastros -->
                     <button class="btn btn-secondary btn-icon" id="btn-open-cadastros" title="Gerenciar cadastros de Bases, Postos e Responsáveis">

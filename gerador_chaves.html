@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Chaves de Acesso - Controle</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+        .key-generator-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 720px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+        .kg-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.25rem;
+        }
+        .kg-header svg {
+            color: var(--accent-yellow);
+        }
+        .kg-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        .kg-header p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin: 0.2rem 0 0 0;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .form-group label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+        .form-group input, .form-group select {
+            padding: 0.75rem 1rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        .key-display-box {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px dashed var(--accent-yellow);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+        }
+        .key-code {
+            font-family: monospace;
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--accent-yellow);
+            letter-spacing: 0.1em;
+        }
+        .btn-copy {
+            background: rgba(255, 183, 3, 0.15);
+            color: var(--accent-yellow);
+            border: 1px solid rgba(255, 183, 3, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-copy:hover {
+            background: var(--accent-yellow);
+            color: #000;
+        }
+        .keys-table-container {
+            margin-top: 2rem;
+            max-height: 260px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+        }
+        table.keys-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.85rem;
+        }
+        table.keys-table th {
+            background: var(--bg-card);
+            padding: 0.75rem 1rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-color);
+        }
+        table.keys-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+        }
+        .status-badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        .status-active { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        .status-inactive { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .actions-row {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="key-generator-container">
+        <div class="kg-header">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 2l-2 2m-2-2l2 2m2 0l-7 7m-1.5-1.5L4 16.5V20h3.5l7.5-7.5"/>
+            </svg>
+            <div>
+                <h1>Gerador de Chaves de Acesso (GitHub)</h1>
+                <p>Crie novas licenças para o software Controle de Requisições e exporte o keys.json</p>
+            </div>
+        </div>
+
+        <div class="key-display-box">
+            <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">NOVA CHAVE GERADA</span>
+                <span class="key-code" id="generated-key-display">CTRL-2026-XXXX-YYYY</span>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-secondary" id="btn-generate-new">🔄 Gerar Nova</button>
+                <button class="btn-copy" id="btn-copy-key">📋 Copiar</button>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>NOME DO CLIENTE / DESTINATÁRIO</label>
+                <input type="text" id="client-name-input" placeholder="Ex: Posto Central / Mario Henrique">
+            </div>
+            <div class="form-group">
+                <label>STATUS DA CHAVE</label>
+                <select id="key-status-select">
+                    <option value="true">Ativa (Permitida)</option>
+                    <option value="false">Bloqueada / Inativa</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-block" id="btn-add-key">➕ Adicionar à Lista de Chaves</button>
+
+        <div class="keys-table-container">
+            <table class="keys-table">
+                <thead>
+                    <tr>
+                        <th>Chave de Acesso</th>
+                        <th>Cliente / Descrição</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="keys-list-tbody">
+                    <!-- Dinâmico -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="actions-row">
+            <button class="btn btn-secondary btn-block" id="btn-export-keys-json">💾 Baixar keys.json (Para subir no GitHub)</button>
+        </div>
+    </div>
+
+    <script>
+        let keysList = [
+            { key: "CTRL-2026-DEMO-8888", client: "Mario Henrique (Administrador)", active: true, created_at: "2026-08-19" },
+            { key: "CTRL-2026-MGP-1001", client: "Posto MGP Central", active: true, created_at: "2026-08-19" }
+        ];
+
+        function generateRandomKey() {
+            const year = new Date().getFullYear();
+            const seg1 = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const seg2 = Math.random().toString(36).substring(2, 6).toUpperCase();
+            return `CTRL-${year}-${seg1}-${seg2}`;
+        }
+
+        const displayEl = document.getElementById('generated-key-display');
+        const clientInput = document.getElementById('client-name-input');
+        const statusSelect = document.getElementById('key-status-select');
+        const tbody = document.getElementById('keys-list-tbody');
+
+        let currentGeneratedKey = generateRandomKey();
+        displayEl.textContent = currentGeneratedKey;
+
+        document.getElementById('btn-generate-new').addEventListener('click', () => {
+            currentGeneratedKey = generateRandomKey();
+            displayEl.textContent = currentGeneratedKey;
+        });
+
+        document.getElementById('btn-copy-key').addEventListener('click', () => {
+            navigator.clipboard.writeText(currentGeneratedKey);
+            alert('Chave copiada para a área de transferência: ' + currentGeneratedKey);
+        });
+
+        document.getElementById('btn-add-key').addEventListener('click', () => {
+            const client = clientInput.value.trim() || 'Cliente Não Identificado';
+            const isActive = statusSelect.value === 'true';
+
+            keysList.push({
+                key: currentGeneratedKey,
+                client: client,
+                active: isActive,
+                created_at: new Date().toISOString().split('T')[0]
+            });
+
+            clientInput.value = '';
+            currentGeneratedKey = generateRandomKey();
+            displayEl.textContent = currentGeneratedKey;
+
+            renderTable();
+        });
+
+        function renderTable() {
+            tbody.innerHTML = '';
+            keysList.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-family: monospace; font-weight: 700; color: var(--accent-yellow);">${item.key}</td>
+                    <td>${item.client}</td>
+                    <td><span class="status-badge ${item.active ? 'status-active' : 'status-inactive'}">${item.active ? 'Ativa' : 'Inativa'}</span></td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="removeKey(${index})">Excluir</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.removeKey = function(index) {
+            keysList.splice(index, 1);
+            renderTable();
+        };
+
+        document.getElementById('btn-export-keys-json').addEventListener('click', () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(keysList, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "keys.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        });
+
+        renderTable();
+    </script>
+</body>
+</html>
