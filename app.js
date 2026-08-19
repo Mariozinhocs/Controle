@@ -1136,33 +1136,16 @@ function buildFilterButtons() {
     const postosUnicos = new Set();
     const combustiveisUnicos = new Set();
 
-    // Determinar quais bases/postos são válidos
-    const validBases = new Set(
-        (state.customBases || []).map(line => {
-            const parts = splitByRelationalHyphen(line);
-            return parts.length > 0 ? parts[0].toLowerCase() : '';
-        }).filter(Boolean)
-    );
-
-    const validPostos = new Set(
-        (state.customPostos || []).map(p => p ? p.toString().trim().toLowerCase() : '').filter(Boolean)
-    );
-
     if (state.rawData && state.rawData.length > 0) {
         state.rawData.forEach(row => {
             const zLower = row.zona ? row.zona.trim().toLowerCase() : '';
             const pLower = row.posto ? row.posto.trim().toLowerCase() : '';
 
-            // Se houver lista customizada, filtra por ela; caso contrário, aceita qualquer valor não-vazio
             if (zLower && zLower !== 'não informado') {
-                if (validBases.size === 0 || validBases.has(zLower)) {
-                    zonasUnicas.add(row.zona);
-                }
+                zonasUnicas.add(row.zona);
             }
             if (pLower && pLower !== 'não informado') {
-                if (validPostos.size === 0 || validPostos.has(pLower)) {
-                    postosUnicos.add(row.posto);
-                }
+                postosUnicos.add(row.posto);
             }
             if (row.combustivel && row.combustivel !== 'Não Informado') {
                 combustiveisUnicos.add(row.combustivel);
