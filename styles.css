@@ -204,31 +204,40 @@ body {
 
 .app-container.sidebar-collapsed .logo-brand h2.logo-text,
 .app-container.sidebar-collapsed .sidebar-signature,
-.app-container.sidebar-collapsed .kpi-label {
+.app-container.sidebar-collapsed .kpi-group {
     display: none !important;
 }
 
 .app-container.sidebar-collapsed .logo-container {
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
+    gap: 1.25rem;
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.app-container.sidebar-collapsed .logo-brand {
+    justify-content: center;
+}
+
+.app-container.sidebar-collapsed .logo-img-icon {
+    width: 2.6rem;
+    height: 2.6rem;
+}
+
+.app-container.sidebar-collapsed .btn-sidebar-toggle {
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 183, 3, 0.3);
+    color: var(--accent-yellow);
 }
 
 .app-container.sidebar-collapsed #sidebar-toggle-icon {
     transform: rotate(180deg);
 }
 
-.app-container.sidebar-collapsed .kpi-card {
-    padding: 0.85rem 0.5rem;
-    text-align: center;
-    align-items: center;
-}
-
-.app-container.sidebar-collapsed .kpi-value {
-    font-size: 0.8rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 60px;
-}
 
 
 /* KPI CARDS NA SIDEBAR */
