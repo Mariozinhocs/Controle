@@ -274,6 +274,19 @@ function initEventListeners() {
         document.getElementById('add-requisicao-modal').classList.add('active');
     });
 
+    const inputDate = document.getElementById('input-date');
+    if (inputDate) {
+        inputDate.addEventListener('click', function() {
+            if (typeof this.showPicker === 'function') {
+                try {
+                    this.showPicker();
+                } catch (e) {
+                    console.error('Falha ao exibir o seletor de data:', e);
+                }
+            }
+        });
+    }
+
     // Fechar modal de Nova Requisição
     document.getElementById('btn-close-add-requisicao').addEventListener('click', () => {
         document.getElementById('add-requisicao-modal').classList.remove('active');
