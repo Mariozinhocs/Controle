@@ -40,6 +40,14 @@ const state = {
     }
 };
 
+// FUNÇÃO AUXILIAR PARA DIVIDIR STRINGS DE RELACIONAMENTO TRATANDO ESPAÇAMENTOS AO REDOR DO HÍFEN
+function splitByRelationalHyphen(str) {
+    if (!str) return [];
+    // Divide por hífen que possua ao menos um espaço de um dos lados (para não quebrar Centro-Sul ou placas ABC-1234)
+    const parts = str.toString().split(/\s+-\s*|\s*-\s+/);
+    return parts.map(p => p.trim());
+}
+
 // FUNÇÃO AUXILIAR PARA ATUALIZAR MAPEAMENTOS DE RELACIONAMENTO
 function updateRelationsMappings() {
     state.mappings = {
@@ -51,12 +59,10 @@ function updateRelationsMappings() {
 
     // 1. Processar Bases e Responsáveis Vinculados
     (state.customBases || []).forEach(line => {
-        if (!line) return;
-        const strLine = line.toString();
-        const idx = strLine.indexOf(' - ');
-        if (idx !== -1) {
-            const base = strLine.substring(0, idx).trim();
-            const resp = strLine.substring(idx + 3).trim();
+        const parts = splitByRelationalHyphen(line);
+        if (parts.length >= 2) {
+            const base = parts[0];
+            const resp = parts[1];
             state.mappings.baseToResponsavel[base.toLowerCase()] = resp;
             state.mappings.responsavelToBase[resp.toLowerCase()] = base;
         }
@@ -64,12 +70,10 @@ function updateRelationsMappings() {
 
     // 2. Processar Placas e Veículos Vinculados
     (state.customVeiculos || []).forEach(line => {
-        if (!line) return;
-        const strLine = line.toString();
-        const idx = strLine.indexOf(' - ');
-        if (idx !== -1) {
-            const placa = strLine.substring(0, idx).trim().toUpperCase();
-            const veiculo = strLine.substring(idx + 3).trim();
+        const parts = splitByRelationalHyphen(line);
+        if (parts.length >= 2) {
+            const placa = parts[0].toUpperCase();
+            const veiculo = parts[1];
             state.mappings.placaToVeiculo[placa] = veiculo;
 
             if (!state.mappings.veiculoToPlacas[veiculo.toLowerCase()]) {
@@ -128,6 +132,12 @@ function initEventListeners() {
     // Drag & Drop
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
+
+    dropZone.addEventListener('click', (e) => {
+        if (e.target !== fileInput && !e.target.closest('label')) {
+            fileInput.click();
+        }
+    });
 
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -1129,10 +1139,8 @@ function buildFilterButtons() {
     // Determinar quais bases/postos são válidos
     const validBases = new Set(
         (state.customBases || []).map(line => {
-            if (!line) return '';
-            const strLine = line.toString();
-            const idx = strLine.indexOf(' - ');
-            return idx !== -1 ? strLine.substring(0, idx).trim().toLowerCase() : strLine.trim().toLowerCase();
+            const parts = splitByRelationalHyphen(line);
+            return parts.length > 0 ? parts[0].toLowerCase() : '';
         }).filter(Boolean)
     );
 
@@ -1261,10 +1269,8 @@ function buildFilterButtons() {
     let basesList = [];
     if (state.customBases && state.customBases.length > 0) {
         basesList = state.customBases.map(line => {
-            if (!line) return '';
-            const strLine = line.toString();
-            const idx = strLine.indexOf(' - ');
-            return idx !== -1 ? strLine.substring(0, idx).trim() : strLine.trim();
+            const parts = splitByRelationalHyphen(line);
+            return parts.length > 0 ? parts[0] : '';
         }).filter(Boolean);
     } else {
         basesList = sortedZonas;
@@ -1275,10 +1281,8 @@ function buildFilterButtons() {
     let respList = [];
     if (state.customBases && state.customBases.length > 0) {
         respList = state.customBases.map(line => {
-            if (!line) return '';
-            const strLine = line.toString();
-            const idx = strLine.indexOf(' - ');
-            return idx !== -1 ? strLine.substring(idx + 3).trim() : '';
+            const parts = splitByRelationalHyphen(line);
+            return parts.length >= 2 ? parts[1] : '';
         }).filter(Boolean);
     } else {
         const respSet = new Set();
@@ -1319,10 +1323,8 @@ function buildFilterButtons() {
     let veicList = [];
     if (state.customVeiculos && state.customVeiculos.length > 0) {
         veicList = state.customVeiculos.map(line => {
-            if (!line) return '';
-            const strLine = line.toString();
-            const idx = strLine.indexOf(' - ');
-            return idx !== -1 ? strLine.substring(idx + 3).trim() : '';
+            const parts = splitByRelationalHyphen(line);
+            return parts.length >= 2 ? parts[1] : '';
         }).filter(Boolean);
     } else {
         const veicSet = new Set();
@@ -1357,12 +1359,10 @@ function updatePlacaDatalistOptions(selectedVeiculo = '') {
         if (selectedVeiculo) {
             // Filtrar apenas placas associadas a este veículo
             state.customVeiculos.forEach(line => {
-                if (!line) return;
-                const strLine = line.toString();
-                const idx = strLine.indexOf(' - ');
-                if (idx !== -1) {
-                    const placa = strLine.substring(0, idx).trim().toUpperCase();
-                    const veiculo = strLine.substring(idx + 3).trim();
+                const parts = splitByRelationalHyphen(line);
+                if (parts.length >= 2) {
+                    const placa = parts[0].toUpperCase();
+                    const veiculo = parts[1];
                     if (veiculo.toLowerCase() === selectedVeiculo.toLowerCase()) {
                         placaList.push(placa);
                     }
@@ -1371,10 +1371,8 @@ function updatePlacaDatalistOptions(selectedVeiculo = '') {
         } else {
             // Exibir todas as placas
             placaList = state.customVeiculos.map(line => {
-                if (!line) return '';
-                const strLine = line.toString();
-                const idx = strLine.indexOf(' - ');
-                return idx !== -1 ? strLine.substring(0, idx).trim().toUpperCase() : '';
+                const parts = splitByRelationalHyphen(line);
+                return parts.length > 0 ? parts[0].toUpperCase() : '';
             }).filter(Boolean);
         }
     } else {
