@@ -253,6 +253,7 @@ function initEventListeners() {
     // Botão Limpar Filtros da Tabela
     document.getElementById('btn-clear-table-filters').addEventListener('click', () => {
         state.filters.zonas.clear();
+        state.filters.postos.clear();
         state.filters.combustiveis.clear();
 
         state.dateRange.start = new Date(state.fullDateRange.start);
@@ -898,10 +899,48 @@ function processData(rows, shouldCache = false) {
             if (isNaN(parsedDate.getTime()) && row.date) {
                 parsedDate = parseExcelDate(row.date);
             }
+
+            let zona = row.zona || 'Não Informado';
+            let responsavel = row.responsavel || 'Não Informado';
+            let veiculo = row.veiculo || 'Não Informado';
+            let placa = row.placa || '';
+
+            const zonaLower = (zona || '').toString().trim().toLowerCase();
+            const respLower = (responsavel || '').toString().trim().toLowerCase();
+
+            if (state.mappings.responsavelToBase[zonaLower]) {
+                if (responsavel === 'Não Informado' || responsavel === '') {
+                    responsavel = zona;
+                }
+                zona = state.mappings.responsavelToBase[zonaLower];
+            }
+            if ((responsavel === 'Não Informado' || responsavel === '') && state.mappings.baseToResponsavel[zonaLower]) {
+                responsavel = state.mappings.baseToResponsavel[zonaLower];
+            }
+            if ((zona === 'Não Informado' || zona === '') && state.mappings.responsavelToBase[respLower]) {
+                zona = state.mappings.responsavelToBase[respLower];
+            }
+
+            const veicUpper = (veiculo || '').toString().trim().toUpperCase();
+            if (state.mappings.placaToVeiculo[veicUpper]) {
+                if (!placa) {
+                    placa = veicUpper;
+                }
+                veiculo = state.mappings.placaToVeiculo[veicUpper];
+            }
+            const placaUpper = (placa || '').toString().trim().toUpperCase();
+            if ((veiculo === 'Não Informado' || veiculo === '') && state.mappings.placaToVeiculo[placaUpper]) {
+                veiculo = state.mappings.placaToVeiculo[placaUpper];
+            }
+
             processed.push({
                 ...row,
                 id: row.id || (Date.now() + '-' + Math.random() + '-' + idx),
-                date: isNaN(parsedDate.getTime()) ? new Date() : parsedDate
+                date: isNaN(parsedDate.getTime()) ? new Date() : parsedDate,
+                zona: zona,
+                responsavel: responsavel,
+                veiculo: veiculo,
+                placa: placaUpper
             });
             return;
         }
@@ -923,6 +962,41 @@ function processData(rows, shouldCache = false) {
             valor = qtdRequisicoes * litros * precoLitro;
         }
 
+        let zona = cleanedRow['base'] || cleanedRow['bases'] || cleanedRow['zona'] || cleanedRow['zonas de manaus'] || 'Não Informado';
+        let responsavel = cleanedRow['responsavel'] || 'Não Informado';
+        let posto = cleanedRow['posto'] || cleanedRow['postos'] || 'Não Informado';
+        let motorista = cleanedRow['motorista'] || cleanedRow['motoristas'] || 'Não Informado';
+        let veiculo = cleanedRow['veiculo'] || 'Não Informado';
+        let placa = cleanedRow['placa'] || '';
+
+        const zonaLower = (zona || '').toString().trim().toLowerCase();
+        const respLower = (responsavel || '').toString().trim().toLowerCase();
+
+        if (state.mappings.responsavelToBase[zonaLower]) {
+            if (responsavel === 'Não Informado' || responsavel === '') {
+                responsavel = zona;
+            }
+            zona = state.mappings.responsavelToBase[zonaLower];
+        }
+        if ((responsavel === 'Não Informado' || responsavel === '') && state.mappings.baseToResponsavel[zonaLower]) {
+            responsavel = state.mappings.baseToResponsavel[zonaLower];
+        }
+        if ((zona === 'Não Informado' || zona === '') && state.mappings.responsavelToBase[respLower]) {
+            zona = state.mappings.responsavelToBase[respLower];
+        }
+
+        const veicUpper = (veiculo || '').toString().trim().toUpperCase();
+        if (state.mappings.placaToVeiculo[veicUpper]) {
+            if (!placa) {
+                placa = veicUpper;
+            }
+            veiculo = state.mappings.placaToVeiculo[veicUpper];
+        }
+        const placaUpper = (placa || '').toString().trim().toUpperCase();
+        if ((veiculo === 'Não Informado' || veiculo === '') && state.mappings.placaToVeiculo[placaUpper]) {
+            veiculo = state.mappings.placaToVeiculo[placaUpper];
+        }
+
         processed.push({
             id: Date.now() + '-' + Math.random() + '-' + idx,
             date: dateVal,
@@ -931,12 +1005,12 @@ function processData(rows, shouldCache = false) {
             inicioSeq: cleanedRow['inicio da sequencia'] || '',
             fimSeq: cleanedRow['fim da sequencia'] || '',
             qtdRequisicoes: qtdRequisicoes,
-            zona: cleanedRow['base'] || cleanedRow['bases'] || cleanedRow['zona'] || cleanedRow['zonas de manaus'] || 'Não Informado',
-            responsavel: cleanedRow['responsavel'] || 'Não Informado',
-            posto: cleanedRow['posto'] || cleanedRow['postos'] || 'Não Informado',
-            motorista: cleanedRow['motorista'] || cleanedRow['motoristas'] || 'Não Informado',
-            veiculo: cleanedRow['veiculo'] || 'Não Informado',
-            placa: cleanedRow['placa'] || '',
+            zona: zona,
+            responsavel: responsavel,
+            posto: posto,
+            motorista: motorista,
+            veiculo: veiculo,
+            placa: placaUpper,
             combustivel: cleanedRow['tipo combustivel'] || 'Não Informado',
             litros: litros,
             precoLitro: precoLitro,
@@ -966,6 +1040,7 @@ function processData(rows, shouldCache = false) {
 
     // Resetar Filtros
     state.filters.zonas.clear();
+    state.filters.postos.clear();
     state.filters.combustiveis.clear();
 
     // Inicializa Filtro de Datas
@@ -1348,6 +1423,7 @@ function applyNlqQuery() {
     // 1. Identificar comandos de limpar
     if (cleanQuery.match(/(limpar|resetar|remover|limpa|tudo|todos|completo)/)) {
         state.filters.zonas.clear();
+        state.filters.postos.clear();
         state.filters.combustiveis.clear();
         state.dateRange.start = new Date(state.fullDateRange.start);
         state.dateRange.end = new Date(state.fullDateRange.end);
@@ -1369,6 +1445,7 @@ function applyNlqQuery() {
 
     // Limpar filtros atuais para receber nova intenção
     state.filters.zonas.clear();
+    state.filters.postos.clear();
     state.filters.combustiveis.clear();
 
     const filtersApplied = [];
