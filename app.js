@@ -3118,8 +3118,9 @@ function updatePrintTimestamps() {
 // ==========================================
 // URL do repositório/gist do GitHub contendo a lista de chaves de acesso válidas em JSON.
 // Altere para a URL Raw do seu repositório público ou GitHub Gist.
-const GITHUB_KEYS_URL = 'https://raw.githubusercontent.com/Mariozinhocs/Controle/main/keys.json';
+const GITHUB_KEYS_URL = 'https://raw.githubusercontent.com/Mariozinhocs/Controle/master/keys.json';
 const LOCAL_KEYS_FALLBACK = './keys.json';
+
 
 function initLicenseValidation() {
     const overlay = document.getElementById('license-overlay');
