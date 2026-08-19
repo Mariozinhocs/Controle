@@ -1,0 +1,14 @@
+[
+  {
+    "key": "CTRL-2026-DEMO-8888",
+    "client": "Mario Henrique (Administrador)",
+    "active": true,
+    "created_at": "2026-08-19"
+  },
+  {
+    "key": "CTRL-2026-MGP-1001",
+    "client": "Posto MGP Central",
+    "active": true,
+    "created_at": "2026-08-19"
+  }
+]

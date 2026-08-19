@@ -1,0 +1,15 @@
+{
+  "name": "controle-app-exe",
+  "version": "1.1.0",
+  "description": "Controle de Requisições MGP - Standalone Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": ["controle", "mgp", "abastecimento"],
+  "author": "Mario Henrique",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^31.3.1"
+  }
+}

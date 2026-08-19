@@ -2,3 +2,8 @@ dados.xlsx
 dados.csv
 dados_atualizados_*.xlsx
 .DS_Store
+desktop.ini
+**/desktop.ini
+node_modules/
+**/node_modules/
+
