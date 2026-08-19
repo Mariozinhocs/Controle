@@ -145,8 +145,11 @@ function hideLoading() {
 
 // FUNÇÕES DE INICIALIZAÇÃO
 document.addEventListener('DOMContentLoaded', () => {
-    initSplashScreen();       // Animação de Splash Screen de Inicialização
-    initLicenseValidation(); // Sistema de Validação de Chave de Acesso (GitHub)
+    // Ocultar splash inicial para exibir o modal de autenticação em primeiro lugar
+    const splash = document.getElementById('splash-screen');
+    if (splash) splash.classList.add('fade-out');
+
+    initLicenseValidation(); // Exige senha com a caixa de texto LIMPA
     initSidebarToggle();     // Sistema de Sidebar Retrátil (Ícone)
     initFullscreenToggle();  // Sistema de Painel em Tela Cheia
     initEventListeners();
@@ -154,8 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
     buildFilterButtons(); // Carrega os botões de filtros imediatamente
     initDragAndDrop();    // Inicializa o drag & drop de KPIs e Gráficos
     initCalendarWidget(); // Inicializa o calendário
-    loadInitialData();
 });
+
 
 
 
@@ -3153,12 +3156,8 @@ function initLicenseValidation() {
 
     if (!overlay || !form || !input) return;
 
-    // Login Obrigatório a Cada Inicialização:
-    // Preenche com a última chave utilizada para facilitar o login com 1 clique, mas exige submeter a senha
-    const savedKey = localStorage.getItem('controle_license_key');
-    if (savedKey) {
-        input.value = savedKey;
-    }
+    // Login Obrigatório a Cada Inicialização: A caixa de texto fica TOTALMENTE LIMPA
+    input.value = '';
     overlay.style.display = 'flex';
 
     form.addEventListener('submit', async (e) => {
@@ -3177,15 +3176,18 @@ function initLicenseValidation() {
             if (isValid) {
                 localStorage.setItem('controle_license_key', enteredKey);
                 localStorage.setItem('controle_license_validated_at', new Date().toISOString());
-                showLicenseStatus('Chave autenticada! Verificando atualizações...', 'success');
+                showLicenseStatus('Chave autenticada com sucesso!', 'success');
                 
-                // Checar se há atualizações do sistema no GitHub
-                checkSystemUpdates();
-
                 setTimeout(() => {
                     overlay.style.display = 'none';
                     btnSubmit.disabled = false;
-                }, 1000);
+                    
+                    // Exibir o Splash Screen para carregar a planilha após a senha
+                    triggerSplashScreenAndLoadData();
+
+                    // Checar se há atualizações do sistema no GitHub
+                    checkSystemUpdates();
+                }, 400);
             } else {
                 showLicenseStatus('Chave de acesso inválida, inativa ou não encontrada no GitHub.', 'error');
                 btnSubmit.disabled = false;
@@ -3203,6 +3205,7 @@ function initLicenseValidation() {
         statusMsg.className = `license-status-msg ${type}`;
     }
 }
+
 
 async function checkSystemUpdates() {
     let versionData = null;
@@ -3392,23 +3395,31 @@ function initFullscreenToggle() {
 // ==========================================
 // 22. SISTEMA DE SPLASH SCREEN
 // ==========================================
-function initSplashScreen() {
+function triggerSplashScreenAndLoadData() {
     const splash = document.getElementById('splash-screen');
     const fill = document.getElementById('splash-progress-fill');
     const statusText = document.getElementById('splash-status-text');
 
-    if (!splash || !fill) return;
+    if (!splash || !fill) {
+        loadInitialData();
+        return;
+    }
 
-    // Etapas da animação de carregamento do Splash Screen
+    splash.classList.remove('fade-out');
+    fill.style.width = '0%';
+    if (statusText) statusText.textContent = 'Autenticação Confirmada!...';
+
+    // Etapas da animação de carregamento do Splash Screen após validação de senha
     setTimeout(() => {
         fill.style.width = '45%';
         if (statusText) statusText.textContent = 'Carregando Módulos e Gráficos...';
-    }, 250);
+    }, 200);
 
     setTimeout(() => {
         fill.style.width = '85%';
-        if (statusText) statusText.textContent = 'Processando Dados Locais...';
-    }, 600);
+        if (statusText) statusText.textContent = 'Carregando Planilha de Dados...';
+        loadInitialData();
+    }, 500);
 
     setTimeout(() => {
         fill.style.width = '100%';
@@ -3417,5 +3428,6 @@ function initSplashScreen() {
 
     setTimeout(() => {
         splash.classList.add('fade-out');
-    }, 1250);
+    }, 1300);
 }
+
