@@ -614,7 +614,8 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
 
                 <div class="table-tabs">
                     <button class="tab-btn active" id="tab-lancamentos" data-tab="lancamentos">Lançamentos</button>
-                    <button class="tab-btn" id="tab-responsaveis" data-tab="responsaveis">Ranking Motoristas</button>
+                    <button class="tab-btn" id="tab-bases" data-tab="bases">Ranking Bases</button>
+                    <button class="tab-btn" id="tab-motoristas" data-tab="motoristas">Ranking Motoristas</button>
                     <button class="tab-btn" id="tab-veiculos" data-tab="veiculos">Ranking Veículos</button>
                 </div>
 

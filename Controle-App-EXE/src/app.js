@@ -2868,11 +2868,11 @@ function renderTable() {
             tbody.appendChild(tr);
         });
 
-    } else if (state.activeTab === 'responsaveis') {
+    } else if (state.activeTab === 'bases') {
         thead.innerHTML = `
             <tr>
                 <th class="col-rank">Pos</th>
-                <th>Motorista (Responsável)</th>
+                <th>Base</th>
                 <th class="col-number">Qtd Requisições</th>
                 <th class="col-number">Total Consumido (Litros)</th>
                 <th class="col-number">Total Gasto (BRL)</th>
@@ -2881,23 +2881,24 @@ function renderTable() {
 
         const agg = {};
         state.filteredData.forEach(row => {
-            if (!agg[row.responsavel]) {
-                agg[row.responsavel] = { responsavel: row.responsavel, totalGasto: 0, totalLitros: 0, totalReq: 0 };
+            const baseKey = row.zona || 'Não Informado';
+            if (!agg[baseKey]) {
+                agg[baseKey] = { base: baseKey, totalGasto: 0, totalLitros: 0, totalReq: 0 };
             }
-            agg[row.responsavel].totalGasto += row.valor;
-            agg[row.responsavel].totalLitros += (row.litros * row.qtdRequisicoes);
-            agg[row.responsavel].totalReq += row.qtdRequisicoes;
+            agg[baseKey].totalGasto += row.valor;
+            agg[baseKey].totalLitros += (row.litros * row.qtdRequisicoes);
+            agg[baseKey].totalReq += row.qtdRequisicoes;
         });
 
         const sorted = Object.values(agg).sort((a, b) => b.totalGasto - a.totalGasto);
 
         const filtered = sorted.filter(row => {
             if (!search) return true;
-            return row.responsavel.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search);
+            return row.base.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search);
         });
 
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhum responsável encontrado para a pesquisa.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhuma base encontrada para a pesquisa.</td></tr>`;
             return;
         }
 
@@ -2908,7 +2909,56 @@ function renderTable() {
 
             tr.innerHTML = `
                 <td class="col-rank">${idx + 1}º</td>
-                <td><span class="text-highlight" style="${isTop ? 'font-size: 1.05rem;' : ''}">${row.responsavel}</span> ${isTop ? '👑 <span class="file-badge" style="margin-left:8px; font-size: 10px;">MAIOR CONSUMO</span>' : ''}</td>
+                <td><span class="text-highlight" style="${isTop ? 'font-size: 1.05rem;' : ''}">${row.base}</span> ${isTop ? '👑 <span class="file-badge" style="margin-left:8px; font-size: 10px;">MAIOR CONSUMO</span>' : ''}</td>
+                <td class="col-number">${row.totalReq.toLocaleString('pt-BR')}</td>
+                <td class="col-number">${Math.round(row.totalLitros).toLocaleString('pt-BR')} L</td>
+                <td class="col-number text-highlight">${row.totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+    } else if (state.activeTab === 'motoristas') {
+        thead.innerHTML = `
+            <tr>
+                <th class="col-rank">Pos</th>
+                <th>Motorista</th>
+                <th class="col-number">Qtd Requisições</th>
+                <th class="col-number">Total Consumido (Litros)</th>
+                <th class="col-number">Total Gasto (BRL)</th>
+            </tr>
+        `;
+
+        const agg = {};
+        state.filteredData.forEach(row => {
+            const motoristaKey = row.motorista || 'Não Informado';
+            if (!agg[motoristaKey]) {
+                agg[motoristaKey] = { motorista: motoristaKey, totalGasto: 0, totalLitros: 0, totalReq: 0 };
+            }
+            agg[motoristaKey].totalGasto += row.valor;
+            agg[motoristaKey].totalLitros += (row.litros * row.qtdRequisicoes);
+            agg[motoristaKey].totalReq += row.qtdRequisicoes;
+        });
+
+        const sorted = Object.values(agg).sort((a, b) => b.totalGasto - a.totalGasto);
+
+        const filtered = sorted.filter(row => {
+            if (!search) return true;
+            return row.motorista.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search);
+        });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhum motorista encontrado para a pesquisa.</td></tr>`;
+            return;
+        }
+
+        filtered.forEach((row, idx) => {
+            const tr = document.createElement('tr');
+            const isTop = idx === 0 && !search;
+            if (isTop) tr.style.backgroundColor = 'rgba(255, 183, 3, 0.04)';
+
+            tr.innerHTML = `
+                <td class="col-rank">${idx + 1}º</td>
+                <td><span class="text-highlight" style="${isTop ? 'font-size: 1.05rem;' : ''}">${row.motorista}</span> ${isTop ? '👑 <span class="file-badge" style="margin-left:8px; font-size: 10px;">MAIOR CONSUMO</span>' : ''}</td>
                 <td class="col-number">${row.totalReq.toLocaleString('pt-BR')}</td>
                 <td class="col-number">${Math.round(row.totalLitros).toLocaleString('pt-BR')} L</td>
                 <td class="col-number text-highlight">${row.totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
