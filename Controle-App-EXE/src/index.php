@@ -66,7 +66,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
             <div class="splash-logo-wrap">
                 <img src="app_icon.png" alt="Controle Logo" class="splash-logo-img">
             </div>
-            <h1 class="splash-title">CONTROLE DE REQUIOSIÇÕES</h1>
+            <h1 class="splash-title">CONTROLE DE REQUISIÇÕES</h1>
             <p class="splash-subtitle">MGP • Gestão de Abastecimentos & Frota</p>
             <div class="splash-progress-bar">
                 <div class="splash-progress-fill" id="splash-progress-fill"></div>
@@ -790,12 +790,12 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
 
                     <div class="form-group">
                         <label for="input-inicio-seq">Início Seq</label>
-                        <input type="number" id="input-inicio-seq" list="datalist-requisicoes" placeholder="Ex: 1001" required>
+                        <input type="text" id="input-inicio-seq" list="datalist-requisicoes" placeholder="Ex: 1001" required>
                     </div>
 
                     <div class="form-group">
                         <label for="input-fim-seq">Fim Seq</label>
-                        <input type="number" id="input-fim-seq" placeholder="Ex: 1010" required>
+                        <input type="text" id="input-fim-seq" placeholder="Ex: 1010" required>
                     </div>
 
                     <div class="form-group">

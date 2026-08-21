@@ -790,12 +790,12 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
 
                     <div class="form-group">
                         <label for="input-inicio-seq">Início Seq</label>
-                        <input type="number" id="input-inicio-seq" list="datalist-requisicoes" placeholder="Ex: 1001" required>
+                        <input type="text" id="input-inicio-seq" list="datalist-requisicoes" placeholder="Ex: 1001" required>
                     </div>
 
                     <div class="form-group">
                         <label for="input-fim-seq">Fim Seq</label>
-                        <input type="number" id="input-fim-seq" placeholder="Ex: 1010" required>
+                        <input type="text" id="input-fim-seq" placeholder="Ex: 1010" required>
                     </div>
 
                     <div class="form-group">

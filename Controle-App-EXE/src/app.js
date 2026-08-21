@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const titleEl = document.querySelector('.header-title h1');
         if (titleEl) titleEl.textContent = 'Controle de Requisições - Frota B';
         const splashTitle = document.querySelector('.splash-title');
-        if (splashTitle) splashTitle.textContent = 'CONTROLE DE REQUIOSIÇÕES - FROTA B';
+        if (splashTitle) splashTitle.textContent = 'CONTROLE DE REQUISIÇÕES - FROTA B';
         document.title = 'Controle de Requisições - Frota B';
     }
 
@@ -664,6 +664,11 @@ function initEventListeners() {
         const today = new Date();
         document.getElementById('input-date').value = formatDateIso(today);
         
+        // Atualizar todas as datalists com os dados mais recentes do banco
+        if (typeof buildFilterButtons === 'function') {
+            buildFilterButtons();
+        }
+
         // Popular a lista de requisições de uso único disponíveis
         populateRequisicoesDatalist('datalist-requisicoes', state.customRequisicoes);
         
@@ -679,6 +684,10 @@ function initEventListeners() {
         const fimVal = document.getElementById('input-fim-seq').value.trim();
         const inputQtd = document.getElementById('input-qtd-req');
         if (inicioVal && fimVal && inputQtd) {
+            if (inicioVal === fimVal) {
+                inputQtd.value = 1;
+                return;
+            }
             const inicio = parseInt(inicioVal);
             const fim = parseInt(fimVal);
             if (!isNaN(inicio) && !isNaN(fim)) {
@@ -687,6 +696,8 @@ function initEventListeners() {
                 } else {
                     inputQtd.value = 1;
                 }
+            } else {
+                inputQtd.value = 1;
             }
         }
     }
@@ -868,6 +879,21 @@ function initEventListeners() {
     // Submissão do Formulário de Nova Requisição
     document.getElementById('form-add-requisicao').addEventListener('submit', (e) => {
         e.preventDefault();
+
+        const inicioSeq = document.getElementById('input-inicio-seq').value.trim();
+        const fimSeq = document.getElementById('input-fim-seq').value.trim();
+
+        // Validar unicidade da sequência de requisição informada
+        if (inicioSeq) {
+            const startNum = parseInt(inicioSeq);
+            const endNum = parseInt(fimSeq) || startNum;
+
+            const duplicateNum = isRequisitionRangeUsed(startNum, endNum, inicioSeq);
+            if (duplicateNum !== null) {
+                alert(`A requisição nº ${duplicateNum} já foi utilizada em outro lançamento! Insira uma sequência única.`);
+                return;
+            }
+        }
 
         const dateVal = parseInputDate(document.getElementById('input-date').value);
         const zona = document.getElementById('input-zona').value;
@@ -1938,6 +1964,10 @@ function buildFilterButtons() {
     } else {
         basesList = sortedZonas;
     }
+    // Mesclar com bases existentes na base de dados
+    state.rawData.forEach(row => {
+        if (row.zona && row.zona !== 'Não Informado') basesList.push(row.zona);
+    });
     populateDatalist('datalist-bases', Array.from(new Set(basesList)).sort());
 
     // 2. Popular Responsáveis
@@ -1954,6 +1984,10 @@ function buildFilterButtons() {
         });
         respList = Array.from(respSet);
     }
+    // Mesclar com responsáveis existentes na base de dados
+    state.rawData.forEach(row => {
+        if (row.responsavel && row.responsavel !== 'Não Informado') respList.push(row.responsavel);
+    });
     populateDatalist('datalist-responsaveis', Array.from(new Set(respList)).sort());
 
     // 3. Popular Postos
@@ -1970,6 +2004,10 @@ function buildFilterButtons() {
         });
         postList = Array.from(postSet);
     }
+    // Mesclar com postos existentes na base de dados
+    state.rawData.forEach(row => {
+        if (row.posto && row.posto !== 'Não Informado') postList.push(row.posto);
+    });
     populateDatalist('datalist-postos', Array.from(new Set(postList)).sort());
 
     // 4. Popular Motoristas
@@ -1983,6 +2021,10 @@ function buildFilterButtons() {
         });
         motoristasList = Array.from(motoristaSet);
     }
+    // Mesclar com motoristas existentes na base de dados
+    state.rawData.forEach(row => {
+        if (row.motorista && row.motorista !== 'Não Informado') motoristasList.push(row.motorista);
+    });
     populateDatalist('datalist-motoristas', Array.from(new Set(motoristasList)).sort());
 
     // 5. Popular Veículos
@@ -1999,6 +2041,10 @@ function buildFilterButtons() {
         });
         veicList = Array.from(veicSet);
     }
+    // Mesclar com veículos existentes na base de dados
+    state.rawData.forEach(row => {
+        if (row.veiculo && row.veiculo !== 'Não Informado') veicList.push(row.veiculo);
+    });
     populateDatalist('datalist-veiculos', Array.from(new Set(veicList)).sort());
 
     // 6. Popular Placas (inicialmente sem filtro de veículo)
@@ -2041,16 +2087,14 @@ function updatePlacaDatalistOptions(selectedVeiculo = '') {
                 return parts.length > 0 ? parts[0].toUpperCase() : '';
             }).filter(Boolean);
         }
-    } else {
-        // Fallback para as placas presentes nos dados da planilha
-        const placaSet = new Set();
-        state.rawData.forEach(row => {
-            if (row.placa && (selectedVeiculo === '' || row.veiculo.toLowerCase() === selectedVeiculo.toLowerCase())) {
-                placaSet.add(row.placa.toUpperCase());
-            }
-        });
-        placaList = Array.from(placaSet);
     }
+
+    // Mesclar sempre com as placas existentes na base de dados (rawData)
+    state.rawData.forEach(row => {
+        if (row.placa && (selectedVeiculo === '' || (row.veiculo && row.veiculo.toLowerCase() === selectedVeiculo.toLowerCase()))) {
+            placaList.push(row.placa.toUpperCase());
+        }
+    });
 
     const dl = document.getElementById('datalist-placas');
     if (dl) {
@@ -4283,5 +4327,35 @@ function updateContratadosMappings() {
 
     const veiculosSet = new Set(Object.values(state.mappings.placaToVeiculo));
     populateDatalist('datalist-veiculos', Array.from(veiculosSet));
+}
+
+// Auxiliar para validar unicidade da faixa de requisições
+function isRequisitionRangeUsed(startNum, endNum, rawInicioSeq) {
+    for (const r of state.rawData) {
+        if (!r.inicioSeq) continue;
+
+        // Checagem de correspondência exata de código de requisição (para requisições formatadas com hífens/letras)
+        if (rawInicioSeq) {
+            const rawTrim = rawInicioSeq.toString().trim();
+            if (r.inicioSeq.toString().trim() === rawTrim || (r.fimSeq && r.fimSeq.toString().trim() === rawTrim)) {
+                return rawTrim;
+            }
+        }
+        
+        if (isNaN(startNum)) continue;
+        
+        const rStart = parseInt(r.inicioSeq);
+        const rEnd = parseInt(r.fimSeq) || rStart;
+        
+        if (isNaN(rStart)) continue;
+        
+        // Verificar se há interseção
+        for (let num = startNum; num <= endNum; num++) {
+            if (num >= rStart && num <= rEnd) {
+                return num; // Retorna o número duplicado
+            }
+        }
+    }
+    return null;
 }
 

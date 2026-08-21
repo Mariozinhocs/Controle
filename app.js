@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const titleEl = document.querySelector('.header-title h1');
         if (titleEl) titleEl.textContent = 'Controle de Requisições - Frota B';
         const splashTitle = document.querySelector('.splash-title');
-        if (splashTitle) splashTitle.textContent = 'CONTROLE DE REQUIOSIÇÕES - FROTA B';
+        if (splashTitle) splashTitle.textContent = 'CONTROLE DE REQUISIÇÕES - FROTA B';
         document.title = 'Controle de Requisições - Frota B';
     }
 
@@ -664,6 +664,11 @@ function initEventListeners() {
         const today = new Date();
         document.getElementById('input-date').value = formatDateIso(today);
         
+        // Atualizar todas as datalists com os dados mais recentes do banco
+        if (typeof buildFilterButtons === 'function') {
+            buildFilterButtons();
+        }
+
         // Popular a lista de requisições de uso único disponíveis
         populateRequisicoesDatalist('datalist-requisicoes', state.customRequisicoes);
         
@@ -679,6 +684,10 @@ function initEventListeners() {
         const fimVal = document.getElementById('input-fim-seq').value.trim();
         const inputQtd = document.getElementById('input-qtd-req');
         if (inicioVal && fimVal && inputQtd) {
+            if (inicioVal === fimVal) {
+                inputQtd.value = 1;
+                return;
+            }
             const inicio = parseInt(inicioVal);
             const fim = parseInt(fimVal);
             if (!isNaN(inicio) && !isNaN(fim)) {
@@ -687,6 +696,8 @@ function initEventListeners() {
                 } else {
                     inputQtd.value = 1;
                 }
+            } else {
+                inputQtd.value = 1;
             }
         }
     }
@@ -876,12 +887,8 @@ function initEventListeners() {
         if (inicioSeq) {
             const startNum = parseInt(inicioSeq);
             const endNum = parseInt(fimSeq) || startNum;
-            if (isNaN(startNum)) {
-                alert('O número de Início da Sequência deve ser numérico.');
-                return;
-            }
 
-            const duplicateNum = isRequisitionRangeUsed(startNum, endNum);
+            const duplicateNum = isRequisitionRangeUsed(startNum, endNum, inicioSeq);
             if (duplicateNum !== null) {
                 alert(`A requisição nº ${duplicateNum} já foi utilizada em outro lançamento! Insira uma sequência única.`);
                 return;
@@ -4323,9 +4330,19 @@ function updateContratadosMappings() {
 }
 
 // Auxiliar para validar unicidade da faixa de requisições
-function isRequisitionRangeUsed(startNum, endNum) {
+function isRequisitionRangeUsed(startNum, endNum, rawInicioSeq) {
     for (const r of state.rawData) {
         if (!r.inicioSeq) continue;
+
+        // Checagem de correspondência exata de código de requisição (para requisições formatadas com hífens/letras)
+        if (rawInicioSeq) {
+            const rawTrim = rawInicioSeq.toString().trim();
+            if (r.inicioSeq.toString().trim() === rawTrim || (r.fimSeq && r.fimSeq.toString().trim() === rawTrim)) {
+                return rawTrim;
+            }
+        }
+        
+        if (isNaN(startNum)) continue;
         
         const rStart = parseInt(r.inicioSeq);
         const rEnd = parseInt(r.fimSeq) || rStart;
