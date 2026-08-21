@@ -1,5 +1,5 @@
 /* 
-  Desenvolvido por Mario Henrique (mariozinhocs@gmail.com)
+  Desenvolvido por Mario Henrique (mariozinhocs) - mariozinhocs@gmail.com
   "si vis pacem para bellum"
 */
 /* DESIGN SYSTEM & VARIÁVEIS DE ESTILO */
@@ -378,6 +378,26 @@ body {
     border-color: var(--border-hover);
 }
 
+.btn-danger {
+    background-color: #ef4444;
+    color: #ffffff;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.btn-save {
+    background-color: #475569;
+    color: #ffffff;
+}
+
+.btn-save:hover {
+    background-color: #334155;
+    box-shadow: 0 4px 12px rgba(71, 85, 105, 0.2);
+}
+
 .btn-icon {
     padding-left: 0.65rem;
     padding-right: 0.65rem;
@@ -395,6 +415,7 @@ body {
 .header-actions {
     display: flex;
     gap: 0.75rem;
+    flex-wrap: wrap;
 }
 
 /* SEÇÃO DE FILTROS (SLICERS INTERATIVOS) */
@@ -834,7 +855,7 @@ body {
     background-color: rgba(5, 7, 12, 0.85);
     backdrop-filter: blur(8px);
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     z-index: 1000;
     opacity: 0;
@@ -1889,7 +1910,8 @@ body {
 /* SISTEMA DE ABAS DO CADASTRO */
 .cadastro-tabs {
     display: flex;
-    gap: 0.25rem;
+    flex-wrap: wrap;
+    gap: 0.35rem;
     background-color: rgba(0, 0, 0, 0.2);
     padding: 0.35rem;
     border-radius: 10px;
@@ -1898,11 +1920,12 @@ body {
 }
 
 .cadastro-tab-btn {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 100px;
     background: transparent;
     border: none;
     color: var(--text-secondary);
-    padding: 0.6rem 0.4rem;
+    padding: 0.6rem 0.5rem;
     font-size: 0.8rem;
     font-weight: 600;
     border-radius: 7px;
@@ -2169,6 +2192,20 @@ body {
 @keyframes splashPulse {
     0% { transform: scale(1); }
     100% { transform: scale(1.02); }
+}
+
+@media (max-width: 576px) {
+    .modal-content {
+        padding: 1.5rem 1.25rem !important;
+        border-radius: 16px !important;
+    }
+    .drop-zone {
+        padding: 1.5rem 1rem !important;
+    }
+    .upload-mode-selector > div {
+        flex-direction: column !important;
+        gap: 0.6rem !important;
+    }
 }
 
 

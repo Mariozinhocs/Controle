@@ -1,5 +1,5 @@
 /* 
-  Desenvolvido por Mario Henrique (mariozinhocs@gmail.com)
+  Desenvolvido por Mario Henrique (mariozinhocs) - mariozinhocs@gmail.com
   "si vis pacem para bellum"
 */
 // ESTADO DA APLICAÇÃO
@@ -32,6 +32,10 @@ const state = {
     customPostos: [],
     customMotoristas: [],
     customVeiculos: [],
+    customRequisicoes: [],
+    veiculosContratados: [],
+    activeEnv: 'Frota Principal',
+    environments: ['Frota Principal'],
     mappings: {
         baseToResponsavel: {},
         responsavelToBase: {},
@@ -40,12 +44,86 @@ const state = {
     }
 };
 
+function getEnvKey(key) {
+    const active = state.activeEnv || 'Frota Principal';
+    if (active === 'Frota Principal' || active === 'Padrao') {
+        return key;
+    }
+    return `${key}_env_${active.replace(/\s+/g, '_')}`;
+}
+
 // FUNÇÃO AUXILIAR PARA DIVIDIR STRINGS DE RELACIONAMENTO TRATANDO ESPAÇAMENTOS AO REDOR DO HÍFEN
 function splitByRelationalHyphen(str) {
     if (!str) return [];
     // Divide por hífen que possua ao menos um espaço de um dos lados (para não quebrar Centro-Sul ou placas ABC-1234)
     const parts = str.toString().split(/\s+-\s*|\s*-\s+/);
     return parts.map(p => p.trim());
+}
+
+// Auxiliar para preencher datalist
+function populateDatalist(id, list) {
+    const dl = document.getElementById(id);
+    if (dl) {
+        dl.innerHTML = '';
+        if (list && list.length > 0) {
+            list.forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                dl.appendChild(opt);
+            });
+        }
+    }
+}
+
+// Auxiliar para preencher datalist de requisições mostrando informações adicionais
+function populateRequisicoesDatalist(id, list) {
+    const dl = document.getElementById(id);
+    if (dl) {
+        dl.innerHTML = '';
+        if (list && list.length > 0) {
+            list.forEach(line => {
+                const parts = splitByRelationalHyphen(line);
+                if (parts.length > 0) {
+                    const num = parts[0].trim();
+                    const opt = document.createElement('option');
+                    opt.value = num;
+                    if (parts.length > 1) {
+                        opt.textContent = parts.slice(1).join(' - ');
+                    }
+                    dl.appendChild(opt);
+                }
+            });
+        }
+    }
+}
+
+// Auxiliar para buscar e preencher kilometragem anterior do veículo
+function updateKmAnterior(placa) {
+    const inputKmAnterior = document.getElementById('input-km-anterior');
+    if (!inputKmAnterior) return;
+
+    if (!placa) {
+        inputKmAnterior.value = '';
+        return;
+    }
+
+    const valUpper = placa.toUpperCase().trim();
+    if (state.rawData && state.rawData.length > 0) {
+        const records = state.rawData.filter(row => row.placa && row.placa.trim().toUpperCase() === valUpper);
+        if (records.length > 0) {
+            const sortedRecords = [...records].sort((a, b) => b.date - a.date);
+            const lastKm = sortedRecords[0].km;
+            if (lastKm !== undefined && lastKm !== null && lastKm !== '') {
+                inputKmAnterior.value = lastKm;
+            } else {
+                inputKmAnterior.value = 'Sem registro';
+            }
+        } else {
+            inputKmAnterior.value = 'Sem registro';
+        }
+    } else {
+        inputKmAnterior.value = 'Sem registro';
+    }
 }
 
 // FUNÇÃO AUXILIAR PARA ATUALIZAR MAPEAMENTOS DE RELACIONAMENTO
@@ -120,6 +198,43 @@ function updateRelationsMappings() {
             state.mappings.veiculoToPlacas[veiculoTrim.toLowerCase()].push(placaUpper);
         }
     });
+
+    // 3. Processar Postos e Preços Vinculados
+    state.mappings.postoToPrice = {};
+    (state.customPostos || []).forEach(line => {
+        const parts = splitByRelationalHyphen(line);
+        if (parts.length >= 2) {
+            const name = parts[0].trim();
+            const price = parseFloat(parts[1]) || 0;
+            state.mappings.postoToPrice[name.toLowerCase()] = price;
+        }
+    });
+
+    // 4. Processar Requisições e Combustível/Litros Vinculados
+    state.mappings.reqToFuelAndLiters = {};
+    (state.customRequisicoes || []).forEach(line => {
+        const parts = splitByRelationalHyphen(line);
+        if (parts.length >= 2) {
+            const reqNum = parts[0].trim();
+            let fuel = '';
+            let liters = '';
+            if (parts.length >= 3) {
+                fuel = parts[1].trim();
+                liters = parts[2].trim();
+            } else {
+                const val = parts[1].trim();
+                if (!isNaN(parseFloat(val.replace(',', '.')))) {
+                    liters = val;
+                } else {
+                    fuel = val;
+                }
+            }
+            state.mappings.reqToFuelAndLiters[reqNum] = {
+                fuel: fuel,
+                liters: liters
+            };
+        }
+    });
 }
 
 // CONFIGURAÇÃO DOS GRÁFICOS (Tema Escuro e Cores)
@@ -145,6 +260,21 @@ function hideLoading() {
 
 // FUNÇÕES DE INICIALIZAÇÃO
 document.addEventListener('DOMContentLoaded', () => {
+    // Ajustar títulos dinamicamente para Frota B se for acessado por essa subpasta
+    if (window.location.pathname.includes('Frota_B') || window.location.pathname.includes('Frota-B')) {
+        const titleEl = document.querySelector('.header-title h1');
+        if (titleEl) titleEl.textContent = 'Controle de Requisições - Frota B';
+        const splashTitle = document.querySelector('.splash-title');
+        if (splashTitle) splashTitle.textContent = 'CONTROLE DE REQUIOSIÇÕES - FROTA B';
+        document.title = 'Controle de Requisições - Frota B';
+    }
+
+    // Exibir botão de veículos contratados apenas em homologação
+    if (window.location.pathname.includes('/hml/')) {
+        const btnVeiculos = document.getElementById('btn-goto-veiculos');
+        if (btnVeiculos) btnVeiculos.style.display = 'inline-flex';
+    }
+
     // Ocultar splash inicial para exibir o modal de autenticação em primeiro lugar
     const splash = document.getElementById('splash-screen');
     if (splash) splash.classList.add('fade-out');
@@ -152,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initLicenseValidation(); // Exige senha com a caixa de texto LIMPA
     initSidebarToggle();     // Sistema de Sidebar Retrátil (Ícone)
     initFullscreenToggle();  // Sistema de Painel em Tela Cheia
+    initEnvironmentEvents(); // Gestão de múltiplos ambientes/frotas
     initEventListeners();
     checkUrlParams();
     buildFilterButtons(); // Carrega os botões de filtros imediatamente
@@ -159,8 +290,164 @@ document.addEventListener('DOMContentLoaded', () => {
     initCalendarWidget(); // Inicializa o calendário
 });
 
+// SISTEMA DE GESTÃO MULTIAMBIENTE (FROTAS)
+function populateEnvironmentSelector() {
+    const select = document.getElementById('select-environment');
+    if (select) {
+        select.innerHTML = '';
+        state.environments.forEach(env => {
+            const opt = document.createElement('option');
+            opt.value = env;
+            opt.textContent = env;
+            opt.style.backgroundColor = 'var(--bg-secondary)';
+            opt.style.color = 'var(--text-primary)';
+            if (env === state.activeEnv) {
+                opt.selected = true;
+            }
+            select.appendChild(opt);
+        });
+    }
+}
 
+function initEnvironmentEvents() {
+    const select = document.getElementById('select-environment');
+    const btnManage = document.getElementById('btn-manage-envs');
+    const modalManage = document.getElementById('manage-envs-modal');
+    const btnCloseManage = document.getElementById('btn-close-manage-envs');
+    const btnCreate = document.getElementById('btn-create-env');
+    const btnRename = document.getElementById('btn-rename-active-env');
+    const btnDelete = document.getElementById('btn-delete-active-env');
+    const inputNewName = document.getElementById('input-new-env-name');
 
+    if (select) {
+        select.addEventListener('change', function() {
+            state.activeEnv = this.value;
+            localStorage.setItem('dashboard_active_environment', state.activeEnv);
+            loadInitialData(false);
+        });
+    }
+
+    if (btnManage && modalManage) {
+        btnManage.addEventListener('click', () => modalManage.classList.add('active'));
+    }
+
+    if (btnCloseManage && modalManage) {
+        btnCloseManage.addEventListener('click', () => modalManage.classList.remove('active'));
+    }
+
+    if (modalManage) {
+        modalManage.addEventListener('click', (e) => {
+            if (e.target === modalManage) modalManage.classList.remove('active');
+        });
+    }
+
+    if (btnCreate) {
+        btnCreate.addEventListener('click', () => {
+            const name = inputNewName.value.trim();
+            if (!name) {
+                alert('Por favor, digite um nome para a nova frota.');
+                return;
+            }
+            if (state.environments.includes(name)) {
+                alert('Já existe um ambiente com este nome.');
+                return;
+            }
+            state.environments.push(name);
+            state.activeEnv = name;
+            
+            localStorage.setItem('dashboard_environments', JSON.stringify(state.environments));
+            localStorage.setItem('dashboard_active_environment', state.activeEnv);
+            
+            inputNewName.value = '';
+            modalManage.classList.remove('active');
+            
+            loadInitialData(false);
+        });
+    }
+
+    if (btnRename) {
+        btnRename.addEventListener('click', () => {
+            const active = state.activeEnv;
+            if (active === 'Frota Principal') {
+                alert('O ambiente "Frota Principal" é o padrão do sistema e não pode ser renomeado.');
+                return;
+            }
+            const newName = prompt('Digite o novo nome para esta frota:', active);
+            if (!newName || newName.trim() === '' || newName.trim() === active) return;
+            
+            const trimmed = newName.trim();
+            if (state.environments.includes(trimmed)) {
+                alert('Já existe uma frota com este nome.');
+                return;
+            }
+
+            const keysToMigrate = [
+                'combustivel_dashboard_data',
+                'combustivel_dashboard_filename',
+                'custom_bases',
+                'custom_postos',
+                'custom_motoristas',
+                'custom_veiculos',
+                'custom_requisicoes'
+            ];
+
+            const activeSanitized = active.replace(/\s+/g, '_');
+            const trimmedSanitized = trimmed.replace(/\s+/g, '_');
+
+            keysToMigrate.forEach(k => {
+                const oldVal = localStorage.getItem(`${k}_env_${activeSanitized}`);
+                if (oldVal !== null) {
+                    localStorage.setItem(`${k}_env_${trimmedSanitized}`, oldVal);
+                    localStorage.removeItem(`${k}_env_${activeSanitized}`);
+                }
+            });
+
+            state.environments = state.environments.map(e => e === active ? trimmed : e);
+            state.activeEnv = trimmed;
+
+            localStorage.setItem('dashboard_environments', JSON.stringify(state.environments));
+            localStorage.setItem('dashboard_active_environment', state.activeEnv);
+
+            modalManage.classList.remove('active');
+            loadInitialData(false);
+        });
+    }
+
+    if (btnDelete) {
+        btnDelete.addEventListener('click', () => {
+            const active = state.activeEnv;
+            if (active === 'Frota Principal') {
+                alert('O ambiente "Frota Principal" não pode ser excluído.');
+                return;
+            }
+            if (confirm(`Tem certeza de que deseja excluir permanentemente o ambiente "${active}"?\nEsta ação apagará todo o histórico e configurações deste ambiente localmente.`)) {
+                const keysToRemove = [
+                    'combustivel_dashboard_data',
+                    'combustivel_dashboard_filename',
+                    'custom_bases',
+                    'custom_postos',
+                    'custom_motoristas',
+                    'custom_veiculos',
+                    'custom_requisicoes'
+                ];
+
+                const activeSanitized = active.replace(/\s+/g, '_');
+                keysToRemove.forEach(k => {
+                    localStorage.removeItem(`${k}_env_${activeSanitized}`);
+                });
+
+                state.environments = state.environments.filter(e => e !== active);
+                state.activeEnv = 'Frota Principal';
+
+                localStorage.setItem('dashboard_environments', JSON.stringify(state.environments));
+                localStorage.setItem('dashboard_active_environment', state.activeEnv);
+
+                modalManage.classList.remove('active');
+                loadInitialData(false);
+            }
+        });
+    }
+}
 
 // 1. EVENT LISTENERS
 function initEventListeners() {
@@ -330,12 +617,130 @@ function initEventListeners() {
         updateDashboard();
     });
 
+    // Botão Limpar Dados Gerais (Destrutivo)
+    const btnClearData = document.getElementById('btn-clear-data');
+    if (btnClearData) {
+        btnClearData.addEventListener('click', () => {
+            if (confirm("Tem certeza de que deseja limpar todos os lançamentos do dashboard? Esta ação não pode ser desfeita!")) {
+                state.rawData = [];
+                state.filteredData = [];
+                state.filename = 'Nenhum arquivo carregado';
+                updateFilenameDisplay();
+
+                localStorage.removeItem('combustivel_dashboard_data');
+                localStorage.removeItem('combustivel_dashboard_filename');
+
+                // Limpar filtros também
+                state.filters.zonas.clear();
+                state.filters.postos.clear();
+                state.filters.combustiveis.clear();
+                state.searchText = '';
+                const searchEl = document.getElementById('table-search');
+                if (searchEl) searchEl.value = '';
+                const nlqEl = document.getElementById('nlq-input');
+                if (nlqEl) nlqEl.value = '';
+                
+                buildFilterButtons();
+                updateDashboard();
+
+                // Exibir modal de importação para carregar nova planilha
+                const uploadModal = document.getElementById('upload-modal');
+                if (uploadModal) uploadModal.classList.add('active');
+                alert('Todos os dados foram limpos do navegador!');
+            }
+        });
+    }
+
+    // Botão Salvar Backup (Manual)
+    const btnSaveData = document.getElementById('btn-save-data');
+    if (btnSaveData) {
+        btnSaveData.addEventListener('click', () => {
+            saveBackup();
+        });
+    }
+
     // Abrir modal de Nova Requisição
     document.getElementById('btn-open-add-requisicao').addEventListener('click', () => {
         const today = new Date();
         document.getElementById('input-date').value = formatDateIso(today);
+        
+        // Popular a lista de requisições de uso único disponíveis
+        populateRequisicoesDatalist('datalist-requisicoes', state.customRequisicoes);
+        
+        const inputKmAnterior = document.getElementById('input-km-anterior');
+        if (inputKmAnterior) inputKmAnterior.value = '';
+        
         document.getElementById('add-requisicao-modal').classList.add('active');
     });
+
+    // Função para calcular automaticamente a quantidade de requisições
+    function calculateQtdRequisicoes() {
+        const inicioVal = document.getElementById('input-inicio-seq').value.trim();
+        const fimVal = document.getElementById('input-fim-seq').value.trim();
+        const inputQtd = document.getElementById('input-qtd-req');
+        if (inicioVal && fimVal && inputQtd) {
+            const inicio = parseInt(inicioVal);
+            const fim = parseInt(fimVal);
+            if (!isNaN(inicio) && !isNaN(fim)) {
+                if (fim >= inicio) {
+                    inputQtd.value = (fim - inicio) + 1;
+                } else {
+                    inputQtd.value = 1;
+                }
+            }
+        }
+    }
+
+    // Sincronizar automaticamente Fim Seq com Início Seq para requisições de uso único e auto-preencher combustível/litros
+    const inputInicioSeq = document.getElementById('input-inicio-seq');
+    if (inputInicioSeq) {
+        inputInicioSeq.addEventListener('input', function() {
+            const val = this.value.trim();
+            const inputFimSeq = document.getElementById('input-fim-seq');
+            if (inputFimSeq) {
+                inputFimSeq.value = val;
+            }
+            calculateQtdRequisicoes();
+
+            // Auto-preencher tipo de combustível e litros a partir do vínculo da requisição
+            if (state.mappings.reqToFuelAndLiters && state.mappings.reqToFuelAndLiters[val]) {
+                const info = state.mappings.reqToFuelAndLiters[val];
+                if (info.fuel) {
+                    const selectComb = document.getElementById('input-combustivel');
+                    if (selectComb) {
+                        for (let i = 0; i < selectComb.options.length; i++) {
+                            const opt = selectComb.options[i];
+                            if (opt.value.toLowerCase() === info.fuel.toLowerCase()) {
+                                selectComb.value = opt.value;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (info.liters) {
+                    const litersVal = parseFloat(info.liters.replace(',', '.'));
+                    if (!isNaN(litersVal)) {
+                        // Forçar modo litros
+                        const modeLitros = document.querySelector('input[name="input-modo-abastecimento"][value="litros"]');
+                        if (modeLitros) {
+                            modeLitros.checked = true;
+                            document.getElementById('group-litros').style.display = 'flex';
+                            document.getElementById('group-valor-total').style.display = 'none';
+                        }
+                        const inputLitros = document.getElementById('input-litros');
+                        if (inputLitros) {
+                            inputLitros.value = litersVal;
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const inputFimSeq = document.getElementById('input-fim-seq');
+    if (inputFimSeq) {
+        inputFimSeq.addEventListener('input', calculateQtdRequisicoes);
+    }
 
     const inputDate = document.getElementById('input-date');
     if (inputDate) {
@@ -364,6 +769,8 @@ function initEventListeners() {
     const inputResponsavel = document.getElementById('input-responsavel');
     const inputPlaca = document.getElementById('input-placa');
     const inputVeiculo = document.getElementById('input-veiculo');
+    const inputPosto = document.getElementById('input-posto');
+    const inputPrecoLitro = document.getElementById('input-preco-litro');
 
     if (inputZona) {
         inputZona.addEventListener('input', function() {
@@ -389,6 +796,36 @@ function initEventListeners() {
             if (state.mappings.placaToVeiculo[valUpper]) {
                 inputVeiculo.value = state.mappings.placaToVeiculo[valUpper];
             }
+            
+            // Preenchimento inteligente adicional para veículos contratados
+            if (state.mappings.contratados && state.mappings.contratados[valUpper]) {
+                const info = state.mappings.contratados[valUpper];
+                
+                const inputCombustivel = document.getElementById('input-combustivel');
+                if (inputCombustivel && info.combustivel) {
+                    inputCombustivel.value = info.combustivel;
+                }
+                
+                const inputMotorista = document.getElementById('input-motorista');
+                if (inputMotorista && info.motorista) {
+                    inputMotorista.value = info.motorista;
+                }
+                
+                const inputZona = document.getElementById('input-zona');
+                if (inputZona && info.base) {
+                    inputZona.value = info.base;
+                    // Forçar o preenchimento de responsável se mapeado
+                    const baseLower = info.base.toLowerCase().trim();
+                    if (state.mappings.baseToResponsavel[baseLower]) {
+                        const inputResponsavel = document.getElementById('input-responsavel');
+                        if (inputResponsavel) {
+                            inputResponsavel.value = state.mappings.baseToResponsavel[baseLower];
+                        }
+                    }
+                }
+            }
+
+            updateKmAnterior(valUpper);
         });
     }
 
@@ -396,6 +833,19 @@ function initEventListeners() {
         inputVeiculo.addEventListener('input', function() {
             const val = this.value.trim();
             updatePlacaDatalistOptions(val);
+
+            // Se o veículo corresponder a exatamente uma placa, preenche ela automaticamente
+            const valLower = val.toLowerCase();
+            const plates = [];
+            for (const key in state.mappings.placaToVeiculo) {
+                if (state.mappings.placaToVeiculo[key].toLowerCase() === valLower) {
+                    plates.push(key);
+                }
+            }
+            if (plates.length === 1) {
+                if (inputPlaca) inputPlaca.value = plates[0];
+                updateKmAnterior(plates[0]);
+            }
         });
         inputVeiculo.addEventListener('blur', function() {
             if (!this.value.trim()) {
@@ -404,9 +854,39 @@ function initEventListeners() {
         });
     }
 
+    if (inputPosto) {
+        inputPosto.addEventListener('input', function() {
+            const valLower = this.value.toLowerCase().trim();
+            if (state.mappings.postoToPrice && state.mappings.postoToPrice[valLower] !== undefined) {
+                if (inputPrecoLitro) {
+                    inputPrecoLitro.value = state.mappings.postoToPrice[valLower];
+                }
+            }
+        });
+    }
+
     // Submissão do Formulário de Nova Requisição
     document.getElementById('form-add-requisicao').addEventListener('submit', (e) => {
         e.preventDefault();
+
+        const inicioSeq = document.getElementById('input-inicio-seq').value.trim();
+        const fimSeq = document.getElementById('input-fim-seq').value.trim();
+
+        // Validar unicidade da sequência de requisição informada
+        if (inicioSeq) {
+            const startNum = parseInt(inicioSeq);
+            const endNum = parseInt(fimSeq) || startNum;
+            if (isNaN(startNum)) {
+                alert('O número de Início da Sequência deve ser numérico.');
+                return;
+            }
+
+            const duplicateNum = isRequisitionRangeUsed(startNum, endNum);
+            if (duplicateNum !== null) {
+                alert(`A requisição nº ${duplicateNum} já foi utilizada em outro lançamento! Insira uma sequência única.`);
+                return;
+            }
+        }
 
         const dateVal = parseInputDate(document.getElementById('input-date').value);
         const zona = document.getElementById('input-zona').value;
@@ -416,6 +896,8 @@ function initEventListeners() {
         const veiculo = document.getElementById('input-veiculo').value.trim();
         const placa = document.getElementById('input-placa').value.trim().toUpperCase();
         const combustivel = document.getElementById('input-combustivel').value;
+        const kmAnterior = document.getElementById('input-km-anterior').value.trim();
+        const km = document.getElementById('input-km').value.trim();
 
         const inicioSeq = document.getElementById('input-inicio-seq').value.trim();
         const fimSeq = document.getElementById('input-fim-seq').value.trim();
@@ -450,14 +932,34 @@ function initEventListeners() {
             motorista: motorista || 'Não Informado',
             veiculo: veiculo,
             placa: placa,
+            kmAnterior: kmAnterior,
+            km: km,
             combustivel: combustivel,
             litros: litros,
             precoLitro: precoLitro,
             valor: valor
         };
 
+        // Remover número(s) da sequência da lista de requisições disponíveis (uso único)
+        if (inicioSeq) {
+            const startNum = parseInt(inicioSeq);
+            const endNum = parseInt(fimSeq) || startNum;
+            const usedNumbers = [];
+            for (let n = startNum; n <= endNum; n++) {
+                usedNumbers.push(n.toString());
+            }
+            state.customRequisicoes = (state.customRequisicoes || []).filter(line => {
+                const parts = splitByRelationalHyphen(line);
+                const reqNum = parts.length > 0 ? parts[0].trim() : '';
+                return !usedNumbers.includes(reqNum);
+            });
+            localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+            populateRequisicoesDatalist('datalist-requisicoes', state.customRequisicoes);
+        }
+
         state.rawData.push(newRecord);
-        localStorage.setItem('combustivel_dashboard_data', JSON.stringify(state.rawData));
+        localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
+        syncWithServerSilent();
 
         document.getElementById('add-requisicao-modal').classList.remove('active');
         document.getElementById('form-add-requisicao').reset();
@@ -466,6 +968,8 @@ function initEventListeners() {
         document.querySelector('input[name="input-modo-abastecimento"][value="litros"]').checked = true;
         document.getElementById('group-litros').style.display = 'flex';
         document.getElementById('group-valor-total').style.display = 'none';
+        document.getElementById('input-litros').setAttribute('required', '');
+        document.getElementById('input-valor-total').removeAttribute('required');
 
         // Atualizar range de datas para contemplar a nova requisição
         initDateFilterRange();
@@ -511,6 +1015,7 @@ function initEventListeners() {
             document.getElementById('textarea-custom-postos').value = state.customPostos.join('\n');
             document.getElementById('textarea-custom-motoristas').value = state.customMotoristas.join('\n');
             document.getElementById('textarea-custom-veiculos').value = state.customVeiculos.join('\n');
+            document.getElementById('textarea-custom-requisicoes').value = (state.customRequisicoes || []).join('\n');
             cadastrosModal.classList.add('active');
         });
     }
@@ -530,16 +1035,23 @@ function initEventListeners() {
             const postosText = document.getElementById('textarea-custom-postos').value;
             const motoristasText = document.getElementById('textarea-custom-motoristas').value;
             const veiculosText = document.getElementById('textarea-custom-veiculos').value;
+            const requisicoesText = document.getElementById('textarea-custom-requisicoes').value;
             
             state.customBases = basesText.split('\n').map(s => s.trim()).filter(Boolean);
             state.customPostos = postosText.split('\n').map(s => s.trim()).filter(Boolean);
             state.customMotoristas = motoristasText.split('\n').map(s => s.trim()).filter(Boolean);
             state.customVeiculos = veiculosText.split('\n').map(s => s.trim()).filter(Boolean);
+            state.customRequisicoes = requisicoesText.split('\n').map(s => s.trim()).filter(Boolean);
             
             localStorage.setItem('custom_bases', JSON.stringify(state.customBases));
             localStorage.setItem('custom_postos', JSON.stringify(state.customPostos));
             localStorage.setItem('custom_motoristas', JSON.stringify(state.customMotoristas));
             localStorage.setItem('custom_veiculos', JSON.stringify(state.customVeiculos));
+            localStorage.setItem('custom_requisicoes', JSON.stringify(state.customRequisicoes));
+            syncWithServerSilent();
+            
+            // Popular datalist
+            populateDatalist('datalist-requisicoes', state.customRequisicoes);
             
             // Atualizar mapeamentos relacionais
             updateRelationsMappings();
@@ -557,15 +1069,21 @@ function initEventListeners() {
             const mode = e.target.value;
             const groupLitros = document.getElementById('group-litros');
             const groupValor = document.getElementById('group-valor-total');
+            const inputLitros = document.getElementById('input-litros');
+            const inputValorTotal = document.getElementById('input-valor-total');
             
             if (mode === 'litros') {
                 groupLitros.style.display = 'flex';
                 groupValor.style.display = 'none';
-                document.getElementById('input-valor-total').value = '';
+                inputValorTotal.value = '';
+                inputLitros.setAttribute('required', '');
+                inputValorTotal.removeAttribute('required');
             } else {
                 groupLitros.style.display = 'none';
                 groupValor.style.display = 'flex';
-                document.getElementById('input-litros').value = '';
+                inputLitros.value = '';
+                inputValorTotal.setAttribute('required', '');
+                inputLitros.removeAttribute('required');
             }
         });
     });
@@ -632,18 +1150,139 @@ function checkUrlParams() {
 
 // 3. CARREGAR DADOS INICIAIS (AUTO-LINK E LOCALSTORAGE FALLBACK)
 function loadInitialData(forceFetch = false) {
+    // Carregar configurações de ambiente
     try {
-        state.customBases = JSON.parse(localStorage.getItem('custom_bases') || '[]');
-        state.customPostos = JSON.parse(localStorage.getItem('custom_postos') || '[]');
-        state.customMotoristas = JSON.parse(localStorage.getItem('custom_motoristas') || '[]');
-        state.customVeiculos = JSON.parse(localStorage.getItem('custom_veiculos') || '[]');
+        let defaultEnv = 'Frota Principal';
+        if (window.location.pathname.includes('Frota_B') || window.location.pathname.includes('Frota-B')) {
+            defaultEnv = 'Frota B';
+        }
+        state.environments = JSON.parse(localStorage.getItem('dashboard_environments') || `["${defaultEnv}"]`);
+        state.activeEnv = localStorage.getItem('dashboard_active_environment') || defaultEnv;
+        
+        // Se mudou o ambiente padrão com base no caminho e não está na lista de frotas salvas, adiciona
+        if (!state.environments.includes(defaultEnv)) {
+            state.environments.push(defaultEnv);
+            localStorage.setItem('dashboard_environments', JSON.stringify(state.environments));
+        }
+
+        populateEnvironmentSelector();
+    } catch (e) {
+        let defaultEnv = 'Frota Principal';
+        if (window.location.pathname.includes('Frota_B') || window.location.pathname.includes('Frota-B')) {
+            defaultEnv = 'Frota B';
+        }
+        state.environments = [defaultEnv];
+        state.activeEnv = defaultEnv;
+    }
+
+    try {
+        state.customBases = JSON.parse(localStorage.getItem(getEnvKey('custom_bases')) || '[]');
+        state.customPostos = JSON.parse(localStorage.getItem(getEnvKey('custom_postos')) || '[]');
+        state.customMotoristas = JSON.parse(localStorage.getItem(getEnvKey('custom_motoristas')) || '[]');
+        state.customVeiculos = JSON.parse(localStorage.getItem(getEnvKey('custom_veiculos')) || '[]');
+        state.customRequisicoes = JSON.parse(localStorage.getItem(getEnvKey('custom_requisicoes')) || '[]');
         updateRelationsMappings();
     } catch (e) {}
 
-    const savedData = localStorage.getItem('combustivel_dashboard_data');
-    const savedFilename = localStorage.getItem('combustivel_dashboard_filename');
+    const isFileProtocol = window.location.protocol === 'file:';
+    const savedData = localStorage.getItem(getEnvKey('combustivel_dashboard_data'));
+    const savedFilename = localStorage.getItem(getEnvKey('combustivel_dashboard_filename'));
 
-    // Se não for carregamento forçado e tivermos dados no cache local, prioriza o cache
+    // SE ESTIVER ONLINE (HOSPEDADO NO SERVIDOR WEB), TENTA CONECTAR AO BANCO MYSQL PRIMEIRO
+    if (!isFileProtocol && !forceFetch) {
+        showLoading('Sincronizando com banco de dados MySQL...');
+        fetch(`./api/get_data.php?env=${encodeURIComponent(state.activeEnv)}`)
+            .then(res => {
+                if (!res.ok) throw new Error('Falha HTTP ao contatar API de sincronização');
+                return res.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    // Mapear lançamentos vindos do banco
+                    state.rawData = (result.requisicoes || []).map(row => {
+                        return {
+                            ...row,
+                            date: new Date(row.date),
+                            qtdRequisicoes: parseInt(row.qtdRequisicoes) || 1,
+                            kmAnterior: row.kmAnterior !== null && row.kmAnterior !== undefined ? row.kmAnterior : '',
+                            km: row.km !== null && row.km !== undefined ? row.km : '',
+                            litros: parseFloat(row.litros) || 0,
+                            precoLitro: parseFloat(row.precoLitro) || 0,
+                            valor: parseFloat(row.valor) || 0
+                        };
+                    });
+                    
+                    state.filename = `Nuvem MySQL: ${state.activeEnv}`;
+                    localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
+                    localStorage.setItem(getEnvKey('combustivel_dashboard_filename'), state.filename);
+                    updateFilenameDisplay();
+
+                    if (result.environments && result.environments.length > 0) {
+                        state.environments = result.environments;
+                        localStorage.setItem('dashboard_environments', JSON.stringify(state.environments));
+                        populateEnvironmentSelector();
+                    }
+
+                    // Se vierem configurações customizadas do servidor, sincroniza no navegador
+                    if (result.configuracoes) {
+                        try {
+                            const conf = result.configuracoes;
+                            state.customBases = JSON.parse(conf.custom_bases || '[]');
+                            state.customPostos = JSON.parse(conf.custom_postos || '[]');
+                            state.customMotoristas = JSON.parse(conf.custom_motoristas || '[]');
+                            state.customVeiculos = JSON.parse(conf.custom_veiculos || '[]');
+                            state.customRequisicoes = JSON.parse(conf.custom_requisicoes || '[]');
+                            
+                            localStorage.setItem(getEnvKey('custom_bases'), conf.custom_bases || '[]');
+                            localStorage.setItem(getEnvKey('custom_postos'), conf.custom_postos || '[]');
+                            localStorage.setItem(getEnvKey('custom_motoristas'), conf.custom_motoristas || '[]');
+                            localStorage.setItem(getEnvKey('custom_veiculos'), conf.custom_veiculos || '[]');
+                            localStorage.setItem(getEnvKey('custom_requisicoes'), conf.custom_requisicoes || '[]');
+                            
+                            updateRelationsMappings();
+                        } catch (e) {
+                            console.error('Erro ao fundir configurações remotas:', e);
+                        }
+                    }
+
+                    // Sincronizar autocompletes dos veículos contratados em paralelo
+                    fetchContratadosForAutocomplete();
+
+                    try {
+                        processData(state.rawData, false);
+                    } catch (e) {
+                        console.error('Erro no processamento dos dados:', e);
+                        hideLoading();
+                        alert('Erro ao carregar os dados no dashboard: ' + e.message);
+                    }
+                } else {
+                    throw new Error(result.message || 'Erro desconhecido na resposta da API');
+                }
+            })
+            .catch(err => {
+                console.warn('Banco online inacessível ou falhou. Recaindo para cache local.', err);
+                try {
+                    if (savedData) {
+                        state.rawData = JSON.parse(savedData);
+                        state.filename = savedFilename || 'Cache Local (Offline)';
+                        updateFilenameDisplay();
+                        processData(state.rawData, false);
+                    } else {
+                        state.rawData = [];
+                        state.filename = 'Ambiente Limpo (Offline)';
+                        updateFilenameDisplay();
+                        updateDashboard();
+                        hideLoading();
+                    }
+                } catch (e) {
+                    console.error('Erro no processamento do fallback offline:', e);
+                    hideLoading();
+                }
+            });
+        return;
+    }
+
+    // FALLBACK PARA MODO TOTALMENTE OFFLINE / LOCAL (FILE PROTOCOL)
     if (!forceFetch && savedData) {
         try {
             showLoading('Carregando dados do cache local...');
@@ -660,13 +1299,16 @@ function loadInitialData(forceFetch = false) {
     const suffix = forceFetch ? `?t=${Date.now()}` : '';
     showLoading(forceFetch ? 'Re-lendo planilha local de dados...' : 'Buscando planilha local de dados...');
 
-    fetch(`./dados.xlsx${suffix}`)
+    const envSanitized = state.activeEnv.replace(/\s+/g, '_');
+    const serverFileName = envSanitized === 'Frota_Principal' || envSanitized === 'Padrao' ? 'dados.xlsx' : `dados_${envSanitized}.xlsx`;
+
+    fetch(`./${serverFileName}${suffix}`)
         .then(response => {
-            if (!response.ok) throw new Error('dados.xlsx não encontrado');
+            if (!response.ok) throw new Error(`${serverFileName} não encontrado`);
             return response.arrayBuffer();
         })
         .then(buffer => {
-            state.filename = 'dados.xlsx';
+            state.filename = serverFileName;
             updateFilenameDisplay();
             parseExcelBuffer(buffer);
         })
@@ -682,10 +1324,6 @@ function loadInitialData(forceFetch = false) {
                     parseCsvText(csvText);
                 })
                 .catch((e) => {
-                    if (forceFetch && !savedData) {
-                        alert('Não foi possível ler dados.xlsx ou dados.csv na pasta local do projeto. Certifique-se de que o arquivo existe nessa pasta.');
-                    }
-
                     if (savedData) {
                         try {
                             state.rawData = JSON.parse(savedData);
@@ -698,8 +1336,11 @@ function loadInitialData(forceFetch = false) {
                             document.getElementById('upload-modal').classList.add('active');
                         }
                     } else {
+                        state.rawData = [];
+                        state.filename = 'Novo Ambiente';
+                        updateFilenameDisplay();
+                        updateDashboard();
                         hideLoading();
-                        document.getElementById('upload-modal').classList.add('active');
                     }
                 });
         });
@@ -713,7 +1354,7 @@ function updateFilenameDisplay() {
 function handleUploadedFile(file) {
     const ext = file.name.split('.').pop().toLowerCase();
     state.filename = file.name;
-    localStorage.setItem('combustivel_dashboard_filename', file.name);
+    localStorage.setItem(getEnvKey('combustivel_dashboard_filename'), file.name);
     updateFilenameDisplay();
 
     showLoading('Carregando e processando arquivo...');
@@ -990,14 +1631,18 @@ function processData(rows, shouldCache = false) {
                 veiculo = state.mappings.placaToVeiculo[placaUpper];
             }
 
+            const finalDate = (parsedDate && !isNaN(parsedDate.getTime())) ? parsedDate : new Date();
+
             processed.push({
                 ...row,
                 id: row.id || (Date.now() + '-' + Math.random() + '-' + idx),
-                date: isNaN(parsedDate.getTime()) ? new Date() : parsedDate,
+                date: finalDate,
                 zona: zona,
                 responsavel: responsavel,
                 veiculo: veiculo,
-                placa: placaUpper
+                placa: placaUpper,
+                kmAnterior: row.kmAnterior !== undefined ? row.kmAnterior : '',
+                km: row.km !== null && row.km !== undefined ? row.km : ''
             });
             return;
         }
@@ -1068,6 +1713,8 @@ function processData(rows, shouldCache = false) {
             motorista: motorista,
             veiculo: veiculo,
             placa: placaUpper,
+            kmAnterior: parseBrazilianNumber(cleanedRow['km anterior']) || parseBrazilianNumber(cleanedRow['kilometragem anterior']) || '',
+            km: parseBrazilianNumber(cleanedRow['km']) || parseBrazilianNumber(cleanedRow['kilometragem']) || parseBrazilianNumber(cleanedRow['km/odor']) || parseBrazilianNumber(cleanedRow['km atual']) || '',
             combustivel: cleanedRow['tipo combustivel'] || 'Não Informado',
             litros: litros,
             precoLitro: precoLitro,
@@ -1199,7 +1846,7 @@ function buildFilterButtons() {
     // Analisar a planilha para definir os botões de Bases (Zonas), Postos e Combustíveis
     const zonasUnicas = new Set();
     const postosUnicos = new Set();
-    const combustiveisUnicos = new Set();
+    const combustiveisUnicos = new Set(['Gasolina', 'Etanol', 'Diesel']);
 
     if (state.rawData && state.rawData.length > 0) {
         state.rawData.forEach(row => {
@@ -1300,19 +1947,6 @@ function buildFilterButtons() {
         });
     }
 
-    // Auxiliar para preencher datalist
-    function populateDatalist(id, list) {
-        const dl = document.getElementById(id);
-        if (dl) {
-            dl.innerHTML = '';
-            list.forEach(val => {
-                const opt = document.createElement('option');
-                opt.value = val;
-                dl.appendChild(opt);
-            });
-        }
-    }
-
     // 1. Popular Bases
     let basesList = [];
     if (state.customBases && state.customBases.length > 0) {
@@ -1323,6 +1957,10 @@ function buildFilterButtons() {
     } else {
         basesList = sortedZonas;
     }
+    // Mesclar com bases existentes na base de dados
+    state.rawData.forEach(row => {
+        if (row.zona && row.zona !== 'Não Informado') basesList.push(row.zona);
+    });
     populateDatalist('datalist-bases', Array.from(new Set(basesList)).sort());
 
     // 2. Popular Responsáveis
@@ -1339,12 +1977,19 @@ function buildFilterButtons() {
         });
         respList = Array.from(respSet);
     }
+    // Mesclar com responsáveis existentes na base de dados
+    state.rawData.forEach(row => {
+        if (row.responsavel && row.responsavel !== 'Não Informado') respList.push(row.responsavel);
+    });
     populateDatalist('datalist-responsaveis', Array.from(new Set(respList)).sort());
 
     // 3. Popular Postos
     let postList = [];
     if (state.customPostos && state.customPostos.length > 0) {
-        postList = state.customPostos.map(p => p ? p.toString().trim() : '').filter(Boolean);
+        postList = state.customPostos.map(p => {
+            const parts = splitByRelationalHyphen(p);
+            return parts.length > 0 ? parts[0] : '';
+        }).filter(Boolean);
     } else {
         const postSet = new Set();
         state.rawData.forEach(row => {
@@ -1352,6 +1997,10 @@ function buildFilterButtons() {
         });
         postList = Array.from(postSet);
     }
+    // Mesclar com postos existentes na base de dados
+    state.rawData.forEach(row => {
+        if (row.posto && row.posto !== 'Não Informado') postList.push(row.posto);
+    });
     populateDatalist('datalist-postos', Array.from(new Set(postList)).sort());
 
     // 4. Popular Motoristas
@@ -1365,6 +2014,10 @@ function buildFilterButtons() {
         });
         motoristasList = Array.from(motoristaSet);
     }
+    // Mesclar com motoristas existentes na base de dados
+    state.rawData.forEach(row => {
+        if (row.motorista && row.motorista !== 'Não Informado') motoristasList.push(row.motorista);
+    });
     populateDatalist('datalist-motoristas', Array.from(new Set(motoristasList)).sort());
 
     // 5. Popular Veículos
@@ -1381,6 +2034,10 @@ function buildFilterButtons() {
         });
         veicList = Array.from(veicSet);
     }
+    // Mesclar com veículos existentes na base de dados
+    state.rawData.forEach(row => {
+        if (row.veiculo && row.veiculo !== 'Não Informado') veicList.push(row.veiculo);
+    });
     populateDatalist('datalist-veiculos', Array.from(new Set(veicList)).sort());
 
     // 6. Popular Placas (inicialmente sem filtro de veículo)
@@ -1423,16 +2080,14 @@ function updatePlacaDatalistOptions(selectedVeiculo = '') {
                 return parts.length > 0 ? parts[0].toUpperCase() : '';
             }).filter(Boolean);
         }
-    } else {
-        // Fallback para as placas presentes nos dados da planilha
-        const placaSet = new Set();
-        state.rawData.forEach(row => {
-            if (row.placa && (selectedVeiculo === '' || row.veiculo.toLowerCase() === selectedVeiculo.toLowerCase())) {
-                placaSet.add(row.placa.toUpperCase());
-            }
-        });
-        placaList = Array.from(placaSet);
     }
+
+    // Mesclar sempre com as placas existentes na base de dados (rawData)
+    state.rawData.forEach(row => {
+        if (row.placa && (selectedVeiculo === '' || (row.veiculo && row.veiculo.toLowerCase() === selectedVeiculo.toLowerCase()))) {
+            placaList.push(row.placa.toUpperCase());
+        }
+    });
 
     const dl = document.getElementById('datalist-placas');
     if (dl) {
@@ -2141,6 +2796,8 @@ function renderTable() {
                 <th>Motorista</th>
                 <th>Posto</th>
                 <th>Veículo</th>
+                <th>KM Ant.</th>
+                <th>KM Atual</th>
                 <th>Combustível</th>
                 <th class="col-number">L/Req</th>
                 <th class="col-number">Total Litros</th>
@@ -2163,7 +2820,7 @@ function renderTable() {
         filtered.sort((a, b) => b.date - a.date);
 
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="14" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhum lançamento encontrado para a pesquisa.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="16" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhum lançamento encontrado para a pesquisa.</td></tr>`;
             return;
         }
 
@@ -2184,6 +2841,8 @@ function renderTable() {
                 <td>${row.motorista || 'Não Informado'}</td>
                 <td>${row.posto || 'Não Informado'}</td>
                 <td>${row.veiculo} ${row.placa ? `(${row.placa})` : ''}</td>
+                <td>${row.kmAnterior !== undefined && row.kmAnterior !== null && row.kmAnterior !== '' ? (isNaN(row.kmAnterior) ? row.kmAnterior : Number(row.kmAnterior).toLocaleString('pt-BR')) : '-'}</td>
+                <td>${row.km !== undefined && row.km !== null && row.km !== '' ? (isNaN(row.km) ? row.km : Number(row.km).toLocaleString('pt-BR')) : '-'}</td>
                 <td>${row.combustivel}</td>
                 <td class="col-number">${row.litros} L</td>
                 <td class="col-number">${Math.round(totalLitros).toLocaleString('pt-BR')} L</td>
@@ -2409,19 +3068,34 @@ function generateAndDownloadMockData() {
 // EXCLUIR REGISTRO GLOBAL
 window.deleteRecord = function (id) {
     if (confirm("Tem certeza de que deseja excluir esta requisição?")) {
+        const record = state.rawData.find(row => row.id === id);
+        if (record && record.inicioSeq) {
+            const startNum = parseInt(record.inicioSeq);
+            const endNum = parseInt(record.fimSeq) || startNum;
+            const restoredNumbers = [];
+            for (let n = startNum; n <= endNum; n++) {
+                restoredNumbers.push(n.toString());
+            }
+            
+            // Adicionar de volta à lista de requisições personalizadas se não estiverem lá
+            const currentPool = state.customRequisicoes || [];
+            const newPool = Array.from(new Set([...currentPool, ...restoredNumbers])).sort((a, b) => parseInt(a) - parseInt(b));
+            state.customRequisicoes = newPool;
+            localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+            
+            // Atualizar datalist
+            populateRequisicoesDatalist('datalist-requisicoes', state.customRequisicoes);
+        }
+
         state.rawData = state.rawData.filter(row => row.id !== id);
-        localStorage.setItem('combustivel_dashboard_data', JSON.stringify(state.rawData));
+        localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
+        syncWithServerSilent();
         updateDashboard();
     }
 };
 
 // EXPORTAR DADOS ATUALIZADOS PARA PLANILHA EXCEL (.XLSX)
-function exportToExcel() {
-    if (state.rawData.length === 0) {
-        alert('Não há dados disponíveis para exportar.');
-        return;
-    }
-
+function generateExcelWorkbook() {
     function padZero(num, size) {
         let s = num + "";
         while (s.length < size) s = "0" + s;
@@ -2429,13 +3103,16 @@ function exportToExcel() {
     }
 
     const data = state.rawData.map(row => {
-        const dia = padZero(row.date.getDate(), 2);
-        const mes = padZero(row.date.getMonth() + 1, 2);
-        const ano = row.date.getFullYear();
+        const dObj = (row.date instanceof Date) ? row.date : new Date(row.date);
+        const dia = padZero(isNaN(dObj.getTime()) ? 1 : dObj.getDate(), 2);
+        const mes = padZero(isNaN(dObj.getTime()) ? 1 : dObj.getMonth() + 1, 2);
+        const ano = isNaN(dObj.getTime()) ? 2026 : dObj.getFullYear();
         const dataFmt = `${dia}/${mes}/${ano}`;
 
-        const precoFormatado = row.precoLitro.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const valorFormatado = row.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const precoNum = Number(row.precoLitro);
+        const valorNum = Number(row.valor);
+        const precoFormatado = isNaN(precoNum) ? "0,00" : precoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const valorFormatado = isNaN(valorNum) ? "0,00" : valorNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         return {
             'Data': dataFmt,
@@ -2448,6 +3125,8 @@ function exportToExcel() {
             'Posto': row.posto || 'Não Informado',
             'Veículo': row.veiculo,
             'Placa': row.placa,
+            'KM Anterior': row.kmAnterior || '',
+            'KM Atual': row.km || '',
             'Tipo Combustível': row.combustivel,
             'Litros': row.litros,
             'Preço Litro': `R$ ${precoFormatado}`,
@@ -2455,23 +3134,35 @@ function exportToExcel() {
         };
     });
 
-    try {
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Controle");
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Controle");
 
-        // Salvar preferências em uma aba extra "Configuracoes"
-        const configData = [{
-            kpi_order: localStorage.getItem('kpi_cards_order') || "",
-            charts_order: localStorage.getItem('charts_grid_order') || "",
-            chart_prefs: getChartPreferencesString(),
-            custom_bases: JSON.stringify(state.customBases || []),
-            custom_postos: JSON.stringify(state.customPostos || []),
-            custom_motoristas: JSON.stringify(state.customMotoristas || []),
-            custom_veiculos: JSON.stringify(state.customVeiculos || [])
-        }];
-        const wsConfig = XLSX.utils.json_to_sheet(configData);
-        XLSX.utils.book_append_sheet(wb, wsConfig, "Configuracoes");
+    // Salvar preferências em uma aba extra "Configuracoes"
+    const configData = [{
+        kpi_order: localStorage.getItem('kpi_cards_order') || "",
+        charts_order: localStorage.getItem('charts_grid_order') || "",
+        chart_prefs: getChartPreferencesString(),
+        custom_bases: JSON.stringify(state.customBases || []),
+        custom_postos: JSON.stringify(state.customPostos || []),
+        custom_motoristas: JSON.stringify(state.customMotoristas || []),
+        custom_veiculos: JSON.stringify(state.customVeiculos || []),
+        custom_requisicoes: JSON.stringify(state.customRequisicoes || [])
+    }];
+    const wsConfig = XLSX.utils.json_to_sheet(configData);
+    XLSX.utils.book_append_sheet(wb, wsConfig, "Configuracoes");
+
+    return wb;
+}
+
+function exportToExcel() {
+    if (state.rawData.length === 0) {
+        alert('Não há dados disponíveis para exportar.');
+        return;
+    }
+
+    try {
+        const wb = generateExcelWorkbook();
 
         const now = new Date();
         const yy = String(now.getFullYear()).slice(-2);
@@ -2485,6 +3176,143 @@ function exportToExcel() {
         console.error(e);
         alert('Erro ao exportar base de dados para Excel.');
     }
+}
+
+async function saveBackup() {
+    if (state.rawData.length === 0) {
+        alert('Não há dados disponíveis para salvar ou fazer backup.');
+        return;
+    }
+
+    const isFileProtocol = window.location.protocol === 'file:';
+
+    // 1. Salvar no localStorage escopado
+    localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
+    localStorage.setItem(getEnvKey('combustivel_dashboard_filename'), state.filename);
+
+    // 2. Se estiver online (servidor), sincroniza no MySQL
+    if (!isFileProtocol) {
+        const syncPayload = {
+            environment: state.activeEnv,
+            requisicoes: state.rawData,
+            custom_bases: state.customBases,
+            custom_postos: state.customPostos,
+            custom_motoristas: state.customMotoristas,
+            custom_veiculos: state.customVeiculos,
+            custom_requisicoes: state.customRequisicoes
+        };
+
+        fetch('./api/sync_data.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(syncPayload)
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                console.log('Dados sincronizados com o MySQL com sucesso.');
+            } else {
+                console.warn('Erro ao sincronizar com MySQL:', result.message);
+            }
+        })
+        .catch(err => {
+            console.error('Erro de conexão ao sincronizar com MySQL:', err);
+        });
+    }
+
+    const wb = generateExcelWorkbook();
+
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    
+    const envSanitized = state.activeEnv.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filename = `backup_controle_${envSanitized}_${dd}-${mm}-${yyyy}_${hh}${min}${ss}.xlsx`;
+
+    if (isFileProtocol) {
+        // Modo Local sem servidor (file:///) -> Download e abre aba do Drive
+        try {
+            XLSX.writeFile(wb, filename);
+            
+            // Abrir a pasta do Google Drive em uma nova aba para facilitar o upload/sincronização
+            window.open('https://drive.google.com/drive/folders/1XAIlrw6BLJFWrLVOKwKkoyZl9IDYiKqH?usp=sharing', '_blank');
+            
+            alert('Configurações salvas no navegador!\n\nGeramos o arquivo Excel e abrimos a pasta do Google Drive em uma nova aba para você arrastar o backup.');
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao gerar planilha de backup.');
+        }
+    } else {
+        // Com servidor rodando (localhost ou site de produção) -> Envia silenciosamente para o local/servidor
+        try {
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([wbout], { type: 'application/octet-stream' });
+            
+            const formData = new FormData();
+            formData.append('backup_file', blob, filename);
+            formData.append('env', state.activeEnv);
+            
+            fetch('./api/save_backup.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    console.log('Backup salvo de maneira sigilosa no servidor: ' + filename);
+                } else {
+                    console.warn('Erro ao salvar backup sigiloso no servidor:', result.message);
+                }
+            })
+            .catch(err => {
+                console.error('Erro de conexão ao enviar backup sigiloso:', err);
+            });
+        } catch (e) {
+            console.error('Erro ao compilar backup sigiloso:', e);
+        }
+        
+        alert('Dados salvos com sucesso!');
+    }
+}
+
+function syncWithServerSilent() {
+    const isFileProtocol = window.location.protocol === 'file:';
+    if (isFileProtocol) return;
+
+    const syncPayload = {
+        environment: state.activeEnv,
+        requisicoes: state.rawData,
+        custom_bases: state.customBases,
+        custom_postos: state.customPostos,
+        custom_motoristas: state.customMotoristas,
+        custom_veiculos: state.customVeiculos,
+        custom_requisicoes: state.customRequisicoes
+    };
+
+    fetch('./api/sync_data.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(syncPayload)
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.success) {
+            console.log('Dados sincronizados com o MySQL em background com sucesso.');
+        } else {
+            console.warn('Erro ao sincronizar com MySQL em background:', result.message);
+        }
+    })
+    .catch(err => {
+        console.error('Erro de conexão ao sincronizar com MySQL em background:', err);
+    });
 }
 
 // MAXIMIZAR E MINIMIZAR GRÁFICOS
@@ -2707,6 +3535,10 @@ function loadConfigFromWorkbook(workbook) {
                 if (config.custom_veiculos) {
                     localStorage.setItem('custom_veiculos', config.custom_veiculos);
                     state.customVeiculos = JSON.parse(config.custom_veiculos);
+                }
+                if (config.custom_requisicoes) {
+                    localStorage.setItem('custom_requisicoes', config.custom_requisicoes);
+                    state.customRequisicoes = JSON.parse(config.custom_requisicoes);
                 }
                 updateRelationsMappings();
                 applyLoadedPreferences();
@@ -3156,6 +3988,15 @@ function initLicenseValidation() {
 
     if (!overlay || !form || !input) return;
 
+    // Se já existe uma chave salva no localStorage (evita pedir senha no F5 e reaberturas), prossegue
+    const savedKey = localStorage.getItem('controle_license_key');
+    if (savedKey) {
+        overlay.style.display = 'none';
+        triggerSplashScreenAndLoadData();
+        checkSystemUpdates();
+        return;
+    }
+
     // Login Obrigatório a Cada Inicialização: A caixa de texto fica TOTALMENTE LIMPA
     input.value = '';
     overlay.style.display = 'flex';
@@ -3176,6 +4017,7 @@ function initLicenseValidation() {
             if (isValid) {
                 localStorage.setItem('controle_license_key', enteredKey);
                 localStorage.setItem('controle_license_validated_at', new Date().toISOString());
+                sessionStorage.setItem('controle_license_session_validated', 'true');
                 showLicenseStatus('Chave autenticada com sucesso!', 'success');
                 
                 setTimeout(() => {
@@ -3429,5 +4271,74 @@ function triggerSplashScreenAndLoadData() {
     setTimeout(() => {
         splash.classList.add('fade-out');
     }, 1300);
+}
+
+// ==========================================
+// 23. INTEGRAÇÃO COM SUBSISTEMA DE CONTRATADOS
+// ==========================================
+function fetchContratadosForAutocomplete() {
+    const isFileProtocol = window.location.protocol === 'file:';
+    if (isFileProtocol) return;
+
+    fetch(`./veiculos/api/get_veiculos.php?env=${encodeURIComponent(state.activeEnv)}`)
+        .then(res => res.json())
+        .then(result => {
+            if (result.success && result.veiculos) {
+                state.veiculosContratados = result.veiculos;
+                updateContratadosMappings();
+            }
+        })
+        .catch(err => {
+            console.warn('Não foi possível obter veículos contratados para autocomplete:', err);
+        });
+}
+
+function updateContratadosMappings() {
+    if (!state.veiculosContratados) return;
+
+    if (!state.mappings.contratados) {
+        state.mappings.contratados = {};
+    }
+
+    state.veiculosContratados.forEach(v => {
+        const placaUpper = v.placa.toUpperCase().trim();
+        // Adicionar ao mapeamento de placas para veículos
+        state.mappings.placaToVeiculo[placaUpper] = v.tipo_veiculo;
+        
+        // Mapear dados detalhados para preenchimento automático
+        state.mappings.contratados[placaUpper] = {
+            veiculo: v.tipo_veiculo,
+            combustivel: v.combustivel,
+            motorista: v.motorista,
+            base: v.local_atuacao
+        };
+    });
+
+    // Re-popular datalists de placa e veículo para incluir os veículos contratados
+    const placasSet = new Set(Object.keys(state.mappings.placaToVeiculo));
+    populateDatalist('datalist-placas', Array.from(placasSet));
+
+    const veiculosSet = new Set(Object.values(state.mappings.placaToVeiculo));
+    populateDatalist('datalist-veiculos', Array.from(veiculosSet));
+}
+
+// Auxiliar para validar unicidade da faixa de requisições
+function isRequisitionRangeUsed(startNum, endNum) {
+    for (const r of state.rawData) {
+        if (!r.inicioSeq) continue;
+        
+        const rStart = parseInt(r.inicioSeq);
+        const rEnd = parseInt(r.fimSeq) || rStart;
+        
+        if (isNaN(rStart)) continue;
+        
+        // Verificar se há interseção
+        for (let num = startNum; num <= endNum; num++) {
+            if (num >= rStart && num <= rEnd) {
+                return num; // Retorna o número duplicado
+            }
+        }
+    }
+    return null;
 }
 

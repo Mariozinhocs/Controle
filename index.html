@@ -1,11 +1,42 @@
 <!-- 
-  Desenvolvido por Mario Henrique (mariozinhocs@gmail.com)
+  Desenvolvido por Mario Henrique (mariozinhocs) - mariozinhocs@gmail.com
   "si vis pacem para bellum"
 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+            const errorDiv = document.createElement('div');
+            errorDiv.style.position = 'fixed';
+            errorDiv.style.top = '0';
+            errorDiv.style.left = '0';
+            errorDiv.style.width = '100%';
+            errorDiv.style.height = '100%';
+            errorDiv.style.backgroundColor = 'rgba(0,0,0,0.95)';
+            errorDiv.style.color = '#ff4d4d';
+            errorDiv.style.padding = '2rem';
+            errorDiv.style.zIndex = '999999';
+            errorDiv.style.fontFamily = 'monospace';
+            errorDiv.style.fontSize = '14px';
+            errorDiv.style.overflow = 'auto';
+            
+            errorDiv.innerHTML = '<h2 style="margin-top:0;">🚨 Erro de Sistema Detectado</h2>' +
+                '<p><strong>Mensagem:</strong> ' + message + '</p>' +
+                '<p><strong>Arquivo:</strong> ' + source + '</p>' +
+                '<p><strong>Linha:</strong> ' + lineno + ' | <strong>Coluna:</strong> ' + colno + '</p>' +
+                '<p><strong>Pilha de Execução (Stack):</strong><br><pre style="background:#222;color:#eee;padding:1rem;border-radius:6px;margin-top:0.5rem;white-space:pre-wrap;font-size:12px;">' + (error ? error.stack : 'N/A') + '</pre></p>' +
+                '<button onclick="window.location.reload(true)" style="background:#ff4d4d;color:#fff;border:none;padding:0.75rem 1.5rem;font-size:14px;border-radius:6px;cursor:pointer;margin-top:1rem;font-weight:bold;">Recarregar Página</button>';
+            
+            document.body.appendChild(errorDiv);
+            return false;
+        };
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle de Requisições - MGP</title>
@@ -29,7 +60,7 @@
             <div class="splash-logo-wrap">
                 <img src="app_icon.png" alt="Controle Logo" class="splash-logo-img">
             </div>
-            <h1 class="splash-title">CONTROLE DE REQUIOSIÇÕES</h1>
+            <h1 class="splash-title">CONTROLE DE REQUISIÇÕES</h1>
             <p class="splash-subtitle">MGP • Gestão de Abastecimentos & Frota</p>
             <div class="splash-progress-bar">
                 <div class="splash-progress-fill" id="splash-progress-fill"></div>
@@ -153,9 +184,30 @@
                             </svg>
                             <span id="active-filename">Nenhum arquivo carregado</span>
                         </span>
+                          <div class="header-actions">
+                    <!-- Seletor de Ambiente / Frota -->
+                    <div class="env-selector-container" style="display: flex; align-items: center; gap: 0.5rem; background-color: rgba(255, 255, 255, 0.05); padding: 0.4rem 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); margin-right: 0.5rem;">
+                        <label for="select-environment" style="font-size: 0.75rem; font-weight: 700; color: var(--accent-yellow); white-space: nowrap; margin-bottom: 0;">🏢 Gestão:</label>
+                        <select id="select-environment" style="background: transparent; border: none; color: var(--text-primary); font-size: 0.85rem; font-weight: 600; cursor: pointer; outline: none; padding-right: 1.5rem; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2523ffffff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right center; background-size: 8px; -webkit-appearance: none; -moz-appearance: none; appearance: none;">
+                            <option value="Frota Principal" style="background-color: var(--bg-secondary); color: var(--text-primary);">Frota Principal</option>
+                        </select>
+                        <button type="button" id="btn-manage-envs" title="Gerenciar Ambientes (Criar/Excluir)" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 0 0.25rem; display: flex; align-items: center; justify-content: center; outline: none; transition: var(--transition-smooth);">
+                            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" style="pointer-events: none;">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                        </button>
                     </div>
-                </div>
-                <div class="header-actions">
+                    <!-- Botão Limpar Dados e Filtros -->
+                    <button class="btn btn-danger btn-icon" id="btn-clear-data" title="Limpar todos os dados e filtros">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle;">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+                        Limpar
+                    </button>
                     <!-- Botão de Tela Cheia -->
                     <button class="btn btn-secondary btn-icon" id="btn-fullscreen" title="Alternar Modo Tela Cheia (Fullscreen)">
                         <svg id="icon-fullscreen" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle;">
@@ -194,6 +246,16 @@
                         </svg>
                         Baixar Excel
 
+                    </button>
+                    <!-- Botão de Veículos Contratados -->
+                    <button class="btn btn-secondary btn-icon" id="btn-goto-veiculos" title="Gerenciar contratos e consumo de veículos contratados" onclick="window.location.href='./veiculos/'" style="display: none;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle; margin-right:4px;">
+                            <rect x="1" y="3" width="15" height="13" rx="2" ry="2"></rect>
+                            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                        </svg>
+                        Veículos Contratados
                     </button>
                     <!-- Botão de Cadastros -->
                     <button class="btn btn-secondary btn-icon" id="btn-open-cadastros" title="Gerenciar cadastros de Bases, Postos e Responsáveis">
@@ -234,6 +296,15 @@
                             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
                         </svg>
                         Recarregar
+                    </button>
+                    <!-- Botão Salvar Backup -->
+                    <button class="btn btn-save btn-icon" id="btn-save-data" title="Salvar dados no cache e enviar backup">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle;">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                        Salvar
                     </button>
                 </div>
             </header>
@@ -661,27 +732,27 @@
 
                     <div class="form-group">
                         <label for="input-date">Data</label>
-                        <input type="date" id="input-date">
+                        <input type="date" id="input-date" required>
                     </div>
 
                     <div class="form-group">
                         <label for="input-zona">Base</label>
-                        <input type="text" id="input-zona" list="datalist-bases" placeholder="Digite ou selecione a base...">
+                        <input type="text" id="input-zona" list="datalist-bases" placeholder="Digite ou selecione a base..." required>
                     </div>
 
                     <div class="form-group">
                         <label for="input-responsavel">Responsável</label>
-                        <input type="text" id="input-responsavel" list="datalist-responsaveis" placeholder="Digite ou selecione o responsável...">
+                        <input type="text" id="input-responsavel" list="datalist-responsaveis" placeholder="Digite ou selecione o responsável..." required>
                     </div>
 
                     <div class="form-group">
                         <label for="input-posto">Posto</label>
-                        <input type="text" id="input-posto" list="datalist-postos" placeholder="Digite ou selecione o posto...">
+                        <input type="text" id="input-posto" list="datalist-postos" placeholder="Digite ou selecione o posto..." required>
                     </div>
 
                     <div class="form-group">
                         <label for="input-motorista">Motorista</label>
-                        <input type="text" id="input-motorista" list="datalist-motoristas" placeholder="Digite ou selecione o motorista...">
+                        <input type="text" id="input-motorista" list="datalist-motoristas" placeholder="Digite ou selecione o motorista..." required>
                     </div>
 
                     <div class="form-group">
@@ -696,29 +767,39 @@
 
                     <div class="form-group">
                         <label for="input-combustivel">Tipo de Combustível</label>
-                        <select id="input-combustivel">
+                        <select id="input-combustivel" required>
                             <option value="">Selecione...</option>
                         </select>
                     </div>
 
                     <div class="form-group">
+                        <label for="input-km-anterior">KM Anterior</label>
+                        <input type="text" id="input-km-anterior" placeholder="Sem registro">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-km">KM Atual</label>
+                        <input type="text" id="input-km" placeholder="Ex: 124500">
+                    </div>
+
+                    <div class="form-group">
                         <label for="input-inicio-seq">Início Seq</label>
-                        <input type="number" id="input-inicio-seq" placeholder="Ex: 1001">
+                        <input type="number" id="input-inicio-seq" list="datalist-requisicoes" placeholder="Ex: 1001" required>
                     </div>
 
                     <div class="form-group">
                         <label for="input-fim-seq">Fim Seq</label>
-                        <input type="number" id="input-fim-seq" placeholder="Ex: 1010">
+                        <input type="number" id="input-fim-seq" placeholder="Ex: 1010" required>
                     </div>
 
                     <div class="form-group">
                         <label for="input-qtd-req">Qtd Requisições</label>
-                        <input type="number" id="input-qtd-req" value="1" min="1">
+                        <input type="number" id="input-qtd-req" value="1" min="1" required>
                     </div>
 
                     <div class="form-group" id="group-litros">
                         <label for="input-litros">Litros por Requisição</label>
-                        <input type="number" id="input-litros" step="0.01" min="0" placeholder="Ex: 50.00">
+                        <input type="number" id="input-litros" step="0.01" min="0" placeholder="Ex: 50.00" required>
                     </div>
 
                     <div class="form-group" id="group-valor-total" style="display: none;">
@@ -728,7 +809,7 @@
 
                     <div class="form-group">
                         <label for="input-preco-litro">Preço por Litro</label>
-                        <input type="number" id="input-preco-litro" step="0.001" min="0" placeholder="Ex: 5.890">
+                        <input type="number" id="input-preco-litro" step="0.001" min="0" placeholder="Ex: 5.890" required>
                     </div>
                 </div>
 
@@ -756,6 +837,7 @@
                 <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-postos">⛽ Postos</button>
                 <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-motoristas">🧑‍✈️ Motoristas</button>
                 <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-veiculos">🚗 Placas & Veículos</button>
+                <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-requisicoes">🎫 Requisições</button>
             </div>
             
             <form id="form-cadastros" style="margin-top: 1rem;">
@@ -771,9 +853,9 @@
                 <!-- Conteúdo Aba: Postos -->
                 <div class="cadastro-tab-content" id="tab-cad-postos" style="display: none;">
                     <div class="form-group">
-                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Postos de Gasolina autorizados (um por linha)</label>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Digite o nome de cada posto.</p>
-                        <textarea id="textarea-custom-postos" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: Posto Ipiranga&#10;Posto Shell"></textarea>
+                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Postos de Gasolina e Preços Vinculados (um por linha)</label>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Formato: <code>Nome do Posto - Preço/L</code></p>
+                        <textarea id="textarea-custom-postos" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: Posto Ipiranga - 5.890&#10;Posto Shell - 6.100"></textarea>
                     </div>
                 </div>
                 
@@ -792,6 +874,15 @@
                         <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Placas e Modelos de Carro Vinculados (um por linha)</label>
                         <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Formato: <code>Placa - Modelo do Veículo</code></p>
                         <textarea id="textarea-custom-veiculos" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: ABC-1234 - Caminhão F-4000&#10;XYZ-5678 - Van Frota"></textarea>
+                    </div>
+                </div>
+
+                <!-- Conteúdo Aba: Requisições Disponíveis -->
+                <div class="cadastro-tab-content" id="tab-cad-requisicoes" style="display: none;">
+                    <div class="form-group">
+                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Números de Requisição e Litros Vinculados (um por linha)</label>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Formato: <code>Número da Requisição - Litros</code></p>
+                        <textarea id="textarea-custom-requisicoes" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: 1001 - 50.00&#10;1002 - 100.00&#10;1003 - 25.00"></textarea>
                     </div>
                 </div>
                 
@@ -898,6 +989,34 @@
         </div>
     </div>
 
+    <!-- Modal de Gerenciar Ambientes -->
+    <div class="modal-overlay" id="manage-envs-modal">
+        <div class="modal-content" style="max-width: 450px; background-color: var(--bg-secondary); border-radius: 12px; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="color: var(--text-primary); font-size: 1.25rem; margin: 0;">Gerenciar Frotas</h3>
+                <button class="modal-close" id="btn-close-manage-envs" style="line-height: 1;">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <label style="font-weight: 700; color: var(--accent-yellow); font-size: 0.85rem; display: block; margin-bottom: 0.5rem;">Criar Novo Ambiente / Frota</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="input-new-env-name" placeholder="Ex: Frota B" style="flex: 1; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: rgba(0, 0, 0, 0.2); color: var(--text-primary); outline: none;">
+                    <button type="button" class="btn btn-primary" id="btn-create-env" style="padding: 0.6rem 1.2rem;">Criar</button>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
+
+            <div>
+                <label style="font-weight: 700; color: var(--accent-yellow); font-size: 0.85rem; display: block; margin-bottom: 0.5rem;">Ações para o Ambiente Atual</label>
+                <div style="display: flex; gap: 0.5rem; justify-content: space-between;">
+                    <button type="button" class="btn btn-secondary" id="btn-rename-active-env" style="flex: 1; padding: 0.6rem;">Renomear</button>
+                    <button type="button" class="btn btn-danger" id="btn-delete-active-env" style="flex: 1; background-color: var(--accent-red); color: white; padding: 0.6rem;">Excluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Datalists para Autocomplete do Formulário de Nova Requisição -->
     <datalist id="datalist-bases"></datalist>
     <datalist id="datalist-responsaveis"></datalist>
@@ -905,9 +1024,10 @@
     <datalist id="datalist-motoristas"></datalist>
     <datalist id="datalist-veiculos"></datalist>
     <datalist id="datalist-placas"></datalist>
+    <datalist id="datalist-requisicoes"></datalist>
 
     <!-- Script principal da aplicação -->
-    <script src="app.js?v=3" defer></script>
+    <script src="app.js?v=8" defer></script>
 </body>
 
 </html>

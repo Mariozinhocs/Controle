@@ -1,0 +1,127 @@
+<!-- 
+  Desenvolvido por Mario Henrique (mariozinhocs) - mariozinhocs@gmail.com
+  "si vis pacem para bellum"
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Repositório de Backups</title>
+    <link rel="icon" type="image/png" href="app_icon.png">
+    <link rel="shortcut icon" href="favicon.ico">
+    <link rel="stylesheet" href="styles_repo.css">
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-icon-wrap">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </div>
+            
+            <div class="login-header">
+                <h2>Repositório de Backups</h2>
+                <p>Insira suas credenciais para gerenciar os arquivos de backup do Controle.</p>
+            </div>
+            
+            <form id="form-login-repo" class="login-form" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="username">Usuário</label>
+                    <div class="input-with-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <input type="text" id="username" placeholder="Digite seu usuário..." autocomplete="off" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Senha / Chave</label>
+                    <div class="input-with-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 2l-2 2m-2-2l2 2m2 0l-7 7m-1.5-1.5L4 16.5V20h3.5l7.5-7.5"/>
+                        </svg>
+                        <input type="password" id="password" placeholder="Digite sua senha..." required>
+                    </div>
+                </div>
+                
+                <div class="status-msg" id="status-msg"></div>
+                
+                <button type="submit" class="btn btn-primary" id="btn-login-submit" style="width: 100%;">
+                    Entrar no Repositório
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Desenvolvido por Mario Henrique (mariozinhocs) - mariozinhocs@gmail.com
+        // "si vis pacem para bellum"
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // Verificar se já está autenticado
+            fetch('./api/check_auth.php')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.authenticated) {
+                        window.location.href = 'backup_repo.html';
+                    }
+                })
+                .catch(err => console.log('Não autenticado ou erro na verificação inicial.'));
+
+            const form = document.getElementById('form-login-repo');
+            const statusMsg = document.getElementById('status-msg');
+            const btnSubmit = document.getElementById('btn-login-submit');
+
+            form.addEventListener('submit', async () => {
+                const user = document.getElementById('username').value.trim();
+                const pass = document.getElementById('password').value;
+
+                if (!user || !pass) {
+                    showStatus('Por favor, preencha todos os campos.', 'error');
+                    return;
+                }
+
+                btnSubmit.disabled = true;
+                showStatus('Verificando credenciais...', 'info');
+
+                try {
+                    const response = await fetch('./api/login.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username: user, password: pass })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok && data.success) {
+                        showStatus('Login efetuado com sucesso! Redirecionando...', 'success');
+                        setTimeout(() => {
+                            window.location.href = 'backup_repo.html';
+                        }, 800);
+                    } else {
+                        showStatus(data.message || 'Usuário ou senha incorretos.', 'error');
+                        btnSubmit.disabled = false;
+                    }
+                } catch (err) {
+                    console.error('Erro de login:', err);
+                    showStatus('Falha de conexão com o servidor.', 'error');
+                    btnSubmit.disabled = false;
+                }
+            });
+
+            function showStatus(msg, type) {
+                statusMsg.textContent = msg;
+                statusMsg.className = `status-msg ${type}`;
+            }
+        });
+    </script>
+</body>
+</html>

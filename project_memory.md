@@ -132,6 +132,41 @@ Caso a exportação Excel pare de responder:
 
 Use esta seção para documentar novas alterações manuais à medida que elas forem sendo introduzidas.
 
+*   **Funcionalidade: Armazenamento MySQL Híbrido, Frotas Multiambiente e Acesso Anônimo**
+    *   *Data:* 20/08/2026
+    *   *Implementações:*
+        1. **Conexão MySQL Centralizada (`api/db.php`):** Script de conexão PDO com banco de dados `u576215103_controle` que inicializa automaticamente a estrutura de tabelas `requisicoes` (lançamentos) e `configuracoes` (bases, postos, motoristas, veículos e requisições) no primeiro acesso.
+        2. **Gestão de Múltiplos Ambientes/Frotas:** Inclusão de seletor de gestão no cabeçalho. Usuários podem criar, renomear e excluir frotas/ambientes (como Frota A e Frota B) isolando lançamentos e cadastros em caches (`getEnvKey`) e no banco de dados online.
+        3. **APIs de Sincronização Híbrida (`api/get_data.php` e `api/sync_data.php`):** Fluxo inteligente que prioriza carregar e persistir alterações online via MySQL de forma segura. Em caso de queda de rede, o aplicativo retém as alterações localmente e sincroniza ao reconectar.
+        4. **Limpeza de Cache ao Logout:** No repositório de backups, ao efetuar o Logout, o sistema agora limpa totalmente o `localStorage` do navegador.
+        5. **Inicializador em Janela Anônima (`abrir_dashboard.bat`):** Script atualizado para abrir diretamente a URL `https://controle.hubdigital360.com/` em modo anônimo/privado no Google Chrome ou Microsoft Edge.
+
+*   **Funcionalidade: Relacionamentos Condicionais nos Cadastros (Autocompletes), KM Anterior/Atual e Cálculo de Qtd**
+    *   *Data:* 20/08/2026
+    *   *Implementações:*
+        1. **Postos & Preços:** Cadastrando `Posto - Preço` nos cadastros de apoio, o preço por litro é auto-preenchido ao selecionar o posto.
+        2. **Requisições, Combustível & Litros:** Cadastrando `Req - Combustível - Litros` ou `Req - Litros` nas requisições personalizadas, o formulário de nova requisição auto-seleciona o combustível correspondente e insere os litros automaticamente no modo litros.
+        3. **KM Anterior Automático:** Adicionado o campo "KM Anterior" (readonly). Ao digitar a Placa ou selecionar o Veículo (que tenha exatamente uma placa), o sistema busca dinamicamente no histórico do veículo e exibe a última kilometragem registrada (ou "Sem registro").
+        4. **Cálculo de Qtd Automático:** Ao digitar os números de sequência inicial e final, a quantidade de requisições é atualizada automaticamente no formulário.
+        5. **Exportação & Importação:** Suporte a colunas de KM anterior e KM atual no leitor e gerador de Excel, além do armazenamento correto de requisições estruturadas na aba de configurações.
+
+*   **Funcionalidade: Repositório de Backups Restrito (Login, Painel Decrescente e Upload Sigiloso com Segundos)**
+    *   *Data:* 20/08/2026
+    *   *Implementações:*
+        1. **Upload Silencioso em Servidores:** Se o aplicativo rodar via protocolo HTTP (localhost ou hospedagem), o clique em "Salvar" gera o arquivo Excel com segundos `backup_controle_dd-mm-aaaa_hhmmss.xlsx` e faz o upload sigiloso e automático em plano de fundo sem pedir permissões.
+        2. **Tela de Login (`backup_login.html`):** Portal de login para acessar os backups com autenticação via sessão PHP (`admin` / `anorak2026`).
+        3. **Painel do Repositório (`backup_repo.html`):** Tabela de consulta que exibe os backups ordenados do mais recente ao mais antigo, permitindo downloads e exclusões seguras.
+        4. **APIs de Gerenciamento (`api/list_backups.php`, `api/delete_backup.php`, `api/download_backup.php`):** Scripts de retaguarda em PHP para carregar, baixar e remover arquivos com validações de segurança contra Directory Traversal.
+        5. **Responsividade das Abas de Cadastro:** Correção do vazamento horizontal da 5ª aba no modal de apoios, adicionando quebra de linha fluida (`flex-wrap: wrap`) e largura mínima sem diminuir o texto das abas.
+
+*   **Funcionalidade: Botões Limpar/Salvar, Backup no Google Drive/Servidor e Modais Responsivos**
+    *   *Data:* 20/08/2026
+    *   *Implementações:*
+        1. **Botão Limpar (Vermelho):** Limpa lançamentos e filtros ativos do dashboard e do `localStorage` com confirmação em tela, reabrindo o modal de upload.
+        2. **Botão Salvar (Cinza Azulado):** Salva no cache local e gera arquivo Excel `backup_controle_DD-MM-AA_HHMM.xlsx`. Em ambiente local (desenvolvimento), abre o diálogo do navegador para salvar na pasta do Google Drive (e abre o link do Drive em uma nova aba). Em ambiente online (site do cliente), envia a planilha em segundo plano via upload HTTP POST de maneira 100% sigilosa (silenciosa).
+        3. **API PHP de Backups (`api/save_backup.php`):** Novo script backend silencioso que valida extensões e armazena arquivos de backup Excel na pasta `api/backups/` do servidor.
+        4. **Responsividade de Modais e Ações:** Centrado dos modais verticalmente. Menores paddings, bordas e empilhamento dos seletores do modo de importação em telas < 576px. Configurado `flex-wrap: wrap` nos botões de ação para evitar overflow horizontal.
+
 *   **Funcionalidade: App Nativo Windows, Autenticação de Licença GitHub, Sidebar Retrátil & Tela Cheia**
     *   *Data:* 19/08/2026
     *   *Implementações:*

@@ -1,0 +1,91 @@
+/* 
+  Desenvolvido por Mario Henrique (mariozinhocs) - mariozinhocs@gmail.com
+  "si vis pacem para bellum"
+*/
+
+/* O módulo de veículos herda a estrutura e paleta premium de ../styles.css */
+
+.charts-grid {
+    margin-bottom: 1.5rem;
+}
+
+.chart-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-smooth);
+}
+
+.chart-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: rgba(255, 183, 3, 0.25);
+}
+
+.chart-title {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 1rem;
+}
+
+/* Modificações específicas para a tabela de veículos */
+.data-table th {
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.data-table td {
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.btn-delete {
+    background: transparent;
+    border: none;
+    color: var(--accent-red);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: var(--transition-smooth);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-delete:hover {
+    background-color: rgba(230, 57, 70, 0.15);
+    color: #ff4d4d;
+}
+
+.btn-edit {
+    background: transparent;
+    border: none;
+    color: var(--accent-yellow);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: var(--transition-smooth);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+}
+
+.btn-edit:hover {
+    background-color: rgba(255, 183, 3, 0.15);
+    color: #ffc300;
+}
+
+/* Responsividade de Gráficos */
+@media (max-width: 1024px) {
+    .charts-grid {
+        grid-template-columns: 1fr !important;
+    }
+}

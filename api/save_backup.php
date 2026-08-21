@@ -1,0 +1,73 @@
+<?php
+/* 
+  Desenvolvido por Mario Henrique (mariozinhocs) - mariozinhocs@gmail.com
+  "si vis pacem para bellum"
+*/
+
+header('Content-Type: application/json');
+
+// Permitir apenas requisições POST
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+    exit;
+}
+
+if (!isset($_FILES['backup_file'])) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Nenhum arquivo enviado']);
+    exit;
+}
+
+$file = $_FILES['backup_file'];
+
+// Validar se houve erro no envio
+if ($file['error'] !== UPLOAD_ERR_OK) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Erro no upload do arquivo: ' . $file['error']]);
+    exit;
+}
+
+// Validar extensão (apenas .xlsx)
+$ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+if ($ext !== 'xlsx') {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Formato de arquivo inválido. Apenas .xlsx é permitido.']);
+    exit;
+}
+
+// Diretório de backups
+$backupDir = __DIR__ . '/backups';
+
+// Capturar e higienizar ambiente
+$env = isset($_POST['env']) ? trim($_POST['env']) : 'Frota Principal';
+$envSanitized = preg_replace('/[^a-zA-Z0-9_\-]/', '_', str_replace(' ', '_', $env));
+
+// Criar o diretório de backups se não existir
+if (!is_dir($backupDir)) {
+    if (!mkdir($backupDir, 0755, true)) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Falha ao criar diretório de backups no servidor']);
+        exit;
+    }
+}
+
+// Higienizar nome do arquivo
+$filename = basename($file['name']);
+// Evitar travessia de diretório e caracteres inválidos
+$filename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $filename);
+
+$destination = $backupDir . '/' . $filename;
+
+// Mover arquivo temporário para o destino final
+if (move_uploaded_file($file['tmp_name'], $destination)) {
+    // Sobrescrever o arquivo de dados correspondente no diretório pai para manter a base atualizada
+    $mainDir = dirname(__DIR__);
+    $mainFile = ($envSanitized === 'Frota_Principal' || $envSanitized === 'Padrao') ? 'dados.xlsx' : "dados_{$envSanitized}.xlsx";
+    @copy($destination, $mainDir . '/' . $mainFile);
+
+    echo json_encode(['success' => true, 'message' => 'Backup salvo com sucesso no servidor!', 'file' => $filename]);
+} else {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Falha ao salvar o arquivo no diretório de destino']);
+}
