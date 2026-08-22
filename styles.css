@@ -1045,7 +1045,8 @@ body {
     .th-actions,
     .td-actions,
     .logo-container,
-    .sidebar-signature {
+    .sidebar-signature,
+    .nlq-container {
         display: none !important;
     }
 
@@ -1130,7 +1131,8 @@ body {
     }
 
     /* Recriar Sidebar como barra horizontal de KPIs no topo da impressão (Tema Claro) */
-    .sidebar {
+    .sidebar,
+    .app-container.sidebar-collapsed .sidebar {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: wrap !important;
@@ -1143,7 +1145,8 @@ body {
         gap: 0.5rem !important;
     }
 
-    .kpi-group {
+    .kpi-group,
+    .app-container.sidebar-collapsed .kpi-group {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: wrap !important;
@@ -1244,7 +1247,8 @@ body {
         border: 1px solid #e2e8f0 !important;
         box-shadow: none !important;
         padding: 0.75rem !important;
-        margin-top: 1.5rem !important;
+        margin-top: 0 !important;
+        page-break-before: always !important; /* Detalhamento inicia na página 2 */
         page-break-inside: auto !important;
     }
 
