@@ -1087,7 +1087,7 @@ body {
         color: #475569 !important;
     }
 
-    /* Exibir Filtro de Período como um cartão no topo */
+    /* Exibir Filtro de Período como um cartão claro no topo */
     .filters-section {
         display: block !important;
         margin-bottom: 1rem !important;
@@ -1113,9 +1113,9 @@ body {
     }
 
     #btn-open-calendar {
-        background-color: var(--bg-secondary) !important;
-        border: 1px solid var(--border-color) !important;
-        color: var(--text-primary) !important;
+        background-color: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #0f172a !important;
         pointer-events: none !important;
         padding: 0.5rem 0.75rem !important;
         border-radius: 8px !important;
@@ -1129,13 +1129,13 @@ body {
         display: none !important;
     }
 
-    /* Recriar Sidebar como barra horizontal de KPIs no topo da impressão */
+    /* Recriar Sidebar como barra horizontal de KPIs no topo da impressão (Tema Claro) */
     .sidebar {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: wrap !important;
         border-right: none !important;
-        border-bottom: 1px solid var(--border-color) !important;
+        border-bottom: 1px solid #e2e8f0 !important;
         padding: 0 0 1rem 0 !important;
         margin-bottom: 1.5rem !important;
         background-color: transparent !important;
@@ -1154,9 +1154,9 @@ body {
     .kpi-card {
         flex: 1 1 calc(16% - 0.5rem) !important;
         min-width: 90px !important;
-        background-color: var(--bg-secondary) !important;
-        border: 1px solid var(--border-color) !important;
-        color: var(--text-primary) !important;
+        background-color: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #0f172a !important;
         box-shadow: none !important;
         padding: 0.5rem !important;
         border-radius: 8px !important;
@@ -1165,23 +1165,23 @@ body {
 
     .kpi-value {
         font-size: 11pt !important;
-        color: var(--text-primary) !important;
+        color: #0f172a !important;
     }
 
     .kpi-label {
         font-size: 7pt !important;
-        color: var(--text-muted) !important;
+        color: #475569 !important;
     }
     
     .kpi-card.highlight-card {
-        border-left: 3px solid var(--accent-yellow) !important;
+        border-left: 3px solid #ffb703 !important;
     }
     
     .highlight-card .kpi-value {
-        color: var(--accent-yellow) !important;
+        color: #b45309 !important;
     }
 
-    /* Organização de gráficos na folha impressa (2x2) */
+    /* Organização de gráficos na folha impressa (2x2 - Tema Claro) */
     .charts-grid {
         display: grid !important;
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -1194,10 +1194,10 @@ body {
     }
 
     .chart-card {
-        background-color: var(--bg-secondary) !important;
-        border: 1px solid var(--border-color) !important;
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
         box-shadow: none !important;
-        color: var(--text-primary) !important;
+        color: #0f172a !important;
         padding: 0.75rem !important;
         border-radius: 12px !important;
         width: 100% !important;
@@ -1216,8 +1216,8 @@ body {
     }
 
     .chart-title {
-        color: var(--text-primary) !important;
-        border-bottom: 1px solid var(--border-color) !important;
+        color: #334155 !important;
+        border-bottom: 1px solid #e2e8f0 !important;
         font-size: 8pt !important;
     }
 
@@ -1226,10 +1226,22 @@ body {
         page-break-inside: avoid !important;
     }
 
-    /* Tabelas impressas */
+    /* Líderes / 2x2 no Relatório */
+    .leader-box {
+        background-color: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+    .leader-title {
+        color: #0f172a !important;
+    }
+    .leader-subtitle {
+        color: #b45309 !important;
+    }
+
+    /* Tabelas impressas (Tema Claro) */
     .table-section {
-        background-color: var(--bg-secondary) !important;
-        border: 1px solid var(--border-color) !important;
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
         box-shadow: none !important;
         padding: 0.75rem !important;
         margin-top: 1.5rem !important;
@@ -1237,16 +1249,16 @@ body {
     }
 
     .table-header {
-        border-bottom: 1px solid var(--border-color) !important;
+        border-bottom: 1px solid #e2e8f0 !important;
     }
 
     .table-title-group h2 {
-        color: var(--text-primary) !important;
+        color: #0f172a !important;
         font-size: 11pt !important;
     }
 
     .table-wrapper {
-        border: 1px solid var(--border-color) !important;
+        border: 1px solid #e2e8f0 !important;
         max-height: none !important;
         overflow: visible !important;
         width: 100% !important;
@@ -1260,9 +1272,9 @@ body {
     }
 
     .data-table th {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        color: var(--text-primary) !important;
-        border-bottom: 2px solid var(--border-color) !important;
+        background-color: #f1f5f9 !important;
+        color: #334155 !important;
+        border-bottom: 2px solid #cbd5e1 !important;
         position: relative !important;
         padding: 4px 6px !important;
         word-wrap: break-word !important;
@@ -1270,19 +1282,19 @@ body {
     }
 
     .data-table td {
-        border-bottom: 1px solid var(--border-color) !important;
-        color: var(--text-primary) !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        color: #0f172a !important;
         padding: 4px 6px !important;
         word-wrap: break-word !important;
         white-space: normal !important;
     }
 
     .data-table tbody tr:nth-child(even) {
-        background-color: rgba(255, 255, 255, 0.02) !important;
+        background-color: #f8fafc !important;
     }
     
     .text-highlight {
-        color: var(--text-primary) !important;
+        color: #0f172a !important;
         font-weight: 700 !important;
     }
 }

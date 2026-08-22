@@ -2808,7 +2808,7 @@ function renderTable() {
     if (state.activeTab === 'lancamentos') {
         thead.innerHTML = `
             <tr>
-                <th>Data</th>
+                <th>Data Atual</th>
                 <th>Início Seq</th>
                 <th>Fim Seq</th>
                 <th class="col-number">Qtd Req</th>
@@ -2818,7 +2818,7 @@ function renderTable() {
                 <th>Posto</th>
                 <th>Veículo</th>
                 <th>KM Ant.</th>
-                <th>KM Atual</th>
+                <th>KM</th>
                 <th>Combustível</th>
                 <th class="col-number">L/Req</th>
                 <th class="col-number">Total Litros</th>
