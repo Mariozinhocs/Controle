@@ -3605,6 +3605,7 @@ function toggleChartsTheme(isLight) {
             grid: { borderColor: gridColor }
         });
     }
+}
 
 // ==========================================
 // 15. PORTABILIDADE E PREFERÊNCIAS DE LAYOUT
