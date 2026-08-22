@@ -592,12 +592,23 @@ function initEventListeners() {
         
         document.title = `Controle de Requisições - MGP - ${dd}${mm}${yyyy} - ${hh}${min}`;
         
-        window.print();
+        // Mudar gráficos para tema claro antes de imprimir
+        if (typeof toggleChartsTheme === 'function') {
+            toggleChartsTheme(true);
+        }
         
-        // Restaurar o título original após a janela de impressão abrir
+        // Pequeno delay para garantir que o ApexCharts redesenhou em tema claro
         setTimeout(() => {
-            document.title = originalTitle;
-        }, 1000);
+            window.print();
+            
+            // Restaurar os gráficos para tema escuro e o título original
+            setTimeout(() => {
+                if (typeof toggleChartsTheme === 'function') {
+                    toggleChartsTheme(false);
+                }
+                document.title = originalTitle;
+            }, 1000);
+        }, 350);
     });
 
     // Assistente NLQ
@@ -3549,6 +3560,51 @@ function populateInfografico() {
         });
     }
 }
+
+// Função para alternar o tema dos gráficos do dashboard (para impressão clara)
+function toggleChartsTheme(isLight) {
+    const themeMode = isLight ? 'light' : 'dark';
+    const textColor = isLight ? '#0f172a' : '#94a3b8';
+    const gridColor = isLight ? '#e2e8f0' : '#1e293b';
+    
+    const donutOpts = {
+        theme: { mode: themeMode },
+        plotOptions: {
+            pie: {
+                donut: {
+                    labels: {
+                        value: { color: isLight ? '#0f172a' : '#ffffff' }
+                    }
+                }
+            }
+        }
+    };
+
+    if (state.charts.donut) {
+        state.charts.donut.updateOptions(donutOpts);
+    }
+    
+    if (state.charts.zonaDonut) {
+        state.charts.zonaDonut.updateOptions(donutOpts);
+    }
+    
+    if (state.charts.bar) {
+        state.charts.bar.updateOptions({
+            theme: { mode: themeMode },
+            xaxis: { labels: { style: { colors: textColor } } },
+            yaxis: { labels: { style: { colors: textColor } } },
+            grid: { borderColor: gridColor }
+        });
+    }
+    
+    if (state.charts.area) {
+        state.charts.area.updateOptions({
+            theme: { mode: themeMode },
+            xaxis: { labels: { style: { colors: textColor } } },
+            yaxis: { labels: { style: { colors: textColor } } },
+            grid: { borderColor: gridColor }
+        });
+    }
 
 // ==========================================
 // 15. PORTABILIDADE E PREFERÊNCIAS DE LAYOUT
