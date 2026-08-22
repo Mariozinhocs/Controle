@@ -1018,7 +1018,7 @@ body {
     }
     
     @page {
-        margin: auto;
+        margin: 10mm;
         size: A4 landscape;
     }
     
