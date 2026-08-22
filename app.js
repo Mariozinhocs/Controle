@@ -580,7 +580,24 @@ function initEventListeners() {
         if (typeof updatePrintTimestamps === 'function') {
             updatePrintTimestamps();
         }
+        
+        // Salvar título original e definir título formatado (ddmmaaaa - hhmm) para o nome do arquivo PDF
+        const originalTitle = document.title;
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        
+        document.title = `Controle de Requisições - MGP - ${dd}${mm}${yyyy} - ${hh}${min}`;
+        
         window.print();
+        
+        // Restaurar o título original após a janela de impressão abrir
+        setTimeout(() => {
+            document.title = originalTitle;
+        }, 1000);
     });
 
     // Assistente NLQ
