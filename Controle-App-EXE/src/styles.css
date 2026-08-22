@@ -1018,8 +1018,8 @@ body {
     }
     
     @page {
-        margin: 0.8cm;
-        size: A4 portrait;
+        margin: auto;
+        size: A4 landscape;
     }
     
     body {
@@ -1032,7 +1032,7 @@ body {
         margin: 0 !important;
         padding: 0 !important;
         box-sizing: border-box !important;
-        zoom: 82%; /* Ajuste fino de zoom para caber tudo no A4 Retrato sem estourar as margens */
+        zoom: 95%; /* Proporção ideal para aproveitamento de largura em Paisagem */
     }
 
     /* Ocultar elementos de navegação e filtros irrelevantes */
