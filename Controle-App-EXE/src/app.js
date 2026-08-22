@@ -923,9 +923,6 @@ function initEventListeners() {
         const kmAnterior = document.getElementById('input-km-anterior').value.trim();
         const km = document.getElementById('input-km').value.trim();
 
-        const inicioSeq = document.getElementById('input-inicio-seq').value.trim();
-        const fimSeq = document.getElementById('input-fim-seq').value.trim();
-
         const qtdRequisicoes = parseInt(document.getElementById('input-qtd-req').value) || 1;
         const precoLitro = parseFloat(document.getElementById('input-preco-litro').value) || 0;
 
@@ -3527,28 +3524,30 @@ function populateInfografico() {
         zonaContainer.appendChild(barItem);
     });
 
-    // 6. Líderes
-    let maiorVeiculo = '-';
-    let maiorVeiculoVal = 0;
-    for (const v in veiculosGasto) {
-        if (veiculosGasto[v] > maiorVeiculoVal) {
-            maiorVeiculoVal = veiculosGasto[v];
-            maiorVeiculo = v;
-        }
-    }
-    document.getElementById('info-leader-veiculo').textContent = maiorVeiculo;
-    document.getElementById('info-leader-veiculo-val').textContent = maiorVeiculoVal > 0 ? maiorVeiculoVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+    // 6. Líderes (4 bases com maiores consumos em um grid 2x2)
+    const sortedZonasGasto = Object.entries(zonasGasto)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4);
 
-    let maiorMotorista = '-';
-    let maiorMotoristaVal = 0;
-    for (const m in motoristasGasto) {
-        if (motoristasGasto[m] > maiorMotoristaVal) {
-            maiorMotoristaVal = motoristasGasto[m];
-            maiorMotorista = m;
+    const gridContainer = document.getElementById('info-bases-leader-grid');
+    if (gridContainer) {
+        gridContainer.innerHTML = '';
+        
+        const displayItems = [...sortedZonasGasto];
+        while (displayItems.length < 4) {
+            displayItems.push(['-', 0]);
         }
+        
+        displayItems.forEach(([zona, val]) => {
+            const card = document.createElement('div');
+            card.className = 'leader-box';
+            card.innerHTML = `
+                <span class="leader-title">${zona}</span>
+                <span class="leader-subtitle">${val > 0 ? val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}</span>
+            `;
+            gridContainer.appendChild(card);
+        });
     }
-    document.getElementById('info-leader-motorista').textContent = maiorMotorista;
-    document.getElementById('info-leader-motorista-val').textContent = maiorMotoristaVal > 0 ? maiorMotoristaVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
 }
 
 // ==========================================
