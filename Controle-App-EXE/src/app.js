@@ -3664,7 +3664,7 @@ function toggleChartsTheme(isLight) {
     const themeMode = isLight ? 'light' : 'dark';
     const textColor = isLight ? '#334155' : '#94a3b8';
     const gridColor = isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.05)';
-    const chartHeight = isLight ? 230 : 290;
+    const chartHeight = isLight ? 260 : 290; // Aumentado para 260px para dar espaço para a legenda inferior do donut
     
     // 1. Gasto por Combustível (Sempre Donut)
     if (state.charts.donut) {
@@ -3684,9 +3684,11 @@ function toggleChartsTheme(isLight) {
                 }
             },
             legend: {
+                show: true,
+                position: 'bottom',
                 labels: { colors: textColor }
             }
-        });
+        }, true); // O segundo parâmetro true força o redesenho completo de caminhos e textos
     }
     
     // 2. Gasto por Zona (Pode ser Donut ou Barra Horizontal/Vertical ou Linha)
@@ -3709,9 +3711,11 @@ function toggleChartsTheme(isLight) {
                     }
                 },
                 legend: {
+                    show: true,
+                    position: 'bottom',
                     labels: { colors: textColor }
                 }
-            });
+            }, true);
         } else {
             // Se for Barra ou Linha
             const isHoriz = state.charts.zonaDonut.w?.config?.plotOptions?.bar?.horizontal;
@@ -3734,7 +3738,7 @@ function toggleChartsTheme(isLight) {
                     }
                 },
                 grid: { borderColor: gridColor }
-            });
+            }, true);
         }
     }
     
@@ -3752,7 +3756,7 @@ function toggleChartsTheme(isLight) {
                 }
             },
             grid: { borderColor: gridColor }
-        });
+        }, true);
     }
     
     // 4. Volume Mensal (Área)
@@ -3769,7 +3773,7 @@ function toggleChartsTheme(isLight) {
                 }
             },
             grid: { borderColor: gridColor }
-        });
+        }, true);
     }
 }
 
