@@ -3068,6 +3068,14 @@ function generateAndDownloadMockData() {
         'Etanol': 4.25
     };
 
+    const kmAcumulado = {
+        'ABC-1234': 85000,
+        'XYZ-5678': 120000,
+        'MNO-9012': 45000,
+        'QWE-3456': 62000,
+        'JKL-7890': 28000
+    };
+
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 45); // 45 dias atrás
 
@@ -3115,6 +3123,12 @@ function generateAndDownloadMockData() {
             const MOTORISTAS = ['Marcos Oliveira', 'Felipe Costa', 'Roberto Souza', 'Thiago Santos', 'Bruno Lima'];
             const motorista = MOTORISTAS[Math.floor(Math.random() * MOTORISTAS.length)];
 
+            // Simulação de kilometragem progressiva coerente
+            const kmAnt = kmAcumulado[veic.placa];
+            const kmPercorrido = Math.round(litros * qtdRequisicoes * (veic.combustivel === 'Diesel' ? (Math.random() * 2 + 4) : (Math.random() * 3 + 8)));
+            const kmAtu = kmAnt + kmPercorrido;
+            kmAcumulado[veic.placa] = kmAtu;
+
             data.push({
                 'Data': dataFormatada,
                 'Início da Sequência': inicioSeq,
@@ -3126,6 +3140,8 @@ function generateAndDownloadMockData() {
                 'Posto': posto,
                 'Veículo': veic.nome,
                 'Placa': veic.placa,
+                'KM Anterior': kmAnt,
+                'KM Atual': kmAtu,
                 'Tipo Combustível': combustivel,
                 'Litros': litros,
                 'Preço Litro': `R$ ${precoFormatado}`,
@@ -3140,7 +3156,7 @@ function generateAndDownloadMockData() {
         XLSX.utils.book_append_sheet(wb, ws, "Controle");
 
         XLSX.writeFile(wb, "dados.xlsx");
-        alert('Planilha "dados.xlsx" com 45 dias de dados de teste gerada com sucesso! Importe-a no painel para testar os novos recursos.');
+        alert('Planilha "dados.xlsx" com 45 dias de dados de teste (incluindo kilometragens realistas) gerada com sucesso! Importe-a no painel para testar.');
     } catch (e) {
         console.error(e);
         alert('Erro ao gerar planilha fictícia.');
