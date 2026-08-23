@@ -1210,7 +1210,7 @@ body {
         width: calc(50% - 0.25rem) !important;
         max-width: calc(50% - 0.25rem) !important;
         box-sizing: border-box !important;
-        overflow: hidden !important;
+        overflow: visible !important;
         page-break-inside: avoid !important; /* Impede quebras dentro de um mesmo gráfico */
     }
 
@@ -1219,7 +1219,7 @@ body {
     .chart-card svg {
         width: 100% !important;
         max-width: 100% !important;
-        height: 220px !important; /* Altura compacta para garantir o encaixe perfeito na folha paisagem */
+        height: auto !important; /* Altura calculada dinamicamente pelo JS do ApexCharts */
     }
 
     .chart-title {

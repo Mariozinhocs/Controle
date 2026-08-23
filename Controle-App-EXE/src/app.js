@@ -3564,11 +3564,16 @@ function populateInfografico() {
 // Função para alternar o tema dos gráficos do dashboard (para impressão clara)
 function toggleChartsTheme(isLight) {
     const themeMode = isLight ? 'light' : 'dark';
-    const textColor = isLight ? '#0f172a' : '#94a3b8';
-    const gridColor = isLight ? '#e2e8f0' : '#1e293b';
+    const textColor = isLight ? '#334155' : '#94a3b8';
+    const gridColor = isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.05)';
+    const chartHeight = isLight ? 230 : 290;
     
     const donutOpts = {
         theme: { mode: themeMode },
+        chart: {
+            height: chartHeight,
+            foreColor: textColor
+        },
         plotOptions: {
             pie: {
                 donut: {
@@ -3576,6 +3581,11 @@ function toggleChartsTheme(isLight) {
                         value: { color: isLight ? '#0f172a' : '#ffffff' }
                     }
                 }
+            }
+        },
+        legend: {
+            labels: {
+                colors: textColor
             }
         }
     };
@@ -3591,8 +3601,10 @@ function toggleChartsTheme(isLight) {
     if (state.charts.bar) {
         state.charts.bar.updateOptions({
             theme: { mode: themeMode },
-            xaxis: { labels: { style: { colors: textColor } } },
-            yaxis: { labels: { style: { colors: textColor } } },
+            chart: {
+                height: chartHeight,
+                foreColor: textColor
+            },
             grid: { borderColor: gridColor }
         });
     }
@@ -3600,8 +3612,10 @@ function toggleChartsTheme(isLight) {
     if (state.charts.area) {
         state.charts.area.updateOptions({
             theme: { mode: themeMode },
-            xaxis: { labels: { style: { colors: textColor } } },
-            yaxis: { labels: { style: { colors: textColor } } },
+            chart: {
+                height: chartHeight,
+                foreColor: textColor
+            },
             grid: { borderColor: gridColor }
         });
     }
