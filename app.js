@@ -597,7 +597,7 @@ function initEventListeners() {
             toggleChartsTheme(true);
         }
         
-        // Pequeno delay para garantir que o ApexCharts redesenhou em tema claro
+        // Delay ligeiramente maior para garantir que os gráficos foram redesenhados sem animações
         setTimeout(() => {
             window.print();
             
@@ -607,8 +607,8 @@ function initEventListeners() {
                     toggleChartsTheme(false);
                 }
                 document.title = originalTitle;
-            }, 1000);
-        }, 350);
+            }, 1500);
+        }, 700);
     });
 
     // Assistente NLQ
@@ -3672,7 +3672,8 @@ function toggleChartsTheme(isLight) {
             theme: { mode: themeMode },
             chart: {
                 height: chartHeight,
-                foreColor: textColor
+                foreColor: textColor,
+                animations: { enabled: !isLight } // Desativa animação para renderizar 100% instantâneo na impressão
             },
             plotOptions: {
                 pie: {
@@ -3699,7 +3700,8 @@ function toggleChartsTheme(isLight) {
                 theme: { mode: themeMode },
                 chart: {
                     height: chartHeight,
-                    foreColor: textColor
+                    foreColor: textColor,
+                    animations: { enabled: !isLight }
                 },
                 plotOptions: {
                     pie: {
@@ -3723,7 +3725,8 @@ function toggleChartsTheme(isLight) {
                 theme: { mode: themeMode },
                 chart: {
                     height: chartHeight,
-                    foreColor: textColor
+                    foreColor: textColor,
+                    animations: { enabled: !isLight }
                 },
                 dataLabels: {
                     style: {
@@ -3748,7 +3751,8 @@ function toggleChartsTheme(isLight) {
             theme: { mode: themeMode },
             chart: {
                 height: chartHeight,
-                foreColor: textColor
+                foreColor: textColor,
+                animations: { enabled: !isLight }
             },
             dataLabels: {
                 style: {
@@ -3765,7 +3769,8 @@ function toggleChartsTheme(isLight) {
             theme: { mode: themeMode },
             chart: {
                 height: chartHeight,
-                foreColor: textColor
+                foreColor: textColor,
+                animations: { enabled: !isLight }
             },
             dataLabels: {
                 style: {
