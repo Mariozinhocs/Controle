@@ -2595,6 +2595,8 @@ function renderZonaDonut() {
         yaxis: {
             labels: {
                 show: true,
+                minWidth: 95,
+                maxWidth: 110,
                 style: {
                     fontSize: '11px',
                     fontWeight: 'bold'
@@ -3664,36 +3666,79 @@ function toggleChartsTheme(isLight) {
     const gridColor = isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.05)';
     const chartHeight = isLight ? 230 : 290;
     
-    const donutOpts = {
-        theme: { mode: themeMode },
-        chart: {
-            height: chartHeight,
-            foreColor: textColor
-        },
-        plotOptions: {
-            pie: {
-                donut: {
-                    labels: {
-                        value: { color: isLight ? '#0f172a' : '#ffffff' }
+    // 1. Gasto por Combustível (Sempre Donut)
+    if (state.charts.donut) {
+        state.charts.donut.updateOptions({
+            theme: { mode: themeMode },
+            chart: {
+                height: chartHeight,
+                foreColor: textColor
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        labels: {
+                            value: { color: isLight ? '#0f172a' : '#ffffff' }
+                        }
                     }
                 }
+            },
+            legend: {
+                labels: { colors: textColor }
             }
-        },
-        legend: {
-            labels: {
-                colors: textColor
-            }
-        }
-    };
-
-    if (state.charts.donut) {
-        state.charts.donut.updateOptions(donutOpts);
+        });
     }
     
+    // 2. Gasto por Zona (Pode ser Donut ou Barra Horizontal/Vertical ou Linha)
     if (state.charts.zonaDonut) {
-        state.charts.zonaDonut.updateOptions(donutOpts);
+        const type = state.charts.zonaDonut.w?.config?.chart?.type || 'donut';
+        if (type === 'donut' || type === 'pie') {
+            state.charts.zonaDonut.updateOptions({
+                theme: { mode: themeMode },
+                chart: {
+                    height: chartHeight,
+                    foreColor: textColor
+                },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            labels: {
+                                value: { color: isLight ? '#0f172a' : '#ffffff' }
+                            }
+                        }
+                    }
+                },
+                legend: {
+                    labels: { colors: textColor }
+                }
+            });
+        } else {
+            // Se for Barra ou Linha
+            const isHoriz = state.charts.zonaDonut.w?.config?.plotOptions?.bar?.horizontal;
+            state.charts.zonaDonut.updateOptions({
+                theme: { mode: themeMode },
+                chart: {
+                    height: chartHeight,
+                    foreColor: textColor
+                },
+                dataLabels: {
+                    style: {
+                        colors: isLight ? ['#000000'] : (isHoriz ? ['#ffffff'] : ['#94a3b8'])
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        show: true,
+                        minWidth: 95,
+                        maxWidth: 110
+                    }
+                },
+                grid: { borderColor: gridColor }
+            });
+        }
     }
     
+    // 3. Gasto Mensal (Barra Vertical)
     if (state.charts.bar) {
         state.charts.bar.updateOptions({
             theme: { mode: themeMode },
@@ -3701,16 +3746,27 @@ function toggleChartsTheme(isLight) {
                 height: chartHeight,
                 foreColor: textColor
             },
+            dataLabels: {
+                style: {
+                    colors: isLight ? ['#000000'] : ['#94a3b8']
+                }
+            },
             grid: { borderColor: gridColor }
         });
     }
     
+    // 4. Volume Mensal (Área)
     if (state.charts.area) {
         state.charts.area.updateOptions({
             theme: { mode: themeMode },
             chart: {
                 height: chartHeight,
                 foreColor: textColor
+            },
+            dataLabels: {
+                style: {
+                    colors: isLight ? ['#000000'] : ['#ffffff']
+                }
             },
             grid: { borderColor: gridColor }
         });
