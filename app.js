@@ -3056,12 +3056,20 @@ function generateAndDownloadMockData() {
 
     const ZONAS = ['Zona Sul', 'Zona Norte', 'Zona Leste', 'Zona Oeste', 'Zona Centro-Sul'];
     const RESPONSAVEIS = ['João Silva', 'Maria Souza', 'Carlos Lima', 'Ana Oliveira', 'Paulo Santos'];
+
     const VEICULOS = [
         { nome: 'Caminhão 1', placa: 'ABC-1234', combustivel: 'Diesel' },
         { nome: 'Caminhão 2', placa: 'XYZ-5678', combustivel: 'Diesel' },
         { nome: 'Van Frota', placa: 'MNO-9012', combustivel: 'Gasolina' },
         { nome: 'Fiat Uno Cargo', placa: 'QWE-3456', combustivel: 'Etanol' },
-        { nome: 'Chevrolet Onix', placa: 'JKL-7890', combustivel: 'Gasolina' }
+        { nome: 'Chevrolet Onix', placa: 'JKL-7890', combustivel: 'Gasolina' },
+        { nome: 'Hyundai HB20', placa: 'OPQ-1122', combustivel: 'Etanol' },
+        { nome: 'Toyota Hilux', placa: 'RST-3344', combustivel: 'Diesel' },
+        { nome: 'Ford Ka Sedan', placa: 'UVW-5566', combustivel: 'Gasolina' },
+        { nome: 'Renault Master', placa: 'XYZ-7788', combustivel: 'Diesel' },
+        { nome: 'Volkswagen Gol', placa: 'ABC-9900', combustivel: 'Gasolina' },
+        { nome: 'Fiat Fiorino', placa: 'FIO-2026', combustivel: 'Etanol' },
+        { nome: 'Jeep Compass', placa: 'JEP-3040', combustivel: 'Diesel' }
     ];
 
     const PRECOS = {
@@ -3075,7 +3083,14 @@ function generateAndDownloadMockData() {
         'XYZ-5678': 120000,
         'MNO-9012': 45000,
         'QWE-3456': 62000,
-        'JKL-7890': 28000
+        'JKL-7890': 28000,
+        'OPQ-1122': 31000,
+        'RST-3344': 95000,
+        'UVW-5566': 54000,
+        'XYZ-7788': 140000,
+        'ABC-9900': 73000,
+        'FIO-2026': 18000,
+        'JEP-3040': 67000
     };
 
     const startDate = new Date();
