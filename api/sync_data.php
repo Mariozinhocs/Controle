@@ -24,12 +24,12 @@ try {
     $pdo->beginTransaction();
 
     // 1. Limpar lançamentos antigos deste ambiente (para substituir pelo novo estado enviado)
-    $stmtDel = $pdo->prepare("DELETE FROM requisicoes WHERE environment = :env");
+    $stmtDel = $pdo->prepare("DELETE FROM $table_requisicoes WHERE environment = :env");
     $stmtDel->execute(['env' => $env]);
 
     // 2. Inserir os novos lançamentos
     if (isset($input['requisicoes']) && is_array($input['requisicoes'])) {
-        $stmtInsert = $pdo->prepare("INSERT INTO requisicoes 
+        $stmtInsert = $pdo->prepare("INSERT INTO $table_requisicoes 
             (id, date, inicioSeq, fimSeq, qtdRequisicoes, zona, responsavel, posto, motorista, veiculo, placa, kmAnterior, km, combustivel, litros, precoLitro, valor, environment)
             VALUES 
             (:id, :date, :inicioSeq, :fimSeq, :qtdRequisicoes, :zona, :responsavel, :posto, :motorista, :veiculo, :placa, :kmAnterior, :km, :combustivel, :litros, :precoLitro, :valor, :env)");
@@ -61,7 +61,7 @@ try {
     }
 
     // 3. Atualizar configurações do ambiente
-    $stmtConf = $pdo->prepare("INSERT INTO configuracoes 
+    $stmtConf = $pdo->prepare("INSERT INTO $table_configuracoes 
         (environment, custom_bases, custom_postos, custom_motoristas, custom_veiculos, custom_requisicoes)
         VALUES (:env, :bases, :postos, :motoristas, :veiculos, :requisicoes)
         ON DUPLICATE KEY UPDATE 

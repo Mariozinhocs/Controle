@@ -42,7 +42,7 @@ try {
     if ($id > 0) {
         // Atualiza veículo contratado existente
         $stmt = $pdo->prepare("
-            UPDATE veiculos_contratados 
+            UPDATE $table_veiculos_contratados 
             SET tipo_veiculo = :tipo_veiculo,
                 ano = :ano,
                 placa = :placa,
@@ -71,7 +71,7 @@ try {
     } else {
         // Insere novo veículo contratado
         $stmt = $pdo->prepare("
-            INSERT INTO veiculos_contratados (
+            INSERT INTO $table_veiculos_contratados (
                 tipo_veiculo, ano, placa, empresa, motorista, fone_motorista, local_atuacao, tipo_contrato, combustivel, environment
             ) VALUES (
                 :tipo_veiculo, :ano, :placa, :empresa, :motorista, :fone_motorista, :local_atuacao, :tipo_contrato, :combustivel, :environment

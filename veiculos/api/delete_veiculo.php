@@ -22,7 +22,7 @@ if (!$inputData || !isset($inputData['id'])) {
 $id = intval($inputData['id']);
 
 try {
-    $stmt = $pdo->prepare("DELETE FROM veiculos_contratados WHERE id = :id");
+    $stmt = $pdo->prepare("DELETE FROM $table_veiculos_contratados WHERE id = :id");
     $stmt->execute(['id' => $id]);
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {

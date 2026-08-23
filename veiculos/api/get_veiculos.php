@@ -18,7 +18,7 @@ if (empty($env)) {
 
 try {
     // 1. Garantir que a tabela veiculos_contratados existe no MySQL
-    $pdo->exec("CREATE TABLE IF NOT EXISTS veiculos_contratados (
+    $pdo->exec("CREATE TABLE IF NOT EXISTS $table_veiculos_contratados (
         id INT AUTO_INCREMENT PRIMARY KEY,
         tipo_veiculo VARCHAR(100) NOT NULL,
         ano VARCHAR(10) DEFAULT '',
@@ -34,12 +34,12 @@ try {
     )");
 
     // 2. Buscar veículos contratados cadastrados para o ambiente ativo
-    $stmt = $pdo->prepare("SELECT * FROM veiculos_contratados WHERE environment = :env ORDER BY tipo_veiculo ASC, placa ASC");
+    $stmt = $pdo->prepare("SELECT * FROM $table_veiculos_contratados WHERE environment = :env ORDER BY tipo_veiculo ASC, placa ASC");
     $stmt->execute(['env' => $env]);
     $veiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // 3. Buscar lançamentos para cruzamento de consumo em PHP (robusto contra tipos strings/varchars de KM)
-    $stmtStats = $pdo->prepare("SELECT placa, kmAnterior, km, litros, valor FROM requisicoes WHERE environment = :env");
+    $stmtStats = $pdo->prepare("SELECT placa, kmAnterior, km, litros, valor FROM $table_requisicoes WHERE environment = :env");
     $stmtStats->execute(['env' => $env]);
     $allReqs = $stmtStats->fetchAll(PDO::FETCH_ASSOC);
 

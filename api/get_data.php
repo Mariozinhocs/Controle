@@ -13,20 +13,20 @@ if (empty($env)) {
 
 try {
     // 1. Buscar Lançamentos (Requisicoes)
-    $stmt = $pdo->prepare("SELECT * FROM requisicoes WHERE environment = :env");
+    $stmt = $pdo->prepare("SELECT * FROM $table_requisicoes WHERE environment = :env");
     $stmt->execute(['env' => $env]);
     $requisicoes = $stmt->fetchAll();
 
     // 2. Buscar Configurações
-    $stmtConfig = $pdo->prepare("SELECT * FROM configuracoes WHERE environment = :env");
+    $stmtConfig = $pdo->prepare("SELECT * FROM $table_configuracoes WHERE environment = :env");
     $stmtConfig->execute(['env' => $env]);
     $config = $stmtConfig->fetch();
 
     // 3. Buscar Lista de Todos os Ambientes cadastrados no banco
-    $stmtEnvs1 = $pdo->query("SELECT DISTINCT environment FROM requisicoes");
+    $stmtEnvs1 = $pdo->query("SELECT DISTINCT environment FROM $table_requisicoes");
     $envs1 = $stmtEnvs1->fetchAll(PDO::FETCH_COLUMN);
 
-    $stmtEnvs2 = $pdo->query("SELECT DISTINCT environment FROM configuracoes");
+    $stmtEnvs2 = $pdo->query("SELECT DISTINCT environment FROM $table_configuracoes");
     $envs2 = $stmtEnvs2->fetchAll(PDO::FETCH_COLUMN);
 
     $allEnvs = array_unique(array_merge(['Frota Principal'], $envs1, $envs2));
