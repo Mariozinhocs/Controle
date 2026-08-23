@@ -31,9 +31,21 @@ try {
 
         // Criação automática das tabelas HML com a mesma estrutura das oficiais por segurança
         try {
+            // 1. Requisicoes
             $pdo->exec("CREATE TABLE IF NOT EXISTS hml_requisicoes LIKE requisicoes");
+            $checkReq = $pdo->query("SELECT COUNT(*) FROM hml_requisicoes")->fetchColumn();
+            if ($checkReq == 0) {
+                $pdo->exec("INSERT INTO hml_requisicoes SELECT * FROM requisicoes");
+            }
+
+            // 2. Configuracoes
             $pdo->exec("CREATE TABLE IF NOT EXISTS hml_configuracoes LIKE configuracoes");
+            $checkConf = $pdo->query("SELECT COUNT(*) FROM hml_configuracoes")->fetchColumn();
+            if ($checkConf == 0) {
+                $pdo->exec("INSERT INTO hml_configuracoes SELECT * FROM configuracoes");
+            }
             
+            // 3. Veiculos Contratados
             // Caso a tabela veiculos_contratados ainda não exista, cria a estrutura original básica primeiro
             $pdo->exec("CREATE TABLE IF NOT EXISTS veiculos_contratados (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -50,6 +62,10 @@ try {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )");
             $pdo->exec("CREATE TABLE IF NOT EXISTS hml_veiculos_contratados LIKE veiculos_contratados");
+            $checkVeic = $pdo->query("SELECT COUNT(*) FROM hml_veiculos_contratados")->fetchColumn();
+            if ($checkVeic == 0) {
+                $pdo->exec("INSERT INTO hml_veiculos_contratados SELECT * FROM veiculos_contratados");
+            }
         } catch (PDOException $ex) {
             // Em caso de erro na cópia LIKE, prossegue (pode ser que já existam)
         }
