@@ -3184,17 +3184,93 @@ function generateExcelWorkbook() {
         return s;
     }
 
-    const data = state.rawData.map(row => {
+    // 1. Aba "Lançamentos Filtrados"
+    const filtradosData = state.filteredData.map(row => {
         const dObj = (row.date instanceof Date) ? row.date : new Date(row.date);
         const dia = padZero(isNaN(dObj.getTime()) ? 1 : dObj.getDate(), 2);
         const mes = padZero(isNaN(dObj.getTime()) ? 1 : dObj.getMonth() + 1, 2);
         const ano = isNaN(dObj.getTime()) ? 2026 : dObj.getFullYear();
         const dataFmt = `${dia}/${mes}/${ano}`;
 
+        const totalLitros = row.litros * row.qtdRequisicoes;
         const precoNum = Number(row.precoLitro);
         const valorNum = Number(row.valor);
-        const precoFormatado = isNaN(precoNum) ? "0,00" : precoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const valorFormatado = isNaN(valorNum) ? "0,00" : valorNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        return {
+            'Data': dataFmt,
+            'Início da Sequência': row.inicioSeq,
+            'Fim da Sequência': row.fimSeq,
+            'Qtd Requisições': row.qtdRequisicoes,
+            'Base': row.zona,
+            'Responsável': row.responsavel,
+            'Motorista': row.motorista || 'Não Informado',
+            'Posto': row.posto || 'Não Informado',
+            'Veículo': row.veiculo,
+            'Placa': row.placa,
+            'KM Anterior': row.kmAnterior || '',
+            'KM Atual': row.km || '',
+            'Tipo Combustível': row.combustivel,
+            'Litros/Req': row.litros,
+            'Total Litros': totalLitros,
+            'Preço Litro (R$)': precoNum,
+            'Valor Total (R$)': valorNum
+        };
+    });
+
+    // 2. Aba "Resumo por Base"
+    const aggBases = {};
+    state.filteredData.forEach(row => {
+        const baseKey = row.zona || 'Não Informado';
+        if (!aggBases[baseKey]) {
+            aggBases[baseKey] = { 'Base': baseKey, 'Qtd Requisições': 0, 'Total Consumido (Litros)': 0, 'Total Gasto (R$)': 0 };
+        }
+        aggBases[baseKey]['Qtd Requisições'] += row.qtdRequisicoes;
+        aggBases[baseKey]['Total Consumido (Litros)'] += (row.litros * row.qtdRequisicoes);
+        aggBases[baseKey]['Total Gasto (R$)'] += row.valor;
+    });
+    const basesData = Object.values(aggBases).sort((a, b) => b['Total Gasto (R$)'] - a['Total Gasto (R$)']);
+
+    // 3. Aba "Resumo por Motorista"
+    const aggMotoristas = {};
+    state.filteredData.forEach(row => {
+        const motKey = row.motorista || 'Não Informado';
+        if (!aggMotoristas[motKey]) {
+            aggMotoristas[motKey] = { 'Motorista': motKey, 'Qtd Requisições': 0, 'Total Consumido (Litros)': 0, 'Total Gasto (R$)': 0 };
+        }
+        aggMotoristas[motKey]['Qtd Requisições'] += row.qtdRequisicoes;
+        aggMotoristas[motKey]['Total Consumido (Litros)'] += (row.litros * row.qtdRequisicoes);
+        aggMotoristas[motKey]['Total Gasto (R$)'] += row.valor;
+    });
+    const motoristasData = Object.values(aggMotoristas).sort((a, b) => b['Total Gasto (R$)'] - a['Total Gasto (R$)']);
+
+    // 4. Aba "Resumo por Veículo"
+    const aggVeiculos = {};
+    state.filteredData.forEach(row => {
+        const veicKey = row.veiculo || 'Não Informado';
+        if (!aggVeiculos[veicKey]) {
+            aggVeiculos[veicKey] = { 'Veículo': veicKey, 'Placas Associadas': new Set(), 'Qtd Requisições': 0, 'Total Consumido (Litros)': 0, 'Total Gasto (R$)': 0 };
+        }
+        aggVeiculos[veicKey]['Qtd Requisições'] += row.qtdRequisicoes;
+        aggVeiculos[veicKey]['Total Consumido (Litros)'] += (row.litros * row.qtdRequisicoes);
+        aggVeiculos[veicKey]['Total Gasto (R$)'] += row.valor;
+        if (row.placa) aggVeiculos[veicKey]['Placas Associadas'].add(row.placa);
+    });
+    const veiculosData = Object.values(aggVeiculos).map(row => {
+        return {
+            'Veículo': row['Veículo'],
+            'Placas Associadas': Array.from(row['Placas Associadas']).join(', '),
+            'Qtd Requisições': row['Qtd Requisições'],
+            'Total Consumido (Litros)': row['Total Consumido (Litros)'],
+            'Total Gasto (R$)': row['Total Gasto (R$)']
+        };
+    }).sort((a, b) => b['Total Gasto (R$)'] - a['Total Gasto (R$)']);
+
+    // 5. Aba "Banco de Dados Completo"
+    const backupData = state.rawData.map(row => {
+        const dObj = (row.date instanceof Date) ? row.date : new Date(row.date);
+        const dia = padZero(isNaN(dObj.getTime()) ? 1 : dObj.getDate(), 2);
+        const mes = padZero(isNaN(dObj.getTime()) ? 1 : dObj.getMonth() + 1, 2);
+        const dataFmt = `${dia}/${mes}/${isNaN(dObj.getTime()) ? 2026 : dObj.getFullYear()}`;
 
         return {
             'Data': dataFmt,
@@ -3211,16 +3287,21 @@ function generateExcelWorkbook() {
             'KM Atual': row.km || '',
             'Tipo Combustível': row.combustivel,
             'Litros': row.litros,
-            'Preço Litro': `R$ ${precoFormatado}`,
-            'Valor': `R$ ${valorFormatado}`
+            'Preço Litro': row.precoLitro,
+            'Valor': row.valor
         };
     });
 
-    const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Controle");
+    
+    // Anexar abas ao workbook
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filtradosData), "Lançamentos Filtrados");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(basesData), "Resumo por Base");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(motoristasData), "Resumo por Motorista");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(veiculosData), "Resumo por Veículo");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(backupData), "Banco de Dados Completo");
 
-    // Salvar preferências em uma aba extra "Configuracoes"
+    // Aba extra com configurações para restauração de backups
     const configData = [{
         kpi_order: localStorage.getItem('kpi_cards_order') || "",
         charts_order: localStorage.getItem('charts_grid_order') || "",
@@ -3231,8 +3312,7 @@ function generateExcelWorkbook() {
         custom_veiculos: JSON.stringify(state.customVeiculos || []),
         custom_requisicoes: JSON.stringify(state.customRequisicoes || [])
     }];
-    const wsConfig = XLSX.utils.json_to_sheet(configData);
-    XLSX.utils.book_append_sheet(wb, wsConfig, "Configuracoes");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(configData), "Configuracoes");
 
     return wb;
 }

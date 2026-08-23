@@ -1032,7 +1032,7 @@ body {
         margin: 0 !important;
         padding: 0 !important;
         box-sizing: border-box !important;
-        zoom: 95%; /* Proporção ideal para aproveitamento de largura em Paisagem */
+        zoom: 80%; /* Zoom compacto para garantir o encaixe perfeito da tabela de 15 colunas sem corte */
     }
 
     /* Ocultar elementos de navegação e filtros irrelevantes */
@@ -1274,7 +1274,7 @@ body {
     }
 
     .data-table {
-        font-size: 7pt !important;
+        font-size: 6.5pt !important;
         width: 100% !important;
         table-layout: auto !important;
     }
@@ -1284,7 +1284,7 @@ body {
         color: #334155 !important;
         border-bottom: 2px solid #cbd5e1 !important;
         position: relative !important;
-        padding: 4px 6px !important;
+        padding: 2px 3px !important;
         word-wrap: break-word !important;
         white-space: normal !important;
     }
@@ -1292,7 +1292,7 @@ body {
     .data-table td {
         border-bottom: 1px solid #e2e8f0 !important;
         color: #0f172a !important;
-        padding: 4px 6px !important;
+        padding: 2px 3px !important;
         word-wrap: break-word !important;
         white-space: normal !important;
     }
