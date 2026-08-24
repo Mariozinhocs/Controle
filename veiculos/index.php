@@ -96,6 +96,11 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                     <img src="../app_icon.png" alt="Controle Icon" class="logo-img-icon">
                     <h2 class="logo-text">Contratos</h2>
                 </div>
+                <button class="btn-sidebar-toggle" id="btn-toggle-sidebar" title="Contrair / Expandir Barra Lateral">
+                    <svg id="sidebar-toggle-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                    </svg>
+                </button>
             </div>
             
             <div class="kpi-group">
@@ -118,8 +123,8 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
             </div>
 
             <div class="sidebar-signature">
-                <p class="sig-author">Desenvolvido por Mario Henrique</p>
-                <p class="sig-email">mariozinhocs@gmail.com</p>
+                <p class="sig-author">Desenvolvido por MzN</p>
+                <p class="sig-quote">"si vis pacem para bellum"</p>
             </div>
         </aside>
 
@@ -175,33 +180,25 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
             <!-- TABELA DETALHADA -->
             <section class="table-section">
                 <div class="table-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                    <h2>Relação de Veículos</h2>
+                    <h2>Veículos & Locadoras</h2>
                     <div class="search-input-wrapper" style="position:relative; width: 300px;">
                         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="position:absolute; left:10px; top:12px; color:var(--text-secondary);">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
-                        <input type="text" id="table-search" placeholder="Pesquisar placa, tipo, motorista, empresa..." style="width:100%; padding:0.6rem 1rem 0.6rem 2.2rem; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); outline:none;">
+                        <input type="text" id="table-search" placeholder="Pesquisar..." style="width:100%; padding:0.6rem 1rem 0.6rem 2.2rem; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); color:var(--text-primary); outline:none;">
                     </div>
                 </div>
+
+                <div class="table-tabs" style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem;">
+                    <button class="tab-btn active" id="tab-veiculos" data-tab="veiculos">Relação de Veículos</button>
+                    <button class="tab-btn" id="tab-empresas" data-tab="empresas">Relação de Empresas</button>
+                </div>
+
                 <div class="table-wrapper">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Tipo de Veículo</th>
-                                <th>Ano</th>
-                                <th>Placa</th>
-                                <th>Empresa</th>
-                                <th>Motorista</th>
-                                <th>Telefone</th>
-                                <th>Local Atuação</th>
-                                <th>Contrato</th>
-                                <th>Combustível</th>
-                                <th>KM Rodados</th>
-                                <th>Consumo (L)</th>
-                                <th>Gasto Comb.</th>
-                                <th>Ações</th>
-                            </tr>
+                        <thead id="table-head">
+                            <!-- Gerado dinamicamente -->
                         </thead>
                         <tbody id="table-body">
                             <!-- Gerado dinamicamente -->
@@ -293,6 +290,6 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     </div>
 
     <!-- Script de lógica específica -->
-    <script src="veiculos.js?v=2" defer></script>
+    <script src="veiculos.js?v=3" defer></script>
 </body>
 </html>

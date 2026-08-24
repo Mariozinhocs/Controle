@@ -168,8 +168,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
 
             <!-- Assinatura Pessoal -->
             <div class="sidebar-signature">
-                <p class="sig-author">Desenvolvido por Mario Henrique</p>
-                <p class="sig-email">mariozinhocs@gmail.com</p>
+                <p class="sig-author">Desenvolvido por MzN</p>
                 <p class="sig-quote">"si vis pacem para bellum"</p>
             </div>
         </aside>

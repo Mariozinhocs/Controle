@@ -8,6 +8,7 @@ const LOCAL_KEYS_FALLBACK = '../keys.json';
 
 const state = {
     activeEnv: 'Frota Principal',
+    activeTab: 'veiculos',
     veiculos: [],
     charts: {
         contrato: null,
@@ -41,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initLicenseValidation();
+    initSidebarToggle();
     initEventListeners();
 });
 
@@ -217,63 +219,164 @@ function updateKPIs() {
 // RENDERIZAR TABELA DADOS
 function renderTable(filterQuery = '') {
     const tbody = document.getElementById('table-body');
-    if (!tbody) return;
+    const thead = document.getElementById('table-head');
+    if (!tbody || !thead) return;
     tbody.innerHTML = '';
 
     const cleanQuery = filterQuery.toLowerCase().trim();
 
-    const filtered = state.veiculos.filter(v => {
-        if (!cleanQuery) return true;
-        return (
-            (v.placa || '').toLowerCase().includes(cleanQuery) ||
-            (v.tipo_veiculo || '').toLowerCase().includes(cleanQuery) ||
-            (v.empresa || '').toLowerCase().includes(cleanQuery) ||
-            (v.motorista || '').toLowerCase().includes(cleanQuery) ||
-            (v.local_atuacao || '').toLowerCase().includes(cleanQuery)
-        );
-    });
-
-    if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:2rem; color:var(--text-muted);">Nenhum veículo contratado encontrado.</td></tr>`;
-        return;
-    }
-
-    filtered.forEach(v => {
-        const kmRodados = v.km_rodados > 0 ? `${v.km_rodados.toLocaleString('pt-BR')} km` : '-';
-        const litros = v.litros_consumidos > 0 ? `${parseFloat(v.litros_consumidos).toLocaleString('pt-BR', {maximumFractionDigits:2})} L` : '-';
-        const gastoComb = v.gasto_combustivel > 0 ? v.gasto_combustivel.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><strong>${v.tipo_veiculo}</strong></td>
-            <td>${v.ano || '-'}</td>
-            <td><span class="file-badge" style="background:rgba(255,183,3,0.1); color:var(--accent-yellow); font-weight:700;">${v.placa}</span></td>
-            <td>${v.empresa}</td>
-            <td>${v.motorista || '-'}</td>
-            <td>${v.fone_motorista || '-'}</td>
-            <td>${v.local_atuacao || '-'}</td>
-            <td><span style="font-weight:700; color:${v.tipo_contrato === 'ALUGADO' ? 'var(--accent-yellow)' : '#4ade80'};">${v.tipo_contrato}</span></td>
-            <td>${v.combustivel}</td>
-            <td>${kmRodados}</td>
-            <td>${litros}</td>
-            <td>${gastoComb}</td>
-            <td>
-                <button class="btn-edit" onclick="editVeiculo(${v.id})" title="Editar veículo contratado">
-                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                </button>
-                <button class="btn-delete" onclick="deleteVeiculo(${v.id})" title="Excluir veículo contratado">
-                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                </button>
-            </td>
+    if (state.activeTab === 'veiculos') {
+        // Render headers
+        thead.innerHTML = `
+            <tr>
+                <th>Tipo de Veículo</th>
+                <th>Ano</th>
+                <th>Placa</th>
+                <th>Empresa</th>
+                <th>Motorista</th>
+                <th>Telefone</th>
+                <th>Local Atuação</th>
+                <th>Contrato</th>
+                <th>Combustível</th>
+                <th>KM Rodados</th>
+                <th>Consumo (L)</th>
+                <th>Gasto Comb.</th>
+                <th>Ações</th>
+            </tr>
         `;
-        tbody.appendChild(tr);
-    });
+
+        const filtered = state.veiculos.filter(v => {
+            if (!cleanQuery) return true;
+            return (
+                (v.placa || '').toLowerCase().includes(cleanQuery) ||
+                (v.tipo_veiculo || '').toLowerCase().includes(cleanQuery) ||
+                (v.empresa || '').toLowerCase().includes(cleanQuery) ||
+                (v.motorista || '').toLowerCase().includes(cleanQuery) ||
+                (v.local_atuacao || '').toLowerCase().includes(cleanQuery)
+            );
+        });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:2rem; color:var(--text-muted);">Nenhum veículo contratado encontrado.</td></tr>`;
+            return;
+        }
+
+        filtered.forEach(v => {
+            const kmRodados = v.km_rodados > 0 ? `${v.km_rodados.toLocaleString('pt-BR')} km` : '-';
+            const litros = v.litros_consumidos > 0 ? `${parseFloat(v.litros_consumidos).toLocaleString('pt-BR', {maximumFractionDigits:2})} L` : '-';
+            const gastoComb = v.gasto_combustivel > 0 ? v.gasto_combustivel.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${v.tipo_veiculo}</strong></td>
+                <td>${v.ano || '-'}</td>
+                <td><span class="file-badge" style="background:rgba(255,183,3,0.1); color:var(--accent-yellow); font-weight:700;">${v.placa}</span></td>
+                <td>${v.empresa}</td>
+                <td>${v.motorista || '-'}</td>
+                <td>${v.fone_motorista || '-'}</td>
+                <td>${v.local_atuacao || '-'}</td>
+                <td><span style="font-weight:700; color:${v.tipo_contrato === 'ALUGADO' ? 'var(--accent-yellow)' : '#4ade80'};">${v.tipo_contrato}</span></td>
+                <td>${v.combustivel}</td>
+                <td>${kmRodados}</td>
+                <td>${litros}</td>
+                <td>${gastoComb}</td>
+                <td>
+                    <button class="btn-edit" onclick="editVeiculo(${v.id})" title="Editar veículo contratado">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="btn-delete" onclick="deleteVeiculo(${v.id})" title="Excluir veículo contratado">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } else {
+        // Render headers for companies
+        thead.innerHTML = `
+            <tr>
+                <th>Empresa / Locadora</th>
+                <th>Qtd Veículos</th>
+                <th>Custo Mensal Contratos</th>
+                <th>KM Rodados (Total)</th>
+                <th>Consumo Total (L)</th>
+                <th>Gasto Combustível</th>
+                <th>Veículos da Frota</th>
+            </tr>
+        `;
+
+        // Agrupar veículos por empresa
+        const grouped = {};
+        state.veiculos.forEach(v => {
+            const emp = v.empresa || 'Sem Empresa';
+            if (!grouped[emp]) {
+                grouped[emp] = {
+                    empresa: emp,
+                    veiculos: [],
+                    totalValor: 0,
+                    kmRodados: 0,
+                    consumo: 0,
+                    gastoComb: 0
+                };
+            }
+            grouped[emp].veiculos.push(v);
+            grouped[emp].totalValor += parseFloat(v.valor_contrato) || 0;
+            grouped[emp].kmRodados += parseFloat(v.km_rodados) || 0;
+            grouped[emp].consumo += parseFloat(v.litros_consumidos) || 0;
+            grouped[emp].gastoComb += parseFloat(v.gasto_combustivel) || 0;
+        });
+
+        const groupedArray = Object.values(grouped);
+        const filteredGrouped = groupedArray.filter(g => {
+            if (!cleanQuery) return true;
+            if (g.empresa.toLowerCase().includes(cleanQuery)) return true;
+            return g.veiculos.some(v => 
+                (v.placa || '').toLowerCase().includes(cleanQuery) ||
+                (v.tipo_veiculo || '').toLowerCase().includes(cleanQuery) ||
+                (v.motorista || '').toLowerCase().includes(cleanQuery)
+            );
+        });
+
+        if (filteredGrouped.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Nenhuma locadora ou empresa encontrada.</td></tr>`;
+            return;
+        }
+
+        filteredGrouped.forEach(g => {
+            const kmTotal = g.kmRodados > 0 ? `${g.kmRodados.toLocaleString('pt-BR')} km` : '-';
+            const litrosTotal = g.consumo > 0 ? `${g.consumo.toLocaleString('pt-BR', {maximumFractionDigits:2})} L` : '-';
+            const gastoCombTotal = g.gastoComb > 0 ? g.gastoComb.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+            const valorContratos = g.totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            const badgesHtml = g.veiculos.map(v => `
+                <span class="file-badge" tabindex="0" style="background:rgba(255, 183, 3, 0.05); color:var(--accent-yellow); border-color:rgba(255, 183, 3, 0.15); font-size:11px; padding:2px 6px; font-weight:700; cursor:pointer;" title="${v.tipo_veiculo} | ${v.motorista || 'Sem Motorista'}" onclick="editVeiculo(${v.id})" onkeydown="if(event.key === 'Enter') editVeiculo(${v.id})">
+                    ${v.placa}
+                </span>
+            `).join('');
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${g.empresa}</strong></td>
+                <td><span class="file-badge" style="background:rgba(255,255,255,0.05); color:var(--text-secondary);">${g.veiculos.length}</span></td>
+                <td><strong>${valorContratos}</strong></td>
+                <td>${kmTotal}</td>
+                <td>${litrosTotal}</td>
+                <td>${gastoCombTotal}</td>
+                <td>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                        ${badgesHtml}
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
 }
 
 // APEXCHARTS RENDER
@@ -435,6 +538,18 @@ function initEventListeners() {
         });
     }
 
+    // Tab switching listener
+    const tabBtns = document.querySelectorAll('.table-tabs .tab-btn');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.activeTab = btn.getAttribute('data-tab');
+            const searchVal = document.getElementById('table-search')?.value || '';
+            renderTable(searchVal);
+        });
+    });
+
     // Botão Voltar para painel de combustível
     const btnBack = document.getElementById('btn-back-dashboard');
     if (btnBack) {
@@ -541,4 +656,31 @@ function exportToExcel() {
         console.error(e);
         alert('Erro ao exportar base de contratos para Excel.');
     }
+}
+
+// ==========================================
+// SISTEMA DE SIDEBAR RETRÁTIL (ÍCONE)
+// ==========================================
+function initSidebarToggle() {
+    const btnToggle = document.getElementById('btn-toggle-sidebar');
+    const container = document.getElementById('app-container');
+
+    if (!btnToggle || !container) return;
+
+    // Restaurar estado salvo no localStorage
+    const savedState = localStorage.getItem('controle_sidebar_collapsed');
+    if (savedState === 'true') {
+        container.classList.add('sidebar-collapsed');
+    }
+
+    btnToggle.addEventListener('click', () => {
+        container.classList.toggle('sidebar-collapsed');
+        const isCollapsed = container.classList.contains('sidebar-collapsed');
+        localStorage.setItem('controle_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+
+        // Disparar evento de resize da janela para redimensionar os gráficos ApexCharts automaticamente
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 300);
+    });
 }
