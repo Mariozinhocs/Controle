@@ -82,6 +82,7 @@ Upload-File "$localDir\backup_repo.html" "Frota_B/backup_repo.html"
 Upload-File "$localDir\styles_repo.css" "Frota_B/styles_repo.css"
 
 # 3. Upload das APIs PHP
+Upload-File "$localDir\api\logger.php" "Frota_B/api/logger.php"
 Upload-File "$localDir\api\db.php" "Frota_B/api/db.php"
 Upload-File "$localDir\api\get_data.php" "Frota_B/api/get_data.php"
 Upload-File "$localDir\api\sync_data.php" "Frota_B/api/sync_data.php"

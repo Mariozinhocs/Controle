@@ -7,6 +7,14 @@
 session_start();
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/db.php'; // Carrega logger.php e conexão PDO
+
+if (isset($_SESSION['repo_authenticated']) && $_SESSION['repo_authenticated'] === true) {
+    writeAuditLog($pdo, "Encerramento de sessão (Logout) no Repositório de Backups", [
+        'username' => $_SESSION['repo_user'] ?? 'N/A'
+    ]);
+}
+
 // Destruir todas as variáveis de sessão
 $_SESSION = array();
 

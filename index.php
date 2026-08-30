@@ -50,7 +50,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <link rel="shortcut icon" href="favicon.ico">
     <link rel="apple-touch-icon" href="app_icon.png">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=23">
+    <link rel="stylesheet" href="styles.css?v=50">
 
     <!-- Bibliotecas Locais para funcionamento Offline -->
     <script src="libs/xlsx.mini.min.js"></script>
@@ -166,10 +166,11 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                 </div>
             </div>
 
-            <!-- Assinatura Pessoal -->
+            <!-- Assinatura A-Team -->
             <div class="sidebar-signature">
-                <p class="sig-author">Desenvolvido por MzN</p>
-                <p class="sig-quote">"si vis pacem para bellum"</p>
+                <p class="sig-author">© 2026 Controle de Requisições</p>
+                <p class="sig-email">Hub Digital 360</p>
+                <p class="sig-quote" style="font-family: inherit; font-style: normal; font-size: 0.65rem; opacity: 0.5;">Todos os direitos reservados.</p>
             </div>
         </aside>
 
@@ -213,6 +214,12 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                         </svg>
                         Limpar
                     </button>
+                    <!-- Botão Alternar Tema (Claro/Escuro) -->
+                    <button class="btn btn-secondary btn-icon" id="btn-toggle-theme" title="Alternar entre modo claro e escuro" style="padding: 0.4rem 0.6rem;">
+                        <svg id="theme-toggle-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle;">
+                            <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" />
+                        </svg>
+                    </button>
                     <!-- Botão de Tela Cheia -->
                     <button class="btn btn-secondary btn-icon" id="btn-fullscreen" title="Alternar Modo Tela Cheia (Fullscreen)">
                         <svg id="icon-fullscreen" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle;">
@@ -239,6 +246,17 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                             <rect x="6" y="14" width="12" height="8" />
                         </svg>
                         Gerar Relatório
+                    </button>
+                    <!-- Botão de Relatório Simplificado (à direita de Gerar Relatório) -->
+                    <button class="btn btn-secondary btn-icon" id="btn-open-relatorio-simplificado" title="Gerar Relatório Simplificado de Requisições">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle; margin-right:4px;">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        Relatório Simplificado
                     </button>
                     <!-- Botão de Exportar Excel -->
                     <button class="btn btn-secondary btn-icon" id="btn-export-excel"
@@ -271,6 +289,13 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                         </svg>
                         Cadastros
+                    </button>
+                    <!-- Botão Dispensador Visual -->
+                    <button class="btn btn-primary btn-icon" id="btn-open-dispensador" title="Acessar o Dispensador Visual de Requisições por Lotes" onclick="window.location.href='./lab/'" style="background: linear-gradient(135deg, #ffb703, #fb8500); color: #000; font-weight: 700; border: none;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle; margin-right:4px;">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                        Dispensador Visual
                     </button>
                     <!-- Botão de Nova Requisição -->
                     <button class="btn btn-primary btn-icon" id="btn-open-add-requisicao"
@@ -316,28 +341,11 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
 
             <!-- FILTROS (SLICERS INTERATIVOS) -->
             <section class="filters-section">
-                <!-- ASSISTENTE NATURAL DE FILTROS (NLQ) -->
-                <div class="nlq-container collapsed" id="nlq-container">
-                    <div class="nlq-header" id="nlq-toggle" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <svg class="nlq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
-                                <line x1="12" y1="22" x2="12" y2="12"/>
-                                <line x1="12" y1="12" x2="22" y2="8.5"/>
-                                <line x1="12" y1="12" x2="2" y2="8.5"/>
-                            </svg>
-                            <h3>🤖 Assistente de Busca (Pergunte ao Dashboard)</h3>
-                        </div>
-                        <svg class="toggle-arrow" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="transition: transform 0.3s; color: var(--text-secondary);">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                    </div>
-                    <div class="nlq-content">
-                        <div class="nlq-input-group">
-                            <input type="text" id="nlq-input" placeholder="Ex: 'Gasto de Diesel na Zona Sul nos últimos 7 dias', 'abastecimentos de ontem' ou 'limpar filtros'">
-                            <button class="btn btn-primary" id="btn-nlq-apply">Aplicar</button>
-                        </div>
-                        <div class="nlq-feedback" id="nlq-feedback">Aguardando pergunta para ajustar os filtros...</div>
+                <!-- Filtro Lotes -->
+                <div class="filter-group">
+                    <h3>Lotes de Requisição</h3>
+                    <div class="slicers" id="filter-lotes">
+                        <!-- Gerado dinamicamente no JS (LOTE 1 (7K), LOTE 2 (2K), LOTE 3 (15K)) -->
                     </div>
                 </div>
 
@@ -467,7 +475,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                             <button type="button" class="btn-config-chart" onclick="toggleChartConfig(this)" title="Personalizar gráfico">
                                 <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
                                     <circle cx="12" cy="12" r="3"></circle>
-                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l-.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                                 </svg>
                             </button>
                             <button type="button" class="btn-maximize-chart" onclick="toggleMaximizeChart(this)" title="Maximizar gráfico">
@@ -507,7 +515,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                             <button type="button" class="btn-config-chart" onclick="toggleChartConfig(this)" title="Personalizar gráfico">
                                 <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
                                     <circle cx="12" cy="12" r="3"></circle>
-                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l-.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                                 </svg>
                             </button>
                             <button type="button" class="btn-maximize-chart" onclick="toggleMaximizeChart(this)" title="Maximizar gráfico">
@@ -547,7 +555,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                             <button type="button" class="btn-config-chart" onclick="toggleChartConfig(this)" title="Personalizar gráfico">
                                 <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
                                     <circle cx="12" cy="12" r="3"></circle>
-                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l-.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                                 </svg>
                             </button>
                             <button type="button" class="btn-maximize-chart" onclick="toggleMaximizeChart(this)" title="Maximizar gráfico">
@@ -606,7 +614,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                             </svg>
                             <input type="text" id="table-search"
-                                placeholder="Pesquisar motorista, placa, veículo, base...">
+                                placeholder="Pesquisar requisição, motorista, placa, veículo, base...">
                         </div>
                     </div>
                 </div>
@@ -626,6 +634,9 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                         <tbody id="table-body">
                             <!-- Gerado dinamicamente -->
                         </tbody>
+                        <tfoot id="table-footer">
+                            <!-- Gerado dinamicamente -->
+                        </tfoot>
                     </table>
                 </div>
             </section>
@@ -715,13 +726,14 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <div class="modal-overlay" id="add-requisicao-modal">
         <div class="modal-content form-modal" style="max-width: 650px;">
             <button class="modal-close" id="btn-close-add-requisicao">&times;</button>
-            <h2>Nova Requisição</h2>
+            <h2 id="add-requisicao-modal-title">Nova Requisição</h2>
             <p style="margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--text-secondary);">
                 Preencha os campos abaixo para registrar um novo abastecimento diretamente no painel. O valor total será
                 calculado automaticamente.
             </p>
 
             <form id="form-add-requisicao">
+                <input type="hidden" id="input-edit-id" value="">
                 <div class="form-grid">
                     <!-- Modo de abastecimento (Litros ou Valor) -->
                     <div class="form-group" style="grid-column: span 2;">
@@ -734,6 +746,16 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                                 <input type="radio" name="input-modo-abastecimento" value="valor" style="width: auto; margin: 0;"> Por Valor Total (R$)
                             </label>
                         </div>
+                    </div>
+
+                    <!-- Seletor de Lote -->
+                    <div class="form-group">
+                        <label for="input-add-lote">Lote de Origem</label>
+                        <select id="input-add-lote" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; width: 100%;">
+                            <option value="LOTE 3 (15K)" selected>LOTE 3 (15K)</option>
+                            <option value="LOTE 1 (7K)">LOTE 1 (7K)</option>
+                            <option value="LOTE 2 (2K)">LOTE 2 (2K)</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
@@ -773,9 +795,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
 
                     <div class="form-group">
                         <label for="input-combustivel">Tipo de Combustível</label>
-                        <select id="input-combustivel" required>
-                            <option value="">Selecione...</option>
-                        </select>
+                        <input type="text" id="input-combustivel" list="datalist-combustiveis" placeholder="Digite ou selecione o combustível..." required>
                     </div>
 
                     <div class="form-group">
@@ -789,13 +809,8 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                     </div>
 
                     <div class="form-group">
-                        <label for="input-inicio-seq">Início Seq</label>
-                        <input type="text" id="input-inicio-seq" list="datalist-requisicoes" placeholder="Ex: 1001" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="input-fim-seq">Fim Seq</label>
-                        <input type="text" id="input-fim-seq" placeholder="Ex: 1010" required>
+                        <label for="input-inicio-seq">Nº da Requisição</label>
+                        <input type="text" id="input-inicio-seq" list="datalist-requisicoes" placeholder="Ex: 1787595670733-001" required>
                     </div>
 
                     <div class="form-group">
@@ -805,98 +820,242 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
 
                     <div class="form-group" id="group-litros">
                         <label for="input-litros">Litros por Requisição</label>
-                        <input type="number" id="input-litros" step="0.01" min="0" placeholder="Ex: 50.00" required>
+                        <div class="quick-litros-chips">
+                            <button type="button" class="btn-quick-litro" data-litro="15">15L</button>
+                            <button type="button" class="btn-quick-litro" data-litro="20">20L</button>
+                            <button type="button" class="btn-quick-litro" data-litro="25">25L</button>
+                            <button type="button" class="btn-quick-litro" data-litro="30">30L</button>
+                            <button type="button" class="btn-quick-litro" data-litro="50">50L</button>
+                        </div>
+                        <input type="number" id="input-litros" step="0.01" min="0" placeholder="Ex: 30.00" required>
                     </div>
 
                     <div class="form-group" id="group-valor-total" style="display: none;">
                         <label for="input-valor-total">Valor por Requisição (R$)</label>
-                        <input type="number" id="input-valor-total" step="0.01" min="0" placeholder="Ex: 250.00">
+                        <input type="number" id="input-valor-total" step="0.01" min="0" placeholder="Ex: 218.70">
                     </div>
 
                     <div class="form-group">
                         <label for="input-preco-litro">Preço por Litro</label>
-                        <input type="number" id="input-preco-litro" step="0.001" min="0" placeholder="Ex: 5.890" required>
+                        <input type="number" id="input-preco-litro" step="0.001" min="0" placeholder="Ex: 7.290" required>
                     </div>
                 </div>
 
                 <div class="form-actions"
                     style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
                     <button type="button" class="btn btn-secondary" id="btn-cancel-add-requisicao">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-add-requisicao">Salvar Requisição</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODAL DE GERENCIAR CADASTROS -->
+    <!-- MODAL DE GERENCIAR CADASTROS (CENTRAL ESTRUTURADA) -->
     <div class="modal-overlay" id="cadastros-modal">
-        <div class="modal-content" style="max-width: 550px;">
+        <div class="modal-content" style="max-width: 780px;">
             <button class="modal-close" id="btn-close-cadastros">&times;</button>
-            <h2>Cadastros de Apoio</h2>
+            <h2>Central de Cadastros</h2>
             <p style="margin-bottom: 1.25rem; font-size: 0.85rem; color: var(--text-secondary);">
-                Gerencie as listas auxiliares do sistema. Elas serão disponibilizadas como sugestões na tela de Nova Requisição.
+                Cadastre e gerencie Bases, Veículos, Postos e Lotes de Requisições com formulários estruturados.
             </p>
             
             <!-- Abas do Cadastro -->
             <div class="cadastro-tabs">
                 <button type="button" class="cadastro-tab-btn active" data-tab-id="tab-cad-bases">🏢 Bases & Resp.</button>
-                <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-postos">⛽ Postos</button>
-                <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-motoristas">🧑‍✈️ Motoristas</button>
-                <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-veiculos">🚗 Placas & Veículos</button>
-                <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-requisicoes">🎫 Requisições</button>
+                <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-veiculos">🚗 Veículos & Frotas</button>
+                <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-postos">⛽ Postos & Preços</button>
+                <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-lotes">📦 Lotes de Requisições</button>
+                <button type="button" class="cadastro-tab-btn" data-tab-id="tab-cad-massa">📋 Importação em Massa</button>
             </div>
             
-            <form id="form-cadastros" style="margin-top: 1rem;">
-                <!-- Conteúdo Aba: Bases & Responsáveis -->
-                <div class="cadastro-tab-content active" id="tab-cad-bases">
-                    <div class="form-group">
-                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Bases e Responsáveis Vinculados (um por linha)</label>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Formato: <code>Nome da Base - Nome do Responsável</code></p>
-                        <textarea id="textarea-custom-bases" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: Zona Sul - João Silva&#10;Zona Norte - Maria Souza"></textarea>
+            <!-- Conteúdo Aba 1: Bases & Responsáveis -->
+            <div class="cadastro-tab-content active" id="tab-cad-bases">
+                <div class="cad-form-card">
+                    <h4>➕ Cadastrar Nova Base & Responsável</h4>
+                    <div class="cad-form-grid">
+                        <div class="form-group">
+                            <label>Nome da Base / Setor</label>
+                            <input type="text" id="input-new-base-nome" placeholder="Ex: NORTE 5 ou SUL 2">
+                        </div>
+                        <div class="form-group">
+                            <label>Responsável Principal</label>
+                            <input type="text" id="input-new-base-resp" placeholder="Ex: CARLOS ALBERTO">
+                        </div>
+                        <button type="button" class="btn btn-primary" id="btn-add-base-item">
+                            Adicionar Base
+                        </button>
                     </div>
                 </div>
 
-                <!-- Conteúdo Aba: Postos -->
-                <div class="cadastro-tab-content" id="tab-cad-postos" style="display: none;">
-                    <div class="form-group">
-                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Postos de Gasolina e Preços Vinculados (um por linha)</label>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Formato: <code>Nome do Posto - Preço/L</code></p>
-                        <textarea id="textarea-custom-postos" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: Posto Ipiranga - 5.890&#10;Posto Shell - 6.100"></textarea>
+                <!-- Sub-abas / Filtro Visual por Base -->
+                <div class="lotes-subtabs" id="bases-subtabs-container">
+                    <!-- Gerado dinamicamente via JS -->
+                </div>
+
+                <div class="entity-list-wrapper">
+                    <div class="entity-list-header">
+                        <span>Bases Cadastradas (<strong id="count-cad-bases">0</strong>)</span>
+                        <small style="color: var(--text-muted);">Clique no ícone para remover</small>
+                    </div>
+                    <div class="entity-items-container" id="list-cad-bases">
+                        <!-- Gerado dinamicamente -->
                     </div>
                 </div>
-                
-                <!-- Conteúdo Aba: Motoristas -->
-                <div class="cadastro-tab-content" id="tab-cad-motoristas" style="display: none;">
-                    <div class="form-group">
-                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Motoristas autorizados (um por linha)</label>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Digite o nome de cada motorista.</p>
-                        <textarea id="textarea-custom-motoristas" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: Lucas Santos&#10;Rodrigo Lima"></textarea>
+            </div>
+
+            <!-- Conteúdo Aba 2: Veículos & Placas -->
+            <div class="cadastro-tab-content" id="tab-cad-veiculos" style="display: none;">
+                <div class="cad-form-card">
+                    <h4>➕ Cadastrar Novo Veículo / Placa</h4>
+                    <div class="cad-form-grid" style="grid-template-columns: 1fr 1fr 1fr auto;">
+                        <div class="form-group">
+                            <label>Placa do Veículo</label>
+                            <input type="text" id="input-new-veic-placa" placeholder="ABC-1234" style="text-transform: uppercase;">
+                        </div>
+                        <div class="form-group">
+                            <label>Modelo / Tipo</label>
+                            <input type="text" id="input-new-veic-tipo" placeholder="Ex: Hilux, Van, Pipa">
+                        </div>
+                        <div class="form-group">
+                            <label>Combustível</label>
+                            <select id="input-new-veic-comb">
+                                <option value="Diesel">Diesel</option>
+                                <option value="Gasolina">Gasolina</option>
+                                <option value="Etanol">Etanol</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-primary" id="btn-add-veic-item">
+                            Adicionar Veículo
+                        </button>
                     </div>
                 </div>
 
-                <!-- Conteúdo Aba: Placas & Veículos -->
-                <div class="cadastro-tab-content" id="tab-cad-veiculos" style="display: none;">
-                    <div class="form-group">
-                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Placas e Modelos de Carro Vinculados (um por linha)</label>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Formato: <code>Placa - Modelo do Veículo</code></p>
-                        <textarea id="textarea-custom-veiculos" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: ABC-1234 - Caminhão F-4000&#10;XYZ-5678 - Van Frota"></textarea>
+                <div class="entity-list-wrapper">
+                    <div class="entity-list-header">
+                        <span>Veículos e Placas (<strong id="count-cad-veiculos">0</strong>)</span>
+                        <small style="color: var(--text-muted);">Vinculados ao sistema</small>
+                    </div>
+                    <div class="entity-items-container" id="list-cad-veiculos">
+                        <!-- Gerado dinamicamente -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conteúdo Aba 3: Postos & Preços -->
+            <div class="cadastro-tab-content" id="tab-cad-postos" style="display: none;">
+                <div class="cad-form-card">
+                    <h4>➕ Cadastrar Posto de Combustível</h4>
+                    <div class="cad-form-grid">
+                        <div class="form-group">
+                            <label>Nome do Posto</label>
+                            <input type="text" id="input-new-posto-nome" placeholder="Ex: POSTO IPIRANGA">
+                        </div>
+                        <div class="form-group">
+                            <label>Preço Padrão do Litro (R$)</label>
+                            <input type="number" id="input-new-posto-preco" step="0.001" placeholder="Ex: 7.290">
+                        </div>
+                        <button type="button" class="btn btn-primary" id="btn-add-posto-item">
+                            Adicionar Posto
+                        </button>
                     </div>
                 </div>
 
-                <!-- Conteúdo Aba: Requisições Disponíveis -->
-                <div class="cadastro-tab-content" id="tab-cad-requisicoes" style="display: none;">
-                    <div class="form-group">
-                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Números de Requisição e Litros Vinculados (um por linha)</label>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Formato: <code>Número da Requisição - Litros</code></p>
-                        <textarea id="textarea-custom-requisicoes" rows="8" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" placeholder="Ex: 1001 - 50.00&#10;1002 - 100.00&#10;1003 - 25.00"></textarea>
+                <div class="entity-list-wrapper">
+                    <div class="entity-list-header">
+                        <span>Postos Cadastrados (<strong id="count-cad-postos">0</strong>)</span>
+                        <small style="color: var(--text-muted);">Tabela de preços de referência</small>
+                    </div>
+                    <div class="entity-items-container" id="list-cad-postos">
+                        <!-- Gerado dinamicamente -->
                     </div>
                 </div>
-                
-                <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
-                    <button type="button" class="btn btn-secondary" id="btn-cancel-cadastros">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar Cadastros</button>
+            </div>
+
+            <!-- Conteúdo Aba 4: Lotes de Requisições -->
+            <div class="cadastro-tab-content" id="tab-cad-lotes" style="display: none;">
+                <div class="cad-form-card">
+                    <h4>⚡ Gerar Faixa Sequencial de Requisições para o Lote</h4>
+                    <div class="cad-form-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr auto;">
+                        <div class="form-group">
+                            <label>Identificador do Lote</label>
+                            <input type="text" id="input-new-lote-nome" placeholder="Ex: LOTE 4 (10K)">
+                        </div>
+                        <div class="form-group">
+                            <label>Código de Controle</label>
+                            <input type="text" id="input-new-lote-control" placeholder="Ex: 1787595670733">
+                        </div>
+                        <div class="form-group">
+                            <label>Sequência De -> Até</label>
+                            <div style="display: flex; gap: 0.25rem;">
+                                <input type="number" id="input-new-lote-start" placeholder="001" min="1" style="width: 50%;">
+                                <input type="number" id="input-new-lote-end" placeholder="100" min="1" style="width: 50%;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Litragem (L)</label>
+                            <select id="input-new-lote-litros">
+                                <option value="15">15 Litros</option>
+                                <option value="20">20 Litros</option>
+                                <option value="25">25 Litros</option>
+                                <option value="30" selected>30 Litros</option>
+                                <option value="50">50 Litros</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-primary" id="btn-add-lote-range">
+                            Gerar Faixa
+                        </button>
+                    </div>
                 </div>
-            </form>
+
+                <!-- Sub-abas / Filtro Visual por Lotes de Requisição -->
+                <div class="lotes-subtabs" id="lotes-subtabs-container">
+                    <!-- Gerado dinamicamente via JS -->
+                </div>
+
+                <div class="entity-list-wrapper">
+                    <div class="entity-list-header">
+                        <span>Requisições em Estoque no Pool (<strong id="count-cad-reqs">0</strong> disponíveis)</span>
+                        <small style="color: var(--text-muted);">Saldo disponível para entrega</small>
+                    </div>
+                    <div class="entity-items-container" id="list-cad-lotes">
+                        <!-- Gerado dinamicamente -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conteúdo Aba 5: Importação em Massa (Texto) -->
+            <div class="cadastro-tab-content" id="tab-cad-massa" style="display: none;">
+                <form id="form-cadastros" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="form-group">
+                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Bases e Responsáveis (um por linha: <code>Base - Responsável</code>)</label>
+                        <textarea id="textarea-custom-bases" rows="4" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Postos e Preços (um por linha: <code>Posto - Preço</code>)</label>
+                        <textarea id="textarea-custom-postos" rows="3" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Veículos e Placas (um por linha: <code>Placa - Veículo</code>)</label>
+                        <textarea id="textarea-custom-veiculos" rows="4" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Requisições em Estoque (um por linha: <code>Código-Seq - Litros (Lote)</code>)</label>
+                        <textarea id="textarea-custom-requisicoes" rows="4" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Motoristas (um por linha)</label>
+                        <textarea id="textarea-custom-motoristas" rows="3" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="align-self: flex-end;">Salvar Todas as Listas de Texto</button>
+                </form>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn-delete-active-lote" id="btn-reset-hml-db" onclick="resetHmlDatabase()" title="Limpar e Reinicializar o banco de dados HML para validação limpa" style="display: none;">
+                    🔄 Zerar Banco HML (Limpeza de Testes)
+                </button>
+                <button type="button" class="btn btn-secondary" id="btn-cancel-cadastros">Fechar Central</button>
+            </div>
         </div>
     </div>
 
@@ -995,6 +1154,88 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
         </div>
     </div>
 
+    <!-- MODAL DE RELATÓRIO SIMPLIFICADO -->
+    <div class="modal-overlay" id="relatorio-simplificado-modal">
+        <div class="modal-content relatorio-simplificado-content" style="max-width: 780px; padding: 0;">
+            <!-- Ações do topo do modal (Impressão rápida e Fechar) sem conflito -->
+            <div class="modal-top-actions" style="position: absolute; right: 1.25rem; top: 1.25rem; z-index: 10; display: flex; align-items: center; gap: 0.5rem;">
+                <button class="btn btn-secondary btn-icon btn-print-top" id="btn-print-relatorio-simplificado-top" title="Imprimir Relatório" style="padding: 0.4rem 0.65rem; border-color: rgba(255, 255, 255, 0.15); display: inline-flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.2" fill="none" style="vertical-align: middle;">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 0-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                </button>
+                <button class="modal-close" id="btn-close-relatorio-simplificado" style="position: static; font-size: 1.5rem; line-height: 1; padding: 0.35rem 0.65rem;">&times;</button>
+            </div>
+            
+            <!-- Área imprimível do Relatório -->
+            <div id="print-relatorio-simplificado-area" class="relatorio-simplificado-print-wrapper">
+                <div class="info-header" style="text-align: center;">
+                    <h2>Controle de Requisições - MGP</h2>
+                    <p>Relatório Simplificado de Consumo</p>
+                    <div class="info-period" id="rel-period-text">Período: -</div>
+                </div>
+                
+                <div class="info-grid-kpis" style="grid-template-columns: repeat(4, 1fr);">
+                    <div class="info-kpi-card">
+                        <span class="info-kpi-label">Qtd. de Responsáveis</span>
+                        <span class="info-kpi-val" id="rel-kpi-responsaveis">0</span>
+                    </div>
+                    <div class="info-kpi-card">
+                        <span class="info-kpi-label">Requisições Disponíveis</span>
+                        <span class="info-kpi-val" id="rel-kpi-disponiveis">0</span>
+                    </div>
+                    <div class="info-kpi-card">
+                        <span class="info-kpi-label">Requisições Distribuídas</span>
+                        <span class="info-kpi-val" id="rel-kpi-distribuidas">0</span>
+                    </div>
+                    <div class="info-kpi-card">
+                        <span class="info-kpi-label">Volume Total (Litros)</span>
+                        <span class="info-kpi-val" id="rel-kpi-litros-total">0 L</span>
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <h3 style="text-align: center;">RESUMO DE CONSUMO POR RESPONSÁVEL</h3>
+                    <table class="relatorio-simplificado-table">
+                        <thead>
+                            <tr>
+                                <th>Responsável</th>
+                                <th style="text-align: center;">Qtd. Requisições</th>
+                                <th style="text-align: center;">Volume (Litros)</th>
+                                <th style="text-align: center;">Participação (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rel-responsavel-tbody">
+                            <!-- Gerado dinamicamente no JS -->
+                        </tbody>
+                        <tfoot id="rel-responsavel-tfoot">
+                            <!-- Totais gerados dinamicamente no JS -->
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="info-footer-brand" id="rel-footer-brand-text">
+                    Gerado pelo sistema de controle • <span id="rel-generation-timestamp">-</span>
+                </div>
+            </div>
+
+            <!-- Ações do Modal (Não aparecem na impressão) -->
+            <div class="info-modal-actions">
+                <button class="btn btn-secondary" id="btn-cancel-relatorio-simplificado">Fechar</button>
+                <button class="btn btn-primary" id="btn-print-relatorio-simplificado">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle;">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 0-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                    Imprimir / Salvar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de Gerenciar Ambientes -->
     <div class="modal-overlay" id="manage-envs-modal">
         <div class="modal-content" style="max-width: 450px; background-color: var(--bg-secondary); border-radius: 12px; padding: 2rem;">
@@ -1031,9 +1272,10 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <datalist id="datalist-veiculos"></datalist>
     <datalist id="datalist-placas"></datalist>
     <datalist id="datalist-requisicoes"></datalist>
+    <datalist id="datalist-combustiveis"></datalist>
 
     <!-- Script principal da aplicação -->
-    <script src="app.js?v=23" defer></script>
+    <script src="app.js?v=50" defer></script>
 </body>
 
 </html>

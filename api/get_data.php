@@ -12,6 +12,8 @@ if (empty($env)) {
 }
 
 try {
+    writeLog('INFO', "Leitura de dados iniciada para o ambiente '$env'", ['environment' => $env]);
+
     // 1. Buscar Lançamentos (Requisicoes)
     $stmt = $pdo->prepare("SELECT * FROM $table_requisicoes WHERE environment = :env");
     $stmt->execute(['env' => $env]);
@@ -40,6 +42,9 @@ try {
         'environments' => array_values($allEnvs)
     ]);
 } catch (PDOException $e) {
+    writeLog('ERROR', "Erro ao carregar dados do banco: " . $e->getMessage(), [
+        'environment' => $env
+    ]);
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Erro ao carregar dados: ' . $e->getMessage()]);
 }

@@ -122,9 +122,11 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                 </div>
             </div>
 
+            <!-- Assinatura A-Team -->
             <div class="sidebar-signature">
-                <p class="sig-author">Desenvolvido por MzN</p>
-                <p class="sig-quote">"si vis pacem para bellum"</p>
+                <p class="sig-author">© 2026 Veículos Contratados</p>
+                <p class="sig-email">Hub Digital 360</p>
+                <p class="sig-quote" style="font-family: inherit; font-style: normal; font-size: 0.65rem; opacity: 0.5;">Todos os direitos reservados.</p>
             </div>
         </aside>
 
@@ -144,6 +146,12 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                             <polyline points="15 18 9 12 15 6"></polyline>
                         </svg>
                         Painel Combustível
+                    </button>
+                    <!-- Botão Alternar Tema (Claro/Escuro) -->
+                    <button class="btn btn-secondary btn-icon" id="btn-toggle-theme" title="Alternar entre modo claro e escuro" style="padding: 0.4rem 0.6rem;">
+                        <svg id="theme-toggle-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle;">
+                            <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" />
+                        </svg>
                     </button>
                     <!-- Exportar Excel -->
                     <button class="btn btn-secondary btn-icon" id="btn-export-excel" title="Exportar veículos contratados para Excel">
@@ -218,11 +226,10 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
             
             <form id="form-cadastro" style="margin-top:1.5rem;">
                 <input type="hidden" id="input-id">
-                
                 <div style="display:grid; grid-template-columns: 1.5fr 0.5fr; gap:1rem; margin-bottom:1rem;">
                     <div class="form-group">
                         <label for="input-tipo-veiculo">TIPO DE VEÍCULO *</label>
-                        <input type="text" id="input-tipo-veiculo" placeholder="Ex: ÔNIBUS 44 LUGARES" required style="width:100%; padding:0.6rem; border-radius:6px; background:#222; border:1px solid #444; color:#fff; outline:none;">
+                        <input type="text" id="input-tipo-veiculo" list="datalist-tipo-veiculo" placeholder="Ex: ÔNIBUS 44 LUGARES" required style="width:100%; padding:0.6rem; border-radius:6px; background:#222; border:1px solid #444; color:#fff; outline:none;">
                     </div>
                     <div class="form-group">
                         <label for="input-ano">ANO</label>
@@ -237,7 +244,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                     </div>
                     <div class="form-group">
                         <label for="input-empresa">EMPRESA *</label>
-                        <input type="text" id="input-empresa" placeholder="Ex: DANTAS" required style="width:100%; padding:0.6rem; border-radius:6px; background:#222; border:1px solid #444; color:#fff; outline:none;">
+                        <input type="text" id="input-empresa" list="datalist-empresa" placeholder="Ex: DANTAS" required style="width:100%; padding:0.6rem; border-radius:6px; background:#222; border:1px solid #444; color:#fff; outline:none;">
                     </div>
                 </div>
 
@@ -255,7 +262,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
                     <div class="form-group">
                         <label for="input-local-atuacao">LOCAL DE ATUAÇÃO</label>
-                        <input type="text" id="input-local-atuacao" placeholder="Ex: Base Manaus" style="width:100%; padding:0.6rem; border-radius:6px; background:#222; border:1px solid #444; color:#fff; outline:none;">
+                        <input type="text" id="input-local-atuacao" list="datalist-local-atuacao" placeholder="Ex: Base Manaus" style="width:100%; padding:0.6rem; border-radius:6px; background:#222; border:1px solid #444; color:#fff; outline:none;">
                     </div>
                     <div class="form-group">
                         <label for="input-valor-contrato">VALOR MENSAL DO CONTRATO (R$)</label>
@@ -273,11 +280,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                     </div>
                     <div class="form-group">
                         <label for="input-combustivel">COMBUSTÍVEL</label>
-                        <select id="input-combustivel" style="width:100%; padding:0.6rem; border-radius:6px; background:#222; border:1px solid #444; color:#fff; cursor:pointer; outline:none;">
-                            <option value="DIESEL">DIESEL</option>
-                            <option value="GASOLINA">GASOLINA</option>
-                            <option value="ETANOL">ETANOL</option>
-                        </select>
+                        <input type="text" id="input-combustivel" list="datalist-combustivel" placeholder="Selecione ou digite..." style="width:100%; padding:0.6rem; border-radius:6px; background:#222; border:1px solid #444; color:#fff; outline:none;">
                     </div>
                 </div>
 
@@ -289,7 +292,13 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
         </div>
     </div>
 
+    <!-- Datalists para Autocomplete de Veículos Contratados -->
+    <datalist id="datalist-tipo-veiculo"></datalist>
+    <datalist id="datalist-empresa"></datalist>
+    <datalist id="datalist-local-atuacao"></datalist>
+    <datalist id="datalist-combustivel"></datalist>
+
     <!-- Script de lógica específica -->
-    <script src="veiculos.js?v=3" defer></script>
+    <script src="veiculos.js?v=4" defer></script>
 </body>
 </html>

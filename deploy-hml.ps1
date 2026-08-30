@@ -82,6 +82,7 @@ Upload-File "$localDir\backup_repo.html" "hml/backup_repo.html"
 Upload-File "$localDir\styles_repo.css" "hml/styles_repo.css"
 
 # 3. Upload das APIs PHP (incluindo sincronização com banco para testar em HML)
+Upload-File "$localDir\api\logger.php" "hml/api/logger.php"
 Upload-File "$localDir\api\db.php" "hml/api/db.php"
 Upload-File "$localDir\api\get_data.php" "hml/api/get_data.php"
 Upload-File "$localDir\api\sync_data.php" "hml/api/sync_data.php"
@@ -92,6 +93,7 @@ Upload-File "$localDir\api\logout.php" "hml/api/logout.php"
 Upload-File "$localDir\api\list_backups.php" "hml/api/list_backups.php"
 Upload-File "$localDir\api\delete_backup.php" "hml/api/delete_backup.php"
 Upload-File "$localDir\api\download_backup.php" "hml/api/download_backup.php"
+Upload-File "$localDir\api\reset_hml_db.php" "hml/api/reset_hml_db.php"
 
 # 4. Cria e envia arquivos do subsistema de veículos contratados para HML
 Create-FtpDirectory "hml/veiculos"
@@ -104,8 +106,29 @@ Upload-File "$localDir\veiculos\api\get_veiculos.php" "hml/veiculos/api/get_veic
 Upload-File "$localDir\veiculos\api\save_veiculo.php" "hml/veiculos/api/save_veiculo.php"
 Upload-File "$localDir\veiculos\api\delete_veiculo.php" "hml/veiculos/api/delete_veiculo.php"
 
+# 5. Cria e envia arquivos do ambiente de laboratório para HML (hml/lab)
+Create-FtpDirectory "hml/lab"
+Create-FtpDirectory "hml/lab/libs"
+Create-FtpDirectory "hml/lab/api"
+
+Upload-File "$localDir\lab\index.php" "hml/lab/index.php"
+Upload-File "$localDir\lab\styles.css" "hml/lab/styles.css"
+Upload-File "$localDir\lab\dispensador.js" "hml/lab/dispensador.js"
+Upload-File "$localDir\app_icon.png" "hml/lab/app_icon.png"
+
+# Bibliotecas auxiliares para o lab
+Upload-File "$localDir\libs\xlsx.mini.min.js" "hml/lab/libs/xlsx.mini.min.js"
+Upload-File "$localDir\libs\papaparse.min.js" "hml/lab/libs/papaparse.min.js"
+
+# APIs para o lab em HML (comportamento de banco HML reativo)
+Upload-File "$localDir\api\logger.php" "hml/lab/api/logger.php"
+Upload-File "$localDir\api\db.php" "hml/lab/api/db.php"
+Upload-File "$localDir\api\get_data.php" "hml/lab/api/get_data.php"
+Upload-File "$localDir\api\sync_data.php" "hml/lab/api/sync_data.php"
+
 Write-Host "`n=================================================" -ForegroundColor Green
 Write-Host " Deploy HML finalizado com sucesso!" -ForegroundColor Green
-Write-Host " Painel do Controle HML:  https://controle.hubdigital360.com/hml/" -ForegroundColor Cyan
-Write-Host " Veículos Contratados HML: https://controle.hubdigital360.com/hml/veiculos/" -ForegroundColor Cyan
+Write-Host " Painel do Controle HML:     https://controle.hubdigital360.com/hml/" -ForegroundColor Cyan
+Write-Host " Veículos Contratados HML:   https://controle.hubdigital360.com/hml/veiculos/" -ForegroundColor Cyan
+Write-Host " Laboratório HML (Sandbox):  https://controle.hubdigital360.com/hml/lab/" -ForegroundColor Cyan
 Write-Host "=================================================" -ForegroundColor Green

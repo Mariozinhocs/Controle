@@ -21,6 +21,11 @@ if (empty($env)) {
 }
 
 try {
+    writeLog('INFO', "Início do processo de sincronização para o ambiente '$env'", [
+        'environment' => $env,
+        'requisicoes_count' => isset($input['requisicoes']) ? count($input['requisicoes']) : 0
+    ]);
+
     $pdo->beginTransaction();
 
     // 1. Limpar lançamentos antigos deste ambiente (para substituir pelo novo estado enviado)
@@ -30,9 +35,9 @@ try {
     // 2. Inserir os novos lançamentos
     if (isset($input['requisicoes']) && is_array($input['requisicoes'])) {
         $stmtInsert = $pdo->prepare("INSERT INTO $table_requisicoes 
-            (id, date, inicioSeq, fimSeq, qtdRequisicoes, zona, responsavel, posto, motorista, veiculo, placa, kmAnterior, km, combustivel, litros, precoLitro, valor, environment)
+            (id, date, inicioSeq, fimSeq, qtdRequisicoes, zona, responsavel, posto, motorista, veiculo, placa, kmAnterior, km, combustivel, litros, precoLitro, valor, lote, environment)
             VALUES 
-            (:id, :date, :inicioSeq, :fimSeq, :qtdRequisicoes, :zona, :responsavel, :posto, :motorista, :veiculo, :placa, :kmAnterior, :km, :combustivel, :litros, :precoLitro, :valor, :env)");
+            (:id, :date, :inicioSeq, :fimSeq, :qtdRequisicoes, :zona, :responsavel, :posto, :motorista, :veiculo, :placa, :kmAnterior, :km, :combustivel, :litros, :precoLitro, :valor, :lote, :env)");
 
         foreach ($input['requisicoes'] as $row) {
             $formattedDate = date('Y-m-d', strtotime($row['date']));
@@ -43,18 +48,19 @@ try {
                 'inicioSeq' => isset($row['inicioSeq']) ? $row['inicioSeq'] : '',
                 'fimSeq' => isset($row['fimSeq']) ? $row['fimSeq'] : '',
                 'qtdRequisicoes' => isset($row['qtdRequisicoes']) ? intval($row['qtdRequisicoes']) : 1,
-                'zona' => isset($row['zona']) ? $row['zona'] : 'Não Informado',
-                'responsavel' => isset($row['responsavel']) ? $row['responsavel'] : 'Não Informado',
-                'posto' => isset($row['posto']) ? $row['posto'] : 'Não Informado',
-                'motorista' => isset($row['motorista']) ? $row['motorista'] : 'Não Informado',
-                'veiculo' => isset($row['veiculo']) ? $row['veiculo'] : 'Não Informado',
-                'placa' => isset($row['placa']) ? $row['placa'] : '',
-                'kmAnterior' => (isset($row['kmAnterior']) && $row['kmAnterior'] !== '') ? intval($row['kmAnterior']) : null,
-                'km' => (isset($row['km']) && $row['km'] !== '') ? intval($row['km']) : null,
-                'combustivel' => isset($row['combustivel']) ? $row['combustivel'] : 'Não Informado',
+                'zona' => (isset($row['zona']) && $row['zona'] !== '') ? $row['zona'] : 'NÃO INFORMADO',
+                'responsavel' => (isset($row['responsavel']) && $row['responsavel'] !== '') ? $row['responsavel'] : 'NÃO INFORMADO',
+                'posto' => (isset($row['posto']) && $row['posto'] !== '') ? $row['posto'] : 'NÃO INFORMADO',
+                'motorista' => (isset($row['motorista']) && $row['motorista'] !== '') ? $row['motorista'] : 'NÃO INFORMADO',
+                'veiculo' => (isset($row['veiculo']) && $row['veiculo'] !== '') ? $row['veiculo'] : 'NÃO INFORMADO',
+                'placa' => (isset($row['placa']) && $row['placa'] !== '') ? $row['placa'] : 'NÃO INFORMADO',
+                'kmAnterior' => (isset($row['kmAnterior']) && $row['kmAnterior'] !== '' && $row['kmAnterior'] !== 'NÃO INFORMADO') ? intval($row['kmAnterior']) : null,
+                'km' => (isset($row['km']) && $row['km'] !== '' && $row['km'] !== 'NÃO INFORMADO') ? intval($row['km']) : null,
+                'combustivel' => (isset($row['combustivel']) && $row['combustivel'] !== '') ? $row['combustivel'] : 'NÃO INFORMADO',
                 'litros' => isset($row['litros']) ? floatval($row['litros']) : 0.0,
                 'precoLitro' => isset($row['precoLitro']) ? floatval($row['precoLitro']) : 0.0,
                 'valor' => isset($row['valor']) ? floatval($row['valor']) : 0.0,
+                'lote' => (isset($row['lote']) && $row['lote'] !== '') ? $row['lote'] : 'LOTE 1',
                 'env' => $env
             ]);
         }
@@ -81,11 +87,21 @@ try {
     ]);
 
     $pdo->commit();
+
+    // Grava auditoria no MySQL
+    writeAuditLog($pdo, "Sincronização de Dados Realizada", [
+        'environment' => $env,
+        'requisicoes_count' => isset($input['requisicoes']) ? count($input['requisicoes']) : 0
+    ], $env);
+
     echo json_encode(['success' => true, 'message' => 'Dados sincronizados com sucesso no MySQL!']);
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
+    writeLog('ERROR', "Erro na sincronização de dados: " . $e->getMessage(), [
+        'environment' => $env
+    ]);
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Erro na sincronização: ' . $e->getMessage()]);
 }

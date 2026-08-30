@@ -17,6 +17,8 @@ if (empty($env)) {
 }
 
 try {
+    writeLog('INFO', "Leitura de veículos contratados iniciada para o ambiente '$env'", ['environment' => $env]);
+
     // 1. Garantir que a tabela veiculos_contratados existe no MySQL
     $pdo->exec("CREATE TABLE IF NOT EXISTS $table_veiculos_contratados (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -105,6 +107,7 @@ try {
         'veiculos' => $veiculos
     ]);
 } catch (PDOException $e) {
+    writeLog('ERROR', "Erro ao carregar veículos contratados: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Erro ao carregar veículos: ' . $e->getMessage()]);
 }

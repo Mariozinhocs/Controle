@@ -6,6 +6,8 @@
 
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/logger.php';
+
 $host = 'localhost';
 $dbname = 'u576215103_controle';
 $username = 'u576215103_controle';
@@ -15,6 +17,23 @@ try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+    // Auto-criação da tabela de logs de atividade se não existir (Princípio da Expansão)
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS activity_logs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            level VARCHAR(20) NOT NULL,
+            trace_id VARCHAR(100) NOT NULL,
+            correlation_id VARCHAR(100) NOT NULL,
+            operator_ip VARCHAR(50) NOT NULL,
+            action VARCHAR(255) NOT NULL,
+            context TEXT,
+            environment VARCHAR(100) NOT NULL
+        )");
+    } catch (PDOException $exLog) {
+        // Ignora falha de criação
+    }
 
     // Detecção se estamos no ambiente HML (Homologação) via URL ou diretório físico
     $isHml = false;
@@ -29,10 +48,22 @@ try {
         $table_configuracoes = 'hml_configuracoes';
         $table_veiculos_contratados = 'hml_veiculos_contratados';
 
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS hml_activity_logs LIKE activity_logs");
+        } catch (PDOException $exHmlLog) {
+            // Ignora falha
+        }
+
         // Criação automática das tabelas HML com a mesma estrutura das oficiais por segurança
         try {
             // 1. Requisicoes
             $pdo->exec("CREATE TABLE IF NOT EXISTS hml_requisicoes LIKE requisicoes");
+            try {
+                $pdo->exec("ALTER TABLE requisicoes ADD COLUMN lote VARCHAR(50) DEFAULT 'LOTE 1'");
+            } catch (Exception $e) {}
+            try {
+                $pdo->exec("ALTER TABLE hml_requisicoes ADD COLUMN lote VARCHAR(50) DEFAULT 'LOTE 1'");
+            } catch (Exception $e) {}
             $checkReq = $pdo->query("SELECT COUNT(*) FROM hml_requisicoes")->fetchColumn();
             if ($checkReq == 0) {
                 $pdo->exec("INSERT INTO hml_requisicoes SELECT * FROM requisicoes");

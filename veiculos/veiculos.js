@@ -3,8 +3,94 @@
   "si vis pacem para bellum"
 */
 
+// A-Team Protocol: Rastreamento Distribuído (Tracing)
+(function() {
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+        const traceId = 'trace-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15);
+        const correlationId = 'corr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15);
+
+        let isLocal = false;
+        if (typeof input === 'string') {
+            isLocal = !input.startsWith('http://') && !input.startsWith('https://');
+        }
+
+        if (isLocal) {
+            init = init || {};
+            init.headers = init.headers || {};
+            if (init.headers instanceof Headers) {
+                init.headers.set('X-Trace-ID', traceId);
+                init.headers.set('X-Correlation-ID', correlationId);
+            } else if (Array.isArray(init.headers)) {
+                init.headers.push(['X-Trace-ID', traceId]);
+                init.headers.push(['X-Correlation-ID', correlationId]);
+            } else {
+                init.headers['X-Trace-ID'] = traceId;
+                init.headers['X-Correlation-ID'] = correlationId;
+            }
+        }
+        return originalFetch(input, init);
+    };
+})();
+
 const GITHUB_KEYS_URL = 'https://raw.githubusercontent.com/Mariozinhocs/Controle/master/keys.json';
 const LOCAL_KEYS_FALLBACK = '../keys.json';
+
+// CONFIGURAÇÃO DOS GRÁFICOS (Tema Escuro e Cores Reativas)
+const chartTheme = {
+    get foreColor() {
+        return document.body.classList.contains('light-theme') ? '#475569' : '#888';
+    },
+    get gridColor() {
+        return document.body.classList.contains('light-theme') ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.05)';
+    },
+    get tooltipTheme() {
+        return document.body.classList.contains('light-theme') ? 'light' : 'dark';
+    },
+    get valueColor() {
+        return document.body.classList.contains('light-theme') ? '#0f172a' : '#ffffff';
+    }
+};
+
+// CONTROLE DE TEMA (CLARO / ESCURO)
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    const body = document.body;
+    const themeBtn = document.getElementById('btn-toggle-theme');
+    
+    if (savedTheme === 'light') {
+        body.classList.add('light-theme');
+        updateThemeIcon(true);
+    } else {
+        body.classList.remove('light-theme');
+        updateThemeIcon(false);
+    }
+
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            const isLight = body.classList.toggle('light-theme');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            updateThemeIcon(isLight);
+            
+            // Redesenhar os gráficos com as novas cores do tema no submódulo
+            if (typeof renderCharts === 'function') {
+                renderCharts();
+            }
+        });
+    }
+}
+
+function updateThemeIcon(isLight) {
+    const icon = document.getElementById('theme-toggle-icon');
+    if (!icon) return;
+    if (isLight) {
+        icon.innerHTML = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />`;
+        icon.setAttribute('title', 'Ativar modo escuro');
+    } else {
+        icon.innerHTML = `<path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" />`;
+        icon.setAttribute('title', 'Ativar modo claro');
+    }
+}
 
 const state = {
     activeEnv: 'Frota Principal',
@@ -31,6 +117,7 @@ function showLoading(msg = 'Buscando informações...') {
 
 // INICIALIZAÇÃO
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme(); // Inicializa o Modo Claro / Escuro
     // Determinar ambiente ativo
     state.activeEnv = localStorage.getItem('dashboard_active_environment') || 'Frota Principal';
 
@@ -187,6 +274,7 @@ async function loadData() {
             updateKPIs();
             renderTable();
             renderCharts();
+            populateDatalists();
         } else {
             console.error('Erro na API:', data.message);
         }
@@ -195,6 +283,38 @@ async function loadData() {
         alert('Erro ao sincronizar com banco de dados de contratos: ' + e.message);
     } finally {
         hideLoading();
+    }
+}
+
+// POPULAR DATALISTS PARA AUTOCONPLETAR NO CADASTRO DE VEÍCULOS CONTRATADOS
+function populateDatalists() {
+    const tipos = new Set();
+    const empresas = new Set();
+    const locais = new Set();
+    const combustiveis = new Set(['DIESEL', 'GASOLINA', 'ETANOL']);
+
+    state.veiculos.forEach(v => {
+        if (v.tipo_veiculo) tipos.add(v.tipo_veiculo.trim());
+        if (v.empresa) empresas.add(v.empresa.trim());
+        if (v.local_atuacao) locais.add(v.local_atuacao.trim());
+        if (v.combustivel) combustiveis.add(v.combustivel.trim().toUpperCase());
+    });
+
+    populateDatalistHelper('datalist-tipo-veiculo', Array.from(tipos).sort());
+    populateDatalistHelper('datalist-empresa', Array.from(empresas).sort());
+    populateDatalistHelper('datalist-local-atuacao', Array.from(locais).sort());
+    populateDatalistHelper('datalist-combustivel', Array.from(combustiveis).sort());
+}
+
+function populateDatalistHelper(id, list) {
+    const dl = document.getElementById(id);
+    if (dl) {
+        dl.innerHTML = '';
+        list.forEach(val => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            dl.appendChild(opt);
+        });
     }
 }
 
@@ -268,15 +388,15 @@ function renderTable(filterQuery = '') {
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${v.tipo_veiculo}</strong></td>
-                <td>${v.ano || '-'}</td>
-                <td><span class="file-badge" style="background:rgba(255,183,3,0.1); color:var(--accent-yellow); font-weight:700;">${v.placa}</span></td>
-                <td>${v.empresa}</td>
-                <td>${v.motorista || '-'}</td>
-                <td>${v.fone_motorista || '-'}</td>
-                <td>${v.local_atuacao || '-'}</td>
-                <td><span style="font-weight:700; color:${v.tipo_contrato === 'ALUGADO' ? 'var(--accent-yellow)' : '#4ade80'};">${v.tipo_contrato}</span></td>
-                <td>${v.combustivel}</td>
+                <td><strong>${v.tipo_veiculo || 'NÃO INFORMADO'}</strong></td>
+                <td>${v.ano || 'NÃO INFORMADO'}</td>
+                <td><span class="file-badge" style="background:rgba(255,183,3,0.1); color:var(--accent-yellow); font-weight:700;">${v.placa || 'NÃO INFORMADO'}</span></td>
+                <td>${v.empresa || 'NÃO INFORMADO'}</td>
+                <td>${v.motorista || 'NÃO INFORMADO'}</td>
+                <td>${v.fone_motorista || 'NÃO INFORMADO'}</td>
+                <td>${v.local_atuacao || 'NÃO INFORMADO'}</td>
+                <td><span style="font-weight:700; color:${v.tipo_contrato === 'ALUGADO' ? 'var(--accent-yellow)' : '#4ade80'};">${v.tipo_contrato || 'NÃO INFORMADO'}</span></td>
+                <td>${v.combustivel || 'NÃO INFORMADO'}</td>
                 <td>${kmRodados}</td>
                 <td>${litros}</td>
                 <td>${gastoComb}</td>
@@ -392,7 +512,7 @@ function renderCharts() {
             type: 'donut',
             height: 240,
             background: 'transparent',
-            foreColor: '#888'
+            foreColor: chartTheme.foreColor
         },
         colors: ['#ffb703', '#4ade80'],
         stroke: { show: false },
@@ -404,14 +524,20 @@ function renderCharts() {
                     size: '60%',
                     labels: {
                         show: true,
+                        name: { show: true, fontSize: '11px', fontWeight: '600', color: '#64748b' },
+                        value: { show: true, fontSize: '16px', fontWeight: '700', color: chartTheme.valueColor },
                         total: {
                             show: true,
                             label: 'Frota',
+                            color: '#64748b',
                             formatter: () => state.veiculos.length
                         }
                     }
                 }
             }
+        },
+        tooltip: {
+            theme: chartTheme.tooltipTheme
         }
     };
 
@@ -434,7 +560,7 @@ function renderCharts() {
             height: 240,
             toolbar: { show: false },
             background: 'transparent',
-            foreColor: '#888'
+            foreColor: chartTheme.foreColor
         },
         plotOptions: {
             bar: {
@@ -448,7 +574,10 @@ function renderCharts() {
             categories: ['DIESEL', 'GASOLINA', 'ETANOL']
         },
         grid: {
-            borderColor: 'rgba(255,255,255,0.05)'
+            borderColor: chartTheme.gridColor
+        },
+        tooltip: {
+            theme: chartTheme.tooltipTheme
         }
     };
 
@@ -495,16 +624,16 @@ function initEventListeners() {
             
             const payload = {
                 id: document.getElementById('input-id').value,
-                tipo_veiculo: document.getElementById('input-tipo-veiculo').value,
-                ano: document.getElementById('input-ano').value,
-                placa: document.getElementById('input-placa').value.toUpperCase(),
-                empresa: document.getElementById('input-empresa').value,
-                motorista: document.getElementById('input-motorista').value,
-                fone_motorista: document.getElementById('input-fone-motorista').value,
-                local_atuacao: document.getElementById('input-local-atuacao').value,
+                tipo_veiculo: document.getElementById('input-tipo-veiculo').value.trim() || 'NÃO INFORMADO',
+                ano: document.getElementById('input-ano').value.trim() || 'NÃO INFORMADO',
+                placa: document.getElementById('input-placa').value.trim().toUpperCase() || 'NÃO INFORMADO',
+                empresa: document.getElementById('input-empresa').value.trim() || 'NÃO INFORMADO',
+                motorista: document.getElementById('input-motorista').value.trim() || 'NÃO INFORMADO',
+                fone_motorista: document.getElementById('input-fone-motorista').value.trim() || 'NÃO INFORMADO',
+                local_atuacao: document.getElementById('input-local-atuacao').value.trim() || 'NÃO INFORMADO',
                 valor_contrato: parseFloat(document.getElementById('input-valor-contrato').value) || 0,
-                tipo_contrato: document.getElementById('input-tipo-contrato').value,
-                combustivel: document.getElementById('input-combustivel').value,
+                tipo_contrato: document.getElementById('input-tipo-contrato').value.trim() || 'NÃO INFORMADO',
+                combustivel: document.getElementById('input-combustivel').value.trim().toUpperCase() || 'NÃO INFORMADO',
                 environment: state.activeEnv
             };
 

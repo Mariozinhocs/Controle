@@ -81,6 +81,7 @@ Upload-File "$localDir\backup_repo.html" "backup_repo.html"
 Upload-File "$localDir\styles_repo.css" "styles_repo.css"
 
 # 3. Upload das APIs PHP
+Upload-File "$localDir\api\logger.php" "api/logger.php"
 Upload-File "$localDir\api\db.php" "api/db.php"
 Upload-File "$localDir\api\get_data.php" "api/get_data.php"
 Upload-File "$localDir\api\sync_data.php" "api/sync_data.php"
@@ -91,6 +92,17 @@ Upload-File "$localDir\api\logout.php" "api/logout.php"
 Upload-File "$localDir\api\list_backups.php" "api/list_backups.php"
 Upload-File "$localDir\api\delete_backup.php" "api/delete_backup.php"
 Upload-File "$localDir\api\download_backup.php" "api/download_backup.php"
+
+# 4. Cria e envia arquivos do subsistema de veículos contratados
+Create-FtpDirectory "veiculos"
+Create-FtpDirectory "veiculos/api"
+
+Upload-File "$localDir\veiculos\index.php" "veiculos/index.php"
+Upload-File "$localDir\veiculos\styles.css" "veiculos/styles.css"
+Upload-File "$localDir\veiculos\veiculos.js" "veiculos/veiculos.js"
+Upload-File "$localDir\veiculos\api\get_veiculos.php" "veiculos/api/get_veiculos.php"
+Upload-File "$localDir\veiculos\api\save_veiculo.php" "veiculos/api/save_veiculo.php"
+Upload-File "$localDir\veiculos\api\delete_veiculo.php" "veiculos/api/delete_veiculo.php"
 
 Write-Host "`n=================================================" -ForegroundColor Green
 Write-Host " Deploy PROD finalizado com sucesso!" -ForegroundColor Green

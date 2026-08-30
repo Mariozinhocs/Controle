@@ -7,12 +7,19 @@
 session_start();
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/db.php'; // Carrega logger.php e conexão PDO
+
 // Validar se o usuário está autenticado no repositório
 if (!isset($_SESSION['repo_authenticated']) || $_SESSION['repo_authenticated'] !== true) {
+    writeLog('WARN', "Tentativa não autorizada de ler lista de backups");
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Não autorizado']);
     exit;
 }
+
+writeLog('INFO', "Consulta de lista de backups realizada", [
+    'operator' => $_SESSION['repo_user'] ?? 'N/A'
+]);
 
 $backupDir = __DIR__ . '/backups';
 $backups = [];

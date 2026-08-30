@@ -22,10 +22,24 @@ if (!$inputData || !isset($inputData['id'])) {
 $id = intval($inputData['id']);
 
 try {
+    // Buscar a placa/detalhes antes de excluir para auditoria
+    $stmtFind = $pdo->prepare("SELECT placa, environment FROM $table_veiculos_contratados WHERE id = :id");
+    $stmtFind->execute(['id' => $id]);
+    $veic = $stmtFind->fetch();
+    $placa = $veic ? $veic['placa'] : 'N/A';
+    $env = $veic ? $veic['environment'] : 'Frota Principal';
+
     $stmt = $pdo->prepare("DELETE FROM $table_veiculos_contratados WHERE id = :id");
     $stmt->execute(['id' => $id]);
+    
+    writeAuditLog($pdo, "Exclusão de Veículo Contratado", [
+        'id' => $id,
+        'placa' => $placa
+    ], $env);
+    
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {
+    writeLog('ERROR', "Erro ao deletar veículo contratado ID $id: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Erro ao deletar veículo: ' . $e->getMessage()]);
 }

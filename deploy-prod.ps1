@@ -82,6 +82,8 @@ Upload-File "$localDir\backup_repo.html" "controle/backup_repo.html"
 Upload-File "$localDir\styles_repo.css" "controle/styles_repo.css"
 
 # 3. Upload das APIs PHP
+Upload-File "$localDir\api\logger.php" "controle/api/logger.php"
+Upload-File "$localDir\api\db.php" "controle/api/db.php"
 Upload-File "$localDir\api\save_backup.php" "controle/api/save_backup.php"
 Upload-File "$localDir\api\login.php" "controle/api/login.php"
 Upload-File "$localDir\api\check_auth.php" "controle/api/check_auth.php"

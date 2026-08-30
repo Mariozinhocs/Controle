@@ -74,6 +74,36 @@
         // Desenvolvido por Mario Henrique (mariozinhocs) - mariozinhocs@gmail.com
         // "si vis pacem para bellum"
         
+        // A-Team Protocol: Rastreamento Distribuído (Tracing)
+        (function() {
+            const originalFetch = window.fetch;
+            window.fetch = function(input, init) {
+                const traceId = 'trace-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15);
+                const correlationId = 'corr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15);
+
+                let isLocal = false;
+                if (typeof input === 'string') {
+                    isLocal = !input.startsWith('http://') && !input.startsWith('https://');
+                }
+
+                if (isLocal) {
+                    init = init || {};
+                    init.headers = init.headers || {};
+                    if (init.headers instanceof Headers) {
+                        init.headers.set('X-Trace-ID', traceId);
+                        init.headers.set('X-Correlation-ID', correlationId);
+                    } else if (Array.isArray(init.headers)) {
+                        init.headers.push(['X-Trace-ID', traceId]);
+                        init.headers.push(['X-Correlation-ID', correlationId]);
+                    } else {
+                        init.headers['X-Trace-ID'] = traceId;
+                        init.headers['X-Correlation-ID'] = correlationId;
+                    }
+                }
+                return originalFetch(input, init);
+            };
+        })();
+
         document.addEventListener('DOMContentLoaded', () => {
             // Guarda de Rota: Validar se está autenticado
             checkAuthentication();

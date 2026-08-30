@@ -6,8 +6,11 @@
 
 session_start();
 
+require_once __DIR__ . '/db.php'; // Carrega logger.php e conexão PDO
+
 // Validar se o usuário está autenticado
 if (!isset($_SESSION['repo_authenticated']) || $_SESSION['repo_authenticated'] !== true) {
+    writeLog('WARN', "Tentativa não autorizada de baixar backup");
     http_response_code(401);
     echo "Não autorizado. Por favor, faça login.";
     exit;
@@ -46,6 +49,12 @@ if (is_file($filePath)) {
     
     // Limpar output buffer para evitar arquivos corrompidos
     cleanAllOutputBuffers();
+    
+    // Gravar log de auditoria
+    writeAuditLog($pdo, "Download de Backup", [
+        'filename' => $filename,
+        'operator' => $_SESSION['repo_user'] ?? 'N/A'
+    ]);
     
     // Ler e entregar o arquivo
     readfile($filePath);

@@ -68,6 +68,13 @@ try {
             'environment' => $environment,
             'id' => $id
         ]);
+        
+        writeAuditLog($pdo, "Atualização de Veículo Contratado", [
+            'id' => $id,
+            'placa' => $placa,
+            'empresa' => $empresa,
+            'environment' => $environment
+        ], $environment);
     } else {
         // Insere novo veículo contratado
         $stmt = $pdo->prepare("
@@ -89,10 +96,20 @@ try {
             'combustivel' => $combustivel,
             'environment' => $environment
         ]);
+        
+        writeAuditLog($pdo, "Cadastro de Novo Veículo Contratado", [
+            'placa' => $placa,
+            'empresa' => $empresa,
+            'environment' => $environment
+        ], $environment);
     }
 
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {
+    writeLog('ERROR', "Erro ao salvar veículo contratado: " . $e->getMessage(), [
+        'placa' => $placa,
+        'environment' => $environment
+    ]);
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Erro ao salvar veículo: ' . $e->getMessage()]);
 }

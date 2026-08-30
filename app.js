@@ -2,6 +2,45 @@
   Desenvolvido por Mario Henrique (mariozinhocs) - mariozinhocs@gmail.com
   "si vis pacem para bellum"
 */
+// A-Team Protocol: Rastreamento Distribuído (Tracing)
+(function() {
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+        const traceId = 'trace-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15);
+        const correlationId = 'corr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15);
+
+        let isLocal = false;
+        if (typeof input === 'string') {
+            isLocal = !input.startsWith('http://') && !input.startsWith('https://');
+        }
+
+        if (isLocal) {
+            init = init || {};
+            init.headers = init.headers || {};
+            if (init.headers instanceof Headers) {
+                init.headers.set('X-Trace-ID', traceId);
+                init.headers.set('X-Correlation-ID', correlationId);
+            } else if (Array.isArray(init.headers)) {
+                init.headers.push(['X-Trace-ID', traceId]);
+                init.headers.push(['X-Correlation-ID', correlationId]);
+            } else {
+                init.headers['X-Trace-ID'] = traceId;
+                init.headers['X-Correlation-ID'] = correlationId;
+            }
+        }
+        return originalFetch(input, init);
+    };
+})();
+
+// Helper para detecção e isolamento de ambiente (HML / PROD)
+function isHmlEnvironment() {
+    return window.location.pathname.includes('/hml/') || window.location.href.includes('/hml/');
+}
+
+function getEnvKey(key) {
+    return isHmlEnvironment() ? `hml_${key}` : key;
+}
+
 // ESTADO DA APLICAÇÃO
 const state = {
     rawData: [],      // Dados originais limpos
@@ -10,7 +49,8 @@ const state = {
     filters: {
         zonas: new Set(),
         postos: new Set(),
-        combustiveis: new Set()
+        combustiveis: new Set(),
+        lotes: new Set()
     },
     dateRange: {
         start: null,
@@ -22,6 +62,8 @@ const state = {
     },
     activeTab: 'lancamentos', // lancamentos, responsaveis, veiculos
     searchText: '',
+    sortColumn: 'date',
+    sortDirection: 'desc',
     charts: {
         donut: null,
         zonaDonut: null,
@@ -58,6 +100,23 @@ function splitByRelationalHyphen(str) {
     // Divide por hífen que possua ao menos um espaço de um dos lados (para não quebrar Centro-Sul ou placas ABC-1234)
     const parts = str.toString().split(/\s+-\s*|\s*-\s+/);
     return parts.map(p => p.trim());
+}
+
+// FUNÇÃO AUXILIAR PARA ANALISAR NÚMEROS DE SEQUÊNCIA (TRATANDO FORMATOS COM HÍFEN COMO 1786981045866-001)
+function parseSeqString(str) {
+    if (!str) return { prefix: "", num: NaN };
+    const s = str.toString().trim();
+    const match = s.match(/^(.*)-(\d+)$/);
+    if (match) {
+        return {
+            prefix: match[1].trim(),
+            num: parseInt(match[2], 10)
+        };
+    }
+    return {
+        prefix: "",
+        num: parseInt(s, 10)
+    };
 }
 
 // Auxiliar para preencher datalist
@@ -237,12 +296,76 @@ function updateRelationsMappings() {
     });
 }
 
-// CONFIGURAÇÃO DOS GRÁFICOS (Tema Escuro e Cores)
+// CONFIGURAÇÃO DOS GRÁFICOS (Tema Escuro e Cores Reativas)
 const chartTheme = {
-    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    foreColor: '#94a3b8',
-    gridColor: 'rgba(255, 255, 255, 0.05)'
+    get fontFamily() {
+        return 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    },
+    get foreColor() {
+        return document.body.classList.contains('light-theme') ? '#475569' : '#94a3b8';
+    },
+    get gridColor() {
+        return document.body.classList.contains('light-theme') ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.05)';
+    },
+    get valueColor() {
+        return document.body.classList.contains('light-theme') ? '#0f172a' : '#ffffff';
+    },
+    get strokeColor() {
+        return document.body.classList.contains('light-theme') ? '#ffffff' : '#121824';
+    },
+    get tooltipTheme() {
+        return document.body.classList.contains('light-theme') ? 'light' : 'dark';
+    }
 };
+
+// CONTROLE DE TEMA (CLARO / ESCURO)
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    const body = document.body;
+    const themeBtn = document.getElementById('btn-toggle-theme');
+    
+    if (savedTheme === 'light') {
+        body.classList.add('light-theme');
+        updateThemeIcon(true);
+    } else {
+        body.classList.remove('light-theme');
+        updateThemeIcon(false);
+    }
+
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            const isLight = body.classList.toggle('light-theme');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            updateThemeIcon(isLight);
+            
+            // Redesenhar os gráficos com as novas cores do tema
+            if (typeof renderCombustivelDonut === 'function') {
+                renderCombustivelDonut();
+            }
+            if (typeof renderZonaDonut === 'function') {
+                renderZonaDonut();
+            }
+            if (typeof renderGastoMensalBar === 'function') {
+                renderGastoMensalBar();
+            }
+            if (typeof renderAreaChart === 'function') {
+                renderAreaChart();
+            }
+        });
+    }
+}
+
+function updateThemeIcon(isLight) {
+    const icon = document.getElementById('theme-toggle-icon');
+    if (!icon) return;
+    if (isLight) {
+        icon.innerHTML = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />`;
+        icon.setAttribute('title', 'Ativar modo escuro');
+    } else {
+        icon.innerHTML = `<path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" />`;
+        icon.setAttribute('title', 'Ativar modo claro');
+    }
+}
 
 // NOMES DOS MESES EM PORTUGUÊS
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -260,6 +383,7 @@ function hideLoading() {
 
 // FUNÇÕES DE INICIALIZAÇÃO
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme(); // Inicializa o Modo Claro / Escuro
     // Ajustar títulos dinamicamente para Frota B se for acessado por essa subpasta
     if (window.location.pathname.includes('Frota_B') || window.location.pathname.includes('Frota-B')) {
         const titleEl = document.querySelector('.header-title h1');
@@ -342,15 +466,23 @@ function initEnvironmentEvents() {
     }
 
     if (btnCreate) {
-        btnCreate.addEventListener('click', () => {
+        btnCreate.addEventListener('click', async () => {
             const name = inputNewName.value.trim();
             if (!name) {
                 alert('Por favor, digite um nome para a nova frota.');
                 return;
             }
-            if (state.environments.includes(name)) {
-                alert('Já existe um ambiente com este nome.');
+            const exists = state.environments.some(env => env.toLowerCase() === name.toLowerCase());
+            if (exists) {
+                alert('Já existe uma frota com este nome (mesmo que com maiúsculas/minúsculas diferentes).');
                 return;
+            }
+            if (state.rawData.length > 0) {
+                const saveConfirm = confirm('Para criar uma nova frota, você deve primeiro salvar o trabalho atual fazendo backup. Deseja fazer isso agora?');
+                if (!saveConfirm) {
+                    return;
+                }
+                await saveBackup();
             }
             state.environments.push(name);
             state.activeEnv = name;
@@ -376,8 +508,9 @@ function initEnvironmentEvents() {
             if (!newName || newName.trim() === '' || newName.trim() === active) return;
             
             const trimmed = newName.trim();
-            if (state.environments.includes(trimmed)) {
-                alert('Já existe uma frota com este nome.');
+            const exists = state.environments.some(env => env.toLowerCase() === trimmed.toLowerCase());
+            if (exists) {
+                alert('Já existe uma frota com este nome (mesmo que com maiúsculas/minúsculas diferentes).');
                 return;
             }
 
@@ -456,103 +589,137 @@ function initEventListeners() {
     const btnOpenUpload = document.getElementById('btn-open-upload');
     const btnCloseUpload = document.getElementById('btn-close-upload');
 
-    btnOpenUpload.addEventListener('click', () => modal.classList.add('active'));
-    btnCloseUpload.addEventListener('click', () => modal.classList.remove('active'));
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) modal.classList.remove('active');
-    });
+    if (btnOpenUpload && modal) {
+        btnOpenUpload.addEventListener('click', () => modal.classList.add('active'));
+    }
+    if (btnCloseUpload && modal) {
+        btnCloseUpload.addEventListener('click', () => modal.classList.remove('active'));
+    }
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('active');
+        });
+    }
 
     // Drag & Drop
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
 
-    dropZone.addEventListener('click', (e) => {
-        if (e.target !== fileInput && !e.target.closest('label')) {
-            fileInput.click();
-        }
-    });
+    if (dropZone) {
+        dropZone.addEventListener('click', (e) => {
+            if (fileInput && e.target !== fileInput && !e.target.closest('label')) {
+                fileInput.click();
+            }
+        });
 
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-    });
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
 
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('dragover');
-    });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
 
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleUploadedFile(files[0]);
-        }
-    });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleUploadedFile(files[0]);
+            }
+        });
+    }
 
-    fileInput.addEventListener('change', (e) => {
-        const files = e.target.files;
-        if (files.length > 0) {
-            handleUploadedFile(files[0]);
-        }
-    });
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                handleUploadedFile(files[0]);
+            }
+        });
+    }
 
     // Gerar Planilha de Teste
-    document.getElementById('btn-generate-mock').addEventListener('click', () => {
-        generateAndDownloadMockData();
-    });
+    const btnGenerateMock = document.getElementById('btn-generate-mock');
+    if (btnGenerateMock) {
+        btnGenerateMock.addEventListener('click', () => {
+            generateAndDownloadMockData();
+        });
+    }
 
     // Filtros de Data
-    document.getElementById('date-start').addEventListener('change', (e) => {
-        state.dateRange.start = parseInputDate(e.target.value);
-        setActivePreset(null);
-        updateDashboard();
-    });
+    const dateStart = document.getElementById('date-start');
+    if (dateStart) {
+        dateStart.addEventListener('change', (e) => {
+            state.dateRange.start = parseInputDate(e.target.value);
+            setActivePreset(null);
+            updateDashboard();
+        });
+    }
 
-    document.getElementById('date-end').addEventListener('change', (e) => {
-        state.dateRange.end = parseInputDate(e.target.value);
-        setActivePreset(null);
-        updateDashboard();
-    });
+    const dateEnd = document.getElementById('date-end');
+    if (dateEnd) {
+        dateEnd.addEventListener('change', (e) => {
+            state.dateRange.end = parseInputDate(e.target.value);
+            setActivePreset(null);
+            updateDashboard();
+        });
+    }
 
     // Presets de Data
-    document.getElementById('preset-all').addEventListener('click', () => {
-        state.dateRange.start = new Date(state.fullDateRange.start);
-        state.dateRange.end = new Date(state.fullDateRange.end);
-        document.getElementById('date-start').value = formatDateIso(state.dateRange.start);
-        document.getElementById('date-end').value = formatDateIso(state.dateRange.end);
-        setActivePreset('all');
-        updateDashboard();
-        const drop = document.getElementById('calendar-dropdown');
-        if (drop) drop.style.display = 'none';
-    });
+    const presetAll = document.getElementById('preset-all');
+    if (presetAll) {
+        presetAll.addEventListener('click', () => {
+            state.dateRange.start = new Date(state.fullDateRange.start);
+            state.dateRange.end = new Date(state.fullDateRange.end);
+            const ds = document.getElementById('date-start');
+            const de = document.getElementById('date-end');
+            if (ds) ds.value = formatDateIso(state.dateRange.start);
+            if (de) de.value = formatDateIso(state.dateRange.end);
+            setActivePreset('all');
+            updateDashboard();
+            const drop = document.getElementById('calendar-dropdown');
+            if (drop) drop.style.display = 'none';
+        });
+    }
 
-    document.getElementById('preset-today').addEventListener('click', () => {
-        const today = new Date();
-        state.dateRange.start = today;
-        state.dateRange.end = today;
-        document.getElementById('date-start').value = formatDateIso(today);
-        document.getElementById('date-end').value = formatDateIso(today);
-        setActivePreset('today');
-        updateDashboard();
-        const drop = document.getElementById('calendar-dropdown');
-        if (drop) drop.style.display = 'none';
-    });
+    const presetToday = document.getElementById('preset-today');
+    if (presetToday) {
+        presetToday.addEventListener('click', () => {
+            const today = new Date();
+            state.dateRange.start = today;
+            state.dateRange.end = today;
+            const ds = document.getElementById('date-start');
+            const de = document.getElementById('date-end');
+            if (ds) ds.value = formatDateIso(today);
+            if (de) de.value = formatDateIso(today);
+            setActivePreset('today');
+            updateDashboard();
+            const drop = document.getElementById('calendar-dropdown');
+            if (drop) drop.style.display = 'none';
+        });
+    }
 
-    document.getElementById('preset-7d').addEventListener('click', () => {
-        applyPresetRange(7);
-        setActivePreset('7d');
-        const drop = document.getElementById('calendar-dropdown');
-        if (drop) drop.style.display = 'none';
-    });
+    const preset7d = document.getElementById('preset-7d');
+    if (preset7d) {
+        preset7d.addEventListener('click', () => {
+            applyPresetRange(7);
+            setActivePreset('7d');
+            const drop = document.getElementById('calendar-dropdown');
+            if (drop) drop.style.display = 'none';
+        });
+    }
 
-    document.getElementById('preset-30d').addEventListener('click', () => {
-        applyPresetRange(30);
-        setActivePreset('30d');
-        const drop = document.getElementById('calendar-dropdown');
-        if (drop) drop.style.display = 'none';
-    });
+    const preset30d = document.getElementById('preset-30d');
+    if (preset30d) {
+        preset30d.addEventListener('click', () => {
+            applyPresetRange(30);
+            setActivePreset('30d');
+            const drop = document.getElementById('calendar-dropdown');
+            if (drop) drop.style.display = 'none';
+        });
+    }
 
     // Abas da Tabela de Busca
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -564,86 +731,84 @@ function initEventListeners() {
         });
     });
 
-    // Input de Busca
-    document.getElementById('table-search').addEventListener('input', (e) => {
-        state.searchText = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-        renderTable();
-    });
+    // Input de Busca com atualização em tempo real de todo o Dashboard
+    const searchInputEl = document.getElementById('table-search');
+    if (searchInputEl) {
+        searchInputEl.addEventListener('input', (e) => {
+            state.searchText = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            updateDashboard();
+        });
+    }
 
     // Botão Recarregar do Cabeçalho
-    document.getElementById('btn-refresh').addEventListener('click', () => {
-        loadInitialData(true);
-    });
+    const btnRefresh = document.getElementById('btn-refresh');
+    if (btnRefresh) {
+        btnRefresh.addEventListener('click', () => {
+            loadInitialData(true);
+        });
+    }
 
     // Botão de Imprimir/PDF
-    document.getElementById('btn-print').addEventListener('click', () => {
-        if (typeof updatePrintTimestamps === 'function') {
-            updatePrintTimestamps();
-        }
-        
-        // Salvar título original e definir título formatado (ddmmaaaa - hhmm) para o nome do arquivo PDF
-        const originalTitle = document.title;
-        const now = new Date();
-        const dd = String(now.getDate()).padStart(2, '0');
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const yyyy = now.getFullYear();
-        const hh = String(now.getHours()).padStart(2, '0');
-        const min = String(now.getMinutes()).padStart(2, '0');
-        
-        document.title = `Controle de Requisições - MGP - ${dd}${mm}${yyyy} - ${hh}${min}`;
-        
-        // Mudar gráficos para tema claro antes de imprimir
-        if (typeof toggleChartsTheme === 'function') {
-            toggleChartsTheme(true);
-        }
-        
-        // Delay ligeiramente maior para garantir que os gráficos foram redesenhados sem animações
-        setTimeout(() => {
-            window.print();
+    const btnPrint = document.getElementById('btn-print');
+    if (btnPrint) {
+        btnPrint.addEventListener('click', () => {
+            if (typeof updatePrintTimestamps === 'function') {
+                updatePrintTimestamps();
+            }
             
-            // Restaurar os gráficos para tema escuro e o título original
+            // Salvar título original e definir título formatado (ddmmaaaa - hhmm) para o nome do arquivo PDF
+            const originalTitle = document.title;
+            const now = new Date();
+            const dd = String(now.getDate()).padStart(2, '0');
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const yyyy = now.getFullYear();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            
+            document.title = `Controle de Requisições - MGP - ${dd}${mm}${yyyy} - ${hh}${min}`;
+            
+            // Mudar gráficos para tema claro antes de imprimir
+            if (typeof toggleChartsTheme === 'function') {
+                toggleChartsTheme(true);
+            }
+            
+            // Delay ligeiramente maior para garantir que os gráficos foram redesenhados sem animações
             setTimeout(() => {
-                if (typeof toggleChartsTheme === 'function') {
-                    toggleChartsTheme(false);
-                }
-                document.title = originalTitle;
-            }, 1500);
-        }, 700);
-    });
-
-    // Assistente NLQ
-    document.getElementById('btn-nlq-apply').addEventListener('click', () => {
-        applyNlqQuery();
-    });
-
-    document.getElementById('nlq-input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            applyNlqQuery();
-        }
-    });
+                window.print();
+                
+                // Restaurar os gráficos para tema escuro e o título original
+                setTimeout(() => {
+                    if (typeof toggleChartsTheme === 'function') {
+                        toggleChartsTheme(false);
+                    }
+                    document.title = originalTitle;
+                }, 1500);
+            }, 700);
+        });
+    }
 
     // Botão Limpar Filtros da Tabela
-    document.getElementById('btn-clear-table-filters').addEventListener('click', () => {
-        state.filters.zonas.clear();
-        state.filters.postos.clear();
-        state.filters.combustiveis.clear();
+    const btnClearTableFilters = document.getElementById('btn-clear-table-filters');
+    if (btnClearTableFilters) {
+        btnClearTableFilters.addEventListener('click', () => {
+            state.filters.zonas.clear();
+            state.filters.postos.clear();
+            state.filters.combustiveis.clear();
 
-        state.dateRange.start = new Date(state.fullDateRange.start);
-        state.dateRange.end = new Date(state.fullDateRange.end);
-        document.getElementById('date-start').value = formatDateIso(state.dateRange.start);
-        document.getElementById('date-end').value = formatDateIso(state.dateRange.end);
-        setActivePreset('all');
+            state.dateRange.start = new Date(state.fullDateRange.start);
+            state.dateRange.end = new Date(state.fullDateRange.end);
+            document.getElementById('date-start').value = formatDateIso(state.dateRange.start);
+            document.getElementById('date-end').value = formatDateIso(state.dateRange.end);
+            setActivePreset('all');
 
-        state.searchText = '';
-        document.getElementById('table-search').value = '';
+            state.searchText = '';
+            const searchInput = document.getElementById('table-search');
+            if (searchInput) searchInput.value = '';
 
-        document.getElementById('nlq-input').value = '';
-        document.getElementById('nlq-feedback').textContent = "Filtros limpos com sucesso.";
-        document.getElementById('nlq-feedback').style.color = 'var(--text-secondary)';
-
-        buildFilterButtons();
-        updateDashboard();
-    });
+            buildFilterButtons();
+            updateDashboard();
+        });
+    }
 
     // Botão Limpar Dados Gerais (Destrutivo)
     const btnClearData = document.getElementById('btn-clear-data');
@@ -688,23 +853,35 @@ function initEventListeners() {
     }
 
     // Abrir modal de Nova Requisição
-    document.getElementById('btn-open-add-requisicao').addEventListener('click', () => {
-        const today = new Date();
-        document.getElementById('input-date').value = formatDateIso(today);
-        
-        // Atualizar todas as datalists com os dados mais recentes do banco
-        if (typeof buildFilterButtons === 'function') {
-            buildFilterButtons();
-        }
+    const btnOpenAddReq = document.getElementById('btn-open-add-requisicao');
+    if (btnOpenAddReq) {
+        btnOpenAddReq.addEventListener('click', () => {
+            const editIdInput = document.getElementById('input-edit-id');
+            if (editIdInput) editIdInput.value = '';
+            const modalTitle = document.getElementById('add-requisicao-modal-title');
+            if (modalTitle) modalTitle.textContent = 'Nova Requisição';
+            const submitBtn = document.getElementById('btn-submit-add-requisicao');
+            if (submitBtn) submitBtn.textContent = 'Salvar';
 
-        // Popular a lista de requisições de uso único disponíveis
-        populateRequisicoesDatalist('datalist-requisicoes', state.customRequisicoes);
-        
-        const inputKmAnterior = document.getElementById('input-km-anterior');
-        if (inputKmAnterior) inputKmAnterior.value = '';
-        
-        document.getElementById('add-requisicao-modal').classList.add('active');
-    });
+            const today = new Date();
+            const inputDate = document.getElementById('input-date');
+            if (inputDate) inputDate.value = formatDateIso(today);
+            
+            // Atualizar todas as datalists com os dados mais recentes do banco
+            if (typeof buildFilterButtons === 'function') {
+                buildFilterButtons();
+            }
+
+            // Popular a lista de requisições de uso único disponíveis
+            populateRequisicoesDatalist('datalist-requisicoes', state.customRequisicoes);
+            
+            const inputKmAnterior = document.getElementById('input-km-anterior');
+            if (inputKmAnterior) inputKmAnterior.value = '';
+            
+            const addReqModal = document.getElementById('add-requisicao-modal');
+            if (addReqModal) addReqModal.classList.add('active');
+        });
+    }
 
     // Função para calcular automaticamente a quantidade de requisições
     function calculateQtdRequisicoes() {
@@ -730,16 +907,11 @@ function initEventListeners() {
         }
     }
 
-    // Sincronizar automaticamente Fim Seq com Início Seq para requisições de uso único e auto-preencher combustível/litros
+    // Preencher automaticamente combustível/litros a partir do vínculo da requisição
     const inputInicioSeq = document.getElementById('input-inicio-seq');
     if (inputInicioSeq) {
         inputInicioSeq.addEventListener('input', function() {
             const val = this.value.trim();
-            const inputFimSeq = document.getElementById('input-fim-seq');
-            if (inputFimSeq) {
-                inputFimSeq.value = val;
-            }
-            calculateQtdRequisicoes();
 
             // Auto-preencher tipo de combustível e litros a partir do vínculo da requisição
             if (state.mappings.reqToFuelAndLiters && state.mappings.reqToFuelAndLiters[val]) {
@@ -747,13 +919,7 @@ function initEventListeners() {
                 if (info.fuel) {
                     const selectComb = document.getElementById('input-combustivel');
                     if (selectComb) {
-                        for (let i = 0; i < selectComb.options.length; i++) {
-                            const opt = selectComb.options[i];
-                            if (opt.value.toLowerCase() === info.fuel.toLowerCase()) {
-                                selectComb.value = opt.value;
-                                break;
-                            }
-                        }
+                        selectComb.value = info.fuel;
                     }
                 }
                 if (info.liters) {
@@ -774,11 +940,6 @@ function initEventListeners() {
                 }
             }
         });
-    }
-
-    const inputFimSeq = document.getElementById('input-fim-seq');
-    if (inputFimSeq) {
-        inputFimSeq.addEventListener('input', calculateQtdRequisicoes);
     }
 
     const inputDate = document.getElementById('input-date');
@@ -909,14 +1070,12 @@ function initEventListeners() {
         e.preventDefault();
 
         const inicioSeq = document.getElementById('input-inicio-seq').value.trim();
-        const fimSeq = document.getElementById('input-fim-seq').value.trim();
+        const inputFimEl = document.getElementById('input-fim-seq');
+        const fimSeq = inputFimEl ? inputFimEl.value.trim() : inicioSeq;
 
         // Validar unicidade da sequência de requisição informada
         if (inicioSeq) {
-            const startNum = parseInt(inicioSeq);
-            const endNum = parseInt(fimSeq) || startNum;
-
-            const duplicateNum = isRequisitionRangeUsed(startNum, endNum, inicioSeq);
+            const duplicateNum = isRequisitionRangeUsed(inicioSeq, fimSeq);
             if (duplicateNum !== null) {
                 alert(`A requisição nº ${duplicateNum} já foi utilizada em outro lançamento! Insira uma sequência única.`);
                 return;
@@ -924,13 +1083,13 @@ function initEventListeners() {
         }
 
         const dateVal = parseInputDate(document.getElementById('input-date').value);
-        const zona = document.getElementById('input-zona').value;
-        const responsavel = document.getElementById('input-responsavel').value;
-        const posto = document.getElementById('input-posto').value;
-        const motorista = document.getElementById('input-motorista').value;
+        const zona = document.getElementById('input-zona').value.trim();
+        const responsavel = document.getElementById('input-responsavel').value.trim();
+        const posto = document.getElementById('input-posto').value.trim();
+        const motorista = document.getElementById('input-motorista').value.trim();
         const veiculo = document.getElementById('input-veiculo').value.trim();
         const placa = document.getElementById('input-placa').value.trim().toUpperCase();
-        const combustivel = document.getElementById('input-combustivel').value;
+        const combustivel = document.getElementById('input-combustivel').value.trim();
         const kmAnterior = document.getElementById('input-km-anterior').value.trim();
         const km = document.getElementById('input-km').value.trim();
 
@@ -958,28 +1117,155 @@ function initEventListeners() {
             inicioSeq: inicioSeq,
             fimSeq: fimSeq,
             qtdRequisicoes: qtdRequisicoes,
-            zona: zona,
-            responsavel: responsavel,
-            posto: posto || 'Não Informado',
-            motorista: motorista || 'Não Informado',
-            veiculo: veiculo,
-            placa: placa,
-            kmAnterior: kmAnterior,
-            km: km,
-            combustivel: combustivel,
+            zona: zona || 'NÃO INFORMADO',
+            responsavel: responsavel || 'NÃO INFORMADO',
+            posto: posto || 'NÃO INFORMADO',
+            motorista: motorista || 'NÃO INFORMADO',
+            veiculo: veiculo || 'NÃO INFORMADO',
+            placa: placa || 'NÃO INFORMADO',
+            kmAnterior: kmAnterior || 'NÃO INFORMADO',
+            km: km || 'NÃO INFORMADO',
+            combustivel: combustivel || 'NÃO INFORMADO',
+            lote: document.getElementById('input-add-lote')?.value || 'LOTE 3 (15K)',
             litros: litros,
             precoLitro: precoLitro,
             valor: valor
         };
 
-        // Remover número(s) da sequência da lista de requisições disponíveis (uso único)
-        if (inicioSeq) {
-            const startNum = parseInt(inicioSeq);
-            const endNum = parseInt(fimSeq) || startNum;
-            const usedNumbers = [];
-            for (let n = startNum; n <= endNum; n++) {
-                usedNumbers.push(n.toString());
+        // Remover número(s) da sequência da lista de requisições disponíveis (uso único) de forma transacional pós-sucesso
+        const isFileProtocol = window.location.protocol === 'file:';
+        const editId = document.getElementById('input-edit-id') ? document.getElementById('input-edit-id').value : '';
+
+        if (isFileProtocol) {
+            // Se for offline (local), salva apenas no localStorage e atualiza a UI
+            if (editId) {
+                if (state.oldEditSeqs && (state.oldEditSeqs.inicioSeq !== inicioSeq || state.oldEditSeqs.fimSeq !== fimSeq)) {
+                    restoreSeqsToPool(state.oldEditSeqs.inicioSeq, state.oldEditSeqs.fimSeq);
+                    if (inicioSeq) {
+                        removeUsedRequisitions();
+                    }
+                }
+                const index = state.rawData.findIndex(row => row.id === editId);
+                if (index !== -1) {
+                    newRecord.id = editId;
+                    state.rawData[index] = newRecord;
+                }
+            } else {
+                if (inicioSeq) {
+                    removeUsedRequisitions();
+                }
+                state.rawData.push(newRecord);
             }
+            localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
+            finalizeAddRequisition();
+        } else {
+            // Se for online (servidor), faz a sincronização de forma síncrona
+            showLoading('Salvando lançamento no banco de dados...');
+            
+            // Preparar o payload completo
+            let tempRawData = [...state.rawData];
+            if (editId) {
+                const index = tempRawData.findIndex(row => row.id === editId);
+                if (index !== -1) {
+                    newRecord.id = editId;
+                    tempRawData[index] = newRecord;
+                }
+            } else {
+                tempRawData.push(newRecord);
+            }
+
+            let tempCustomRequisicoes = state.customRequisicoes || [];
+            
+            if (editId) {
+                if (state.oldEditSeqs && (state.oldEditSeqs.inicioSeq !== inicioSeq || state.oldEditSeqs.fimSeq !== fimSeq)) {
+                    tempCustomRequisicoes = restoreSeqsToPoolTemp(tempCustomRequisicoes, state.oldEditSeqs.inicioSeq, state.oldEditSeqs.fimSeq);
+                    if (inicioSeq) {
+                        tempCustomRequisicoes = removeUsedRequisitionsTemp(tempCustomRequisicoes, inicioSeq, fimSeq);
+                    }
+                }
+            } else {
+                if (inicioSeq) {
+                    tempCustomRequisicoes = removeUsedRequisitionsTemp(tempCustomRequisicoes, inicioSeq, fimSeq);
+                }
+            }
+
+            const syncPayload = {
+                environment: state.activeEnv,
+                requisicoes: tempRawData,
+                custom_bases: state.customBases,
+                custom_postos: state.customPostos,
+                custom_motoristas: state.customMotoristas,
+                custom_veiculos: state.customVeiculos,
+                custom_requisicoes: tempCustomRequisicoes
+            };
+
+            fetch('./api/sync_data.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(syncPayload)
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Falha HTTP na resposta do servidor.');
+                return res.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    // Confirma a inserção/edição no estado da aplicação
+                    if (editId) {
+                        if (state.oldEditSeqs && (state.oldEditSeqs.inicioSeq !== inicioSeq || state.oldEditSeqs.fimSeq !== fimSeq)) {
+                            restoreSeqsToPool(state.oldEditSeqs.inicioSeq, state.oldEditSeqs.fimSeq);
+                            if (inicioSeq) {
+                                removeUsedRequisitions();
+                            }
+                        }
+                        const index = state.rawData.findIndex(row => row.id === editId);
+                        if (index !== -1) {
+                            newRecord.id = editId;
+                            state.rawData[index] = newRecord;
+                        }
+                    } else {
+                        if (inicioSeq) {
+                            removeUsedRequisitions();
+                        }
+                        state.rawData.push(newRecord);
+                    }
+                    localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
+                    
+                    finalizeAddRequisition();
+                    hideLoading();
+                } else {
+                    throw new Error(result.message || 'Erro desconhecido retornado pelo servidor.');
+                }
+            })
+            .catch(err => {
+                hideLoading();
+                console.error(err);
+                alert('Erro ao salvar no banco de dados online: ' + err.message + '\n\nO lançamento NÃO foi registrado. Por favor, verifique sua conexão e tente novamente.');
+            });
+        }
+
+        function removeUsedRequisitions() {
+            const startObj = parseSeqString(inicioSeq);
+            const endObj = parseSeqString(fimSeq || inicioSeq);
+            const usedNumbers = [];
+            if (!isNaN(startObj.num)) {
+                const startNum = startObj.num;
+                const endNum = isNaN(endObj.num) ? startNum : endObj.num;
+                for (let n = startNum; n <= endNum; n++) {
+                    if (startObj.prefix) {
+                        const match = inicioSeq.toString().trim().match(/^(.*)-(\d+)$/);
+                        const padLength = match ? match[2].length : 3;
+                        usedNumbers.push(`${startObj.prefix}-${n.toString().padStart(padLength, '0')}`);
+                    } else {
+                        usedNumbers.push(n.toString());
+                    }
+                }
+            } else {
+                usedNumbers.push(inicioSeq.toString().trim());
+            }
+
             state.customRequisicoes = (state.customRequisicoes || []).filter(line => {
                 const parts = splitByRelationalHyphen(line);
                 const reqNum = parts.length > 0 ? parts[0].trim() : '';
@@ -989,25 +1275,125 @@ function initEventListeners() {
             populateRequisicoesDatalist('datalist-requisicoes', state.customRequisicoes);
         }
 
-        state.rawData.push(newRecord);
-        localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
-        syncWithServerSilent();
+        function restoreSeqsToPool(inicio, fim) {
+            if (!inicio) return;
+            const startObj = parseSeqString(inicio);
+            const endObj = parseSeqString(fim || inicio);
+            const restoredNumbers = [];
+            if (!isNaN(startObj.num)) {
+                const startNum = startObj.num;
+                const endNum = isNaN(endObj.num) ? startNum : endObj.num;
+                for (let n = startNum; n <= endNum; n++) {
+                    if (startObj.prefix) {
+                        const match = inicio.toString().trim().match(/^(.*)-(\d+)$/);
+                        const padLength = match ? match[2].length : 3;
+                        restoredNumbers.push(`${startObj.prefix}-${n.toString().padStart(padLength, '0')}`);
+                    } else {
+                        restoredNumbers.push(n.toString());
+                    }
+                }
+            } else {
+                restoredNumbers.push(inicio.toString().trim());
+            }
+            
+            const currentPool = state.customRequisicoes || [];
+            const newPool = Array.from(new Set([...currentPool, ...restoredNumbers])).sort((a, b) => {
+                const aObj = parseSeqString(a);
+                const bObj = parseSeqString(b);
+                if (aObj.prefix !== bObj.prefix) {
+                    return aObj.prefix.localeCompare(bObj.prefix);
+                }
+                return aObj.num - bObj.num;
+            });
+            state.customRequisicoes = newPool;
+            localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+            populateRequisicoesDatalist('datalist-requisicoes', state.customRequisicoes);
+        }
 
-        document.getElementById('add-requisicao-modal').classList.remove('active');
-        document.getElementById('form-add-requisicao').reset();
-        
-        // Resetar para modo litros padrão
-        document.querySelector('input[name="input-modo-abastecimento"][value="litros"]').checked = true;
-        document.getElementById('group-litros').style.display = 'flex';
-        document.getElementById('group-valor-total').style.display = 'none';
-        document.getElementById('input-litros').setAttribute('required', '');
-        document.getElementById('input-valor-total').removeAttribute('required');
+        function removeUsedRequisitionsTemp(pool, inicio, fim) {
+            const startObj = parseSeqString(inicio);
+            const endObj = parseSeqString(fim || inicio);
+            const usedNumbers = [];
+            if (!isNaN(startObj.num)) {
+                const startNum = startObj.num;
+                const endNum = isNaN(endObj.num) ? startNum : endObj.num;
+                for (let n = startNum; n <= endNum; n++) {
+                    if (startObj.prefix) {
+                        const match = inicio.toString().trim().match(/^(.*)-(\d+)$/);
+                        const padLength = match ? match[2].length : 3;
+                        usedNumbers.push(`${startObj.prefix}-${n.toString().padStart(padLength, '0')}`);
+                    } else {
+                        usedNumbers.push(n.toString());
+                    }
+                }
+            } else {
+                usedNumbers.push(inicio.toString().trim());
+            }
 
-        // Atualizar range de datas para contemplar a nova requisição
-        initDateFilterRange();
+            return pool.filter(line => {
+                const parts = splitByRelationalHyphen(line);
+                const reqNum = parts.length > 0 ? parts[0].trim() : '';
+                return !usedNumbers.includes(reqNum);
+            });
+        }
 
-        buildFilterButtons();
-        updateDashboard();
+        function restoreSeqsToPoolTemp(pool, inicio, fim) {
+            if (!inicio) return pool;
+            const startObj = parseSeqString(inicio);
+            const endObj = parseSeqString(fim || inicio);
+            const restoredNumbers = [];
+            if (!isNaN(startObj.num)) {
+                const startNum = startObj.num;
+                const endNum = isNaN(endObj.num) ? startNum : endObj.num;
+                for (let n = startNum; n <= endNum; n++) {
+                    if (startObj.prefix) {
+                        const match = inicio.toString().trim().match(/^(.*)-(\d+)$/);
+                        const padLength = match ? match[2].length : 3;
+                        restoredNumbers.push(`${startObj.prefix}-${n.toString().padStart(padLength, '0')}`);
+                    } else {
+                        restoredNumbers.push(n.toString());
+                    }
+                }
+            } else {
+                restoredNumbers.push(inicio.toString().trim());
+            }
+
+            return Array.from(new Set([...pool, ...restoredNumbers])).sort((a, b) => {
+                const aObj = parseSeqString(a);
+                const bObj = parseSeqString(b);
+                if (aObj.prefix !== bObj.prefix) {
+                    return aObj.prefix.localeCompare(bObj.prefix);
+                }
+                return aObj.num - bObj.num;
+            });
+        }
+
+        function finalizeAddRequisition() {
+            document.getElementById('add-requisicao-modal').classList.remove('active');
+            document.getElementById('form-add-requisicao').reset();
+            
+            // Resetar para modo litros padrão
+            const radioLitros = document.querySelector('input[name="input-modo-abastecimento"][value="litros"]');
+            if (radioLitros) radioLitros.checked = true;
+            
+            const groupLitros = document.getElementById('group-litros');
+            if (groupLitros) groupLitros.style.display = 'flex';
+            
+            const groupValTotal = document.getElementById('group-valor-total');
+            if (groupValTotal) groupValTotal.style.display = 'none';
+            
+            const inputLitros = document.getElementById('input-litros');
+            if (inputLitros) inputLitros.setAttribute('required', '');
+            
+            const inputValTotal = document.getElementById('input-valor-total');
+            if (inputValTotal) inputValTotal.removeAttribute('required');
+
+            // Atualizar range de datas para contemplar a nova requisição
+            initDateFilterRange();
+
+            buildFilterButtons();
+            updateDashboard();
+        }
     });
 
     // Alternância de abas no modal de cadastros
@@ -1031,23 +1417,37 @@ function initEventListeners() {
     });
 
     // Modal Cadastros
+    // Modal Central de Cadastros Estruturada
     const cadastrosModal = document.getElementById('cadastros-modal');
     const btnOpenCadastros = document.getElementById('btn-open-cadastros');
     const btnCloseCadastros = document.getElementById('btn-close-cadastros');
     const btnCancelCadastros = document.getElementById('btn-cancel-cadastros');
-    const formCadastros = document.getElementById('form-cadastros');
+
+    // Inicializar Abas da Central de Cadastros
+    document.querySelectorAll('.cadastro-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.cadastro-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.cadastro-tab-content').forEach(c => {
+                c.classList.remove('active');
+                c.style.display = 'none';
+            });
+
+            btn.classList.add('active');
+            const targetContent = document.getElementById(btn.dataset.tabId);
+            if (targetContent) {
+                targetContent.classList.add('active');
+                targetContent.style.display = 'block';
+            }
+        });
+    });
 
     if (btnOpenCadastros) {
         btnOpenCadastros.addEventListener('click', () => {
-            // Resetar para a primeira aba por padrão
+            // Abrir na primeira aba por padrão
             const firstTab = document.querySelector('.cadastro-tab-btn');
             if (firstTab) firstTab.click();
 
-            document.getElementById('textarea-custom-bases').value = state.customBases.join('\n');
-            document.getElementById('textarea-custom-postos').value = state.customPostos.join('\n');
-            document.getElementById('textarea-custom-motoristas').value = state.customMotoristas.join('\n');
-            document.getElementById('textarea-custom-veiculos').value = state.customVeiculos.join('\n');
-            document.getElementById('textarea-custom-requisicoes').value = (state.customRequisicoes || []).join('\n');
+            renderStructuredCadastrosUI();
             cadastrosModal.classList.add('active');
         });
     }
@@ -1055,19 +1455,178 @@ function initEventListeners() {
     if (btnCloseCadastros) btnCloseCadastros.addEventListener('click', () => cadastrosModal.classList.remove('active'));
     if (btnCancelCadastros) btnCancelCadastros.addEventListener('click', () => cadastrosModal.classList.remove('active'));
 
-    cadastrosModal.addEventListener('click', (e) => {
-        if (e.target === cadastrosModal) cadastrosModal.classList.remove('active');
-    });
+    if (cadastrosModal) {
+        cadastrosModal.addEventListener('click', (e) => {
+            if (e.target === cadastrosModal) cadastrosModal.classList.remove('active');
+        });
+    }
 
+    // 1. Adicionar / Salvar Base Estruturada
+    const btnAddBase = document.getElementById('btn-add-base-item');
+    if (btnAddBase) {
+        btnAddBase.addEventListener('click', () => {
+            const inputNome = document.getElementById('input-new-base-nome');
+            const inputResp = document.getElementById('input-new-base-resp');
+            const nome = inputNome ? inputNome.value.trim().toUpperCase() : '';
+            const resp = inputResp ? inputResp.value.trim().toUpperCase() : '';
+
+            if (!nome) {
+                alert('Informe o nome da Base.');
+                return;
+            }
+
+            const itemStr = resp ? `${nome} - ${resp}` : nome;
+            if (!state.customBases) state.customBases = [];
+
+            const editIdx = btnAddBase.dataset.editIndex;
+            if (editIdx !== undefined && editIdx !== '') {
+                state.customBases[parseInt(editIdx, 10)] = itemStr;
+                btnAddBase.dataset.editIndex = '';
+                btnAddBase.textContent = 'Adicionar Base';
+            } else {
+                state.customBases.push(itemStr);
+            }
+
+            localStorage.setItem(getEnvKey('custom_bases'), JSON.stringify(state.customBases));
+            syncWithServerSilent();
+
+            if (inputNome) inputNome.value = '';
+            if (inputResp) inputResp.value = '';
+
+            updateRelationsMappings();
+            buildFilterButtons();
+            renderStructuredCadastrosUI();
+        });
+    }
+
+    // 2. Adicionar / Salvar Veículo Estruturado
+    const btnAddVeic = document.getElementById('btn-add-veic-item');
+    if (btnAddVeic) {
+        btnAddVeic.addEventListener('click', () => {
+            const inputPlaca = document.getElementById('input-new-veic-placa');
+            const inputTipo = document.getElementById('input-new-veic-tipo');
+            const inputComb = document.getElementById('input-new-veic-comb');
+
+            const placa = inputPlaca ? inputPlaca.value.trim().toUpperCase() : '';
+            const tipo = inputTipo ? inputTipo.value.trim() : '';
+
+            if (!placa) {
+                alert('Informe a Placa do veículo.');
+                return;
+            }
+
+            const itemStr = tipo ? `${placa} - ${tipo}` : placa;
+            if (!state.customVeiculos) state.customVeiculos = [];
+
+            const editIdx = btnAddVeic.dataset.editIndex;
+            if (editIdx !== undefined && editIdx !== '') {
+                state.customVeiculos[parseInt(editIdx, 10)] = itemStr;
+                btnAddVeic.dataset.editIndex = '';
+                btnAddVeic.textContent = 'Adicionar Veículo';
+            } else {
+                state.customVeiculos.push(itemStr);
+            }
+
+            localStorage.setItem(getEnvKey('custom_veiculos'), JSON.stringify(state.customVeiculos));
+            syncWithServerSilent();
+
+            if (inputPlaca) inputPlaca.value = '';
+            if (inputTipo) inputTipo.value = '';
+
+            updateRelationsMappings();
+            buildFilterButtons();
+            renderStructuredCadastrosUI();
+        });
+    }
+
+    // 3. Adicionar / Salvar Posto Estruturado
+    const btnAddPosto = document.getElementById('btn-add-posto-item');
+    if (btnAddPosto) {
+        btnAddPosto.addEventListener('click', () => {
+            const inputNome = document.getElementById('input-new-posto-nome');
+            const inputPreco = document.getElementById('input-new-posto-preco');
+
+            const nome = inputNome ? inputNome.value.trim().toUpperCase() : '';
+            const preco = inputPreco ? parseFloat(inputPreco.value) || 0 : 0;
+
+            if (!nome) {
+                alert('Informe o nome do Posto.');
+                return;
+            }
+
+            const itemStr = preco > 0 ? `${nome} - ${preco.toFixed(3)}` : nome;
+            if (!state.customPostos) state.customPostos = [];
+
+            const editIdx = btnAddPosto.dataset.editIndex;
+            if (editIdx !== undefined && editIdx !== '') {
+                state.customPostos[parseInt(editIdx, 10)] = itemStr;
+                btnAddPosto.dataset.editIndex = '';
+                btnAddPosto.textContent = 'Adicionar Posto';
+            } else {
+                state.customPostos.push(itemStr);
+            }
+
+            localStorage.setItem(getEnvKey('custom_postos'), JSON.stringify(state.customPostos));
+            syncWithServerSilent();
+
+            if (inputNome) inputNome.value = '';
+            if (inputPreco) inputPreco.value = '';
+
+            updateRelationsMappings();
+            buildFilterButtons();
+            renderStructuredCadastrosUI();
+        });
+    }
+
+    // 4. Gerar Faixa Sequencial de Requisições para o Lote
+    const btnAddLoteRange = document.getElementById('btn-add-lote-range');
+    if (btnAddLoteRange) {
+        btnAddLoteRange.addEventListener('click', () => {
+            const loteNome = document.getElementById('input-new-lote-nome')?.value.trim() || 'LOTE 4 (10K)';
+            const controlCode = document.getElementById('input-new-lote-control')?.value.trim() || '1787595670733';
+            const startSeq = parseInt(document.getElementById('input-new-lote-start')?.value, 10) || 1;
+            const endSeq = parseInt(document.getElementById('input-new-lote-end')?.value, 10) || 100;
+            const litros = parseInt(document.getElementById('input-new-lote-litros')?.value, 10) || 30;
+
+            if (endSeq < startSeq) {
+                alert('A sequência final deve ser maior ou igual à sequência inicial.');
+                return;
+            }
+
+            if (!state.customRequisicoes) state.customRequisicoes = [];
+
+            let addedCount = 0;
+            for (let i = startSeq; i <= endSeq; i++) {
+                const seqPad = String(i).padStart(3, '0');
+                const reqStr = `${controlCode}-${seqPad} - ${litros}L (${loteNome})`;
+                if (!state.customRequisicoes.includes(reqStr)) {
+                    state.customRequisicoes.push(reqStr);
+                    addedCount++;
+                }
+            }
+
+            localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+            syncWithServerSilent();
+
+            alert(`✅ ${addedCount} requisições geradas com sucesso para o ${loteNome}!`);
+            updateRelationsMappings();
+            populateDatalist('datalist-requisicoes', state.customRequisicoes);
+            buildFilterButtons();
+            renderStructuredCadastrosUI();
+        });
+    }
+
+    // 5. Salvar Importação em Massa (Texto)
+    const formCadastros = document.getElementById('form-cadastros');
     if (formCadastros) {
         formCadastros.addEventListener('submit', (e) => {
             e.preventDefault();
             
-            const basesText = document.getElementById('textarea-custom-bases').value;
-            const postosText = document.getElementById('textarea-custom-postos').value;
-            const motoristasText = document.getElementById('textarea-custom-motoristas').value;
-            const veiculosText = document.getElementById('textarea-custom-veiculos').value;
-            const requisicoesText = document.getElementById('textarea-custom-requisicoes').value;
+            const basesText = document.getElementById('textarea-custom-bases')?.value || '';
+            const postosText = document.getElementById('textarea-custom-postos')?.value || '';
+            const motoristasText = document.getElementById('textarea-custom-motoristas')?.value || '';
+            const veiculosText = document.getElementById('textarea-custom-veiculos')?.value || '';
+            const requisicoesText = document.getElementById('textarea-custom-requisicoes')?.value || '';
             
             state.customBases = basesText.split('\n').map(s => s.trim()).filter(Boolean);
             state.customPostos = postosText.split('\n').map(s => s.trim()).filter(Boolean);
@@ -1075,25 +1634,34 @@ function initEventListeners() {
             state.customVeiculos = veiculosText.split('\n').map(s => s.trim()).filter(Boolean);
             state.customRequisicoes = requisicoesText.split('\n').map(s => s.trim()).filter(Boolean);
             
-            localStorage.setItem('custom_bases', JSON.stringify(state.customBases));
-            localStorage.setItem('custom_postos', JSON.stringify(state.customPostos));
-            localStorage.setItem('custom_motoristas', JSON.stringify(state.customMotoristas));
-            localStorage.setItem('custom_veiculos', JSON.stringify(state.customVeiculos));
-            localStorage.setItem('custom_requisicoes', JSON.stringify(state.customRequisicoes));
+            localStorage.setItem(getEnvKey('custom_bases'), JSON.stringify(state.customBases));
+            localStorage.setItem(getEnvKey('custom_postos'), JSON.stringify(state.customPostos));
+            localStorage.setItem(getEnvKey('custom_motoristas'), JSON.stringify(state.customMotoristas));
+            localStorage.setItem(getEnvKey('custom_veiculos'), JSON.stringify(state.customVeiculos));
+            localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
             syncWithServerSilent();
             
-            // Popular datalist
             populateDatalist('datalist-requisicoes', state.customRequisicoes);
-            
-            // Atualizar mapeamentos relacionais
             updateRelationsMappings();
-            
-            cadastrosModal.classList.remove('active');
-            
             buildFilterButtons();
-            updateDashboard();
+            renderStructuredCadastrosUI();
+            alert('Cadastros salvos com sucesso!');
         });
     }
+
+    // Chips de Litragem Rápida no formulário de Nova Requisição
+    document.querySelectorAll('.btn-quick-litro').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.btn-quick-litro').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            const litros = parseFloat(this.dataset.litro);
+            const inputLitros = document.getElementById('input-litros');
+            if (inputLitros) {
+                inputLitros.value = litros;
+                inputLitros.dispatchEvent(new Event('input'));
+            }
+        });
+    });
 
     // Modo de Abastecimento (Litros ou Valor) no Formulário
     document.querySelectorAll('input[name="input-modo-abastecimento"]').forEach(radio => {
@@ -1169,6 +1737,54 @@ function initEventListeners() {
     if (btnPrintInfo) btnPrintInfo.addEventListener('click', triggerPrint);
     const btnPrintInfoTop = document.getElementById('btn-print-infografico-top');
     if (btnPrintInfoTop) btnPrintInfoTop.addEventListener('click', triggerPrint);
+
+    // Modal Relatório Simplificado
+    const relModal = document.getElementById('relatorio-simplificado-modal');
+    const btnOpenRel = document.getElementById('btn-open-relatorio-simplificado');
+    const btnCloseRel = document.getElementById('btn-close-relatorio-simplificado');
+    const btnCancelRel = document.getElementById('btn-cancel-relatorio-simplificado');
+    const btnPrintRel = document.getElementById('btn-print-relatorio-simplificado');
+    const btnPrintRelTop = document.getElementById('btn-print-relatorio-simplificado-top');
+
+    if (btnOpenRel && relModal) {
+        btnOpenRel.addEventListener('click', () => {
+            populateRelatorioSimplificado();
+            relModal.classList.add('active');
+        });
+    }
+
+    if (btnCloseRel && relModal) btnCloseRel.addEventListener('click', () => relModal.classList.remove('active'));
+    if (btnCancelRel && relModal) btnCancelRel.addEventListener('click', () => relModal.classList.remove('active'));
+
+    if (relModal) {
+        relModal.addEventListener('click', (e) => {
+            if (e.target === relModal) relModal.classList.remove('active');
+        });
+    }
+
+    const triggerPrintRel = () => {
+        if (typeof updatePrintTimestamps === 'function') {
+            updatePrintTimestamps();
+        }
+        const originalTitle = document.title;
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        document.title = `Relatorio_Simplificado_Consumo_MGP_${dd}${mm}${yyyy}`;
+
+        document.body.classList.add('printing-relatorio-simplificado');
+        setTimeout(() => {
+            window.print();
+            setTimeout(() => {
+                document.body.classList.remove('printing-relatorio-simplificado');
+                document.title = originalTitle;
+            }, 800);
+        }, 150);
+    };
+
+    if (btnPrintRel) btnPrintRel.addEventListener('click', triggerPrintRel);
+    if (btnPrintRelTop) btnPrintRelTop.addEventListener('click', triggerPrintRel);
 }
 
 // 2. VERIFICAR SE FOI SOLICITADO UPDATE VIA PARAMETROS URL
@@ -1606,6 +2222,21 @@ function parseInputDate(str) {
     return new Date(str);
 }
 
+function safeParseDate(val) {
+    if (!val) return null;
+    if (val instanceof Date) return val;
+    const str = val.toString().trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const parts = str.split('-');
+        return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    }
+    if (/^\d{4}-\d{2}-\d{2}T/.test(str)) {
+        const parts = str.split('T')[0].split('-');
+        return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    }
+    return new Date(str);
+}
+
 function normalizeDate(d) {
     if (!d) return null;
     const newD = new Date(d);
@@ -1625,15 +2256,15 @@ function processData(rows, shouldCache = false) {
     rows.forEach((row, idx) => {
         // Se a linha já foi processada anteriormente (veio do localStorage)
         if (row.date && (row.zona !== undefined || row.combustivel !== undefined)) {
-            let parsedDate = new Date(row.date);
+            let parsedDate = safeParseDate(row.date);
             if (isNaN(parsedDate.getTime()) && row.date) {
                 parsedDate = parseExcelDate(row.date);
             }
 
-            let zona = row.zona || 'Não Informado';
-            let responsavel = row.responsavel || 'Não Informado';
-            let veiculo = row.veiculo || 'Não Informado';
-            let placa = row.placa || '';
+            let zona = row.zona || 'NÃO INFORMADO';
+            let responsavel = row.responsavel || 'NÃO INFORMADO';
+            let veiculo = row.veiculo || 'NÃO INFORMADO';
+            let placa = row.placa || 'NÃO INFORMADO';
 
             const zonaLower = (zona || '').toString().trim().toLowerCase();
             const respLower = (responsavel || '').toString().trim().toLowerCase();
@@ -1669,12 +2300,15 @@ function processData(rows, shouldCache = false) {
                 ...row,
                 id: row.id || (Date.now() + '-' + Math.random() + '-' + idx),
                 date: finalDate,
+                month: finalDate.getMonth(),
+                year: finalDate.getFullYear(),
                 zona: zona,
                 responsavel: responsavel,
                 veiculo: veiculo,
                 placa: placaUpper,
-                kmAnterior: row.kmAnterior !== undefined ? row.kmAnterior : '',
-                km: row.km !== null && row.km !== undefined ? row.km : ''
+                lote: row.lote || (row.inicioSeq && row.inicioSeq.startsWith('1787') ? 'LOTE 3 (15K)' : 'LOTE 1 (7K)'),
+                kmAnterior: (row.kmAnterior !== undefined && row.kmAnterior !== null && row.kmAnterior !== '' && row.kmAnterior !== 0) ? row.kmAnterior : 'NÃO INFORMADO',
+                km: (row.km !== null && row.km !== undefined && row.km !== '' && row.km !== 0) ? row.km : 'NÃO INFORMADO'
             });
             return;
         }
@@ -1696,12 +2330,12 @@ function processData(rows, shouldCache = false) {
             valor = qtdRequisicoes * litros * precoLitro;
         }
 
-        let zona = cleanedRow['base'] || cleanedRow['bases'] || cleanedRow['zona'] || cleanedRow['zonas de manaus'] || 'Não Informado';
-        let responsavel = cleanedRow['responsavel'] || 'Não Informado';
-        let posto = cleanedRow['posto'] || cleanedRow['postos'] || 'Não Informado';
-        let motorista = cleanedRow['motorista'] || cleanedRow['motoristas'] || 'Não Informado';
-        let veiculo = cleanedRow['veiculo'] || 'Não Informado';
-        let placa = cleanedRow['placa'] || '';
+        let zona = cleanedRow['base'] || cleanedRow['bases'] || cleanedRow['zona'] || cleanedRow['zonas de manaus'] || 'NÃO INFORMADO';
+        let responsavel = cleanedRow['responsavel'] || 'NÃO INFORMADO';
+        let posto = cleanedRow['posto'] || cleanedRow['postos'] || 'NÃO INFORMADO';
+        let motorista = cleanedRow['motorista'] || cleanedRow['motoristas'] || 'NÃO INFORMADO';
+        let veiculo = cleanedRow['veiculo'] || 'NÃO INFORMADO';
+        let placa = cleanedRow['placa'] || 'NÃO INFORMADO';
 
         const zonaLower = (zona || '').toString().trim().toLowerCase();
         const respLower = (responsavel || '').toString().trim().toLowerCase();
@@ -1745,8 +2379,9 @@ function processData(rows, shouldCache = false) {
             motorista: motorista,
             veiculo: veiculo,
             placa: placaUpper,
-            kmAnterior: parseBrazilianNumber(cleanedRow['km anterior']) || parseBrazilianNumber(cleanedRow['kilometragem anterior']) || '',
-            km: parseBrazilianNumber(cleanedRow['km']) || parseBrazilianNumber(cleanedRow['kilometragem']) || parseBrazilianNumber(cleanedRow['km/odor']) || parseBrazilianNumber(cleanedRow['km atual']) || '',
+            lote: cleanedRow['lote'] || row.lote || (cleanedRow['inicio da sequencia'] && cleanedRow['inicio da sequencia'].startsWith('1787') ? 'LOTE 3 (15K)' : 'LOTE 1 (7K)'),
+            kmAnterior: parseBrazilianNumber(cleanedRow['km anterior']) || parseBrazilianNumber(cleanedRow['kilometragem anterior']) || 'NÃO INFORMADO',
+            km: parseBrazilianNumber(cleanedRow['km']) || parseBrazilianNumber(cleanedRow['kilometragem']) || parseBrazilianNumber(cleanedRow['km/odor']) || parseBrazilianNumber(cleanedRow['km atual']) || 'NÃO INFORMADO',
             combustivel: cleanedRow['tipo combustivel'] || 'Não Informado',
             litros: litros,
             precoLitro: precoLitro,
@@ -1788,7 +2423,8 @@ function processData(rows, shouldCache = false) {
     });
 
     if (shouldCache) {
-        localStorage.setItem('combustivel_dashboard_data', JSON.stringify(state.rawData));
+        localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
+        syncWithServerSilent();
     }
 
 
@@ -1801,12 +2437,669 @@ function processData(rows, shouldCache = false) {
     initDateFilterRange();
 
     buildFilterButtons();
+    updateRelationsMappings();
 
     // Delay estético de processamento para suavizar transição
     setTimeout(() => {
         updateDashboard();
         hideLoading();
     }, 550);
+}
+
+// ==============================================================================
+// CENTRAL DE CADASTROS ESTRUTURADA & MAPEAMENTOS RELACIONAIS
+// ==============================================================================
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function renderStructuredCadastrosUI() {
+    // 1. BASES & RESPONSÁVEIS COM CARDS AGRUPADOS E SUB-ABAS
+    const listBases = document.getElementById('list-cad-bases');
+    const countBases = document.getElementById('count-cad-bases');
+    const subtabsBases = document.getElementById('bases-subtabs-container');
+    const allBases = state.customBases || [];
+
+    if (!state.activeBaseCadTab) state.activeBaseCadTab = 'TODAS';
+
+    // Agrupar responsáveis por Base
+    const baseGroupsMap = new Map();
+    const baseCounts = { 'TODAS': allBases.length };
+
+    allBases.forEach((item, originalIdx) => {
+        const parts = item.split('-').map(s => s.trim());
+        const baseName = parts[0] || item;
+        const respName = parts[1] || '';
+
+        baseCounts[baseName] = (baseCounts[baseName] || 0) + 1;
+
+        if (!baseGroupsMap.has(baseName)) {
+            baseGroupsMap.set(baseName, {
+                baseName,
+                items: []
+            });
+        }
+        baseGroupsMap.get(baseName).items.push({
+            respName,
+            originalIdx,
+            fullStr: item
+        });
+    });
+
+    // Ordenar bases alfabeticamente com ordenação natural (ex: LESTE 1, LESTE 2, NORTE 1, etc.)
+    const sortedBaseNames = Array.from(baseGroupsMap.keys()).sort((a, b) => 
+        a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' })
+    );
+
+    const baseTabsList = ['TODAS', ...sortedBaseNames];
+
+    // Renderizar barra de Sub-abas por Base (em ordem alfabética)
+    if (subtabsBases) {
+        subtabsBases.innerHTML = baseTabsList.map(bName => {
+            const count = baseCounts[bName] || 0;
+            const isActive = state.activeBaseCadTab === bName;
+            return `
+                <button type="button" class="lote-subtab-btn ${isActive ? 'active' : ''}" onclick="setCadBaseSubTab('${escapeHtml(bName)}')">
+                    ${bName === 'TODAS' ? '🌐' : '🏢'} ${escapeHtml(bName)}
+                    <span class="lote-subtab-badge">${count}</span>
+                </button>
+            `;
+        }).join('');
+    }
+
+    // Filtrar e ordenar grupos pela base ativa (em ordem alfabética)
+    let baseGroups = sortedBaseNames
+        .map(bName => baseGroupsMap.get(bName))
+        .filter(Boolean);
+
+    if (state.activeBaseCadTab !== 'TODAS') {
+        baseGroups = baseGroups.filter(g => g.baseName === state.activeBaseCadTab);
+    }
+
+    // Ordenar responsáveis dentro de cada base alfabeticamente
+    baseGroups.forEach(g => {
+        g.items.sort((a, b) => (a.respName || '').localeCompare(b.respName || '', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+    });
+
+    const currentBaseTabCount = baseGroups.reduce((acc, g) => acc + g.items.length, 0);
+    if (countBases) {
+        countBases.textContent = state.activeBaseCadTab === 'TODAS' 
+            ? `${allBases.length}` 
+            : `${currentBaseTabCount} de ${allBases.length}`;
+    }
+
+    if (listBases) {
+        if (baseGroups.length === 0) {
+            listBases.innerHTML = `<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1.5rem;">Nenhuma base cadastrada para <strong>${escapeHtml(state.activeBaseCadTab)}</strong>. Cadastre uma acima.</div>`;
+        } else {
+            listBases.innerHTML = baseGroups.map((g, gIdx) => {
+                const cardId = `base-card-${gIdx}`;
+                return `
+                    <div class="lote-group-card open" id="${cardId}">
+                        <div class="lote-group-header" onclick="toggleLoteGroupCard('${cardId}')">
+                            <div class="lote-group-meta">
+                                <span class="lote-group-title">🏢 ${escapeHtml(g.baseName)}</span>
+                                <span class="lote-badge-count">👤 ${g.items.length} Responsáveis</span>
+                            </div>
+                            <div class="lote-group-actions" onclick="event.stopPropagation();">
+                                <button type="button" class="entity-delete-btn" onclick="removeBaseGroup('${escapeHtml(g.baseName)}')" title="Excluir Base Completa">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                </button>
+                                <button type="button" class="btn-lote-toggle-droplet" onclick="toggleLoteGroupCard('${cardId}')" title="Expandir/Recolher Responsáveis">
+                                    <span>Responsáveis</span>
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="lote-group-droplet">
+                            <div class="resp-chips-grid">
+                                ${g.items.map(it => `
+                                    <div class="resp-chip">
+                                        <span class="resp-chip-name" title="${escapeHtml(it.respName || 'Sem nome')}">👤 ${escapeHtml(it.respName || 'Padrão')}</span>
+                                        <div class="entity-actions-group">
+                                            <button type="button" class="entity-edit-btn" onclick="editCadEntity('bases', ${it.originalIdx})" title="Editar Responsável">
+                                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                            </button>
+                                            <button type="button" class="entity-delete-btn" onclick="removeCadEntity('bases', ${it.originalIdx})" title="Remover Responsável">
+                                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // 2. VEÍCULOS & PLACAS (Ordenados Alfabeticamente)
+    const listVeics = document.getElementById('list-cad-veiculos');
+    const countVeics = document.getElementById('count-cad-veiculos');
+    const allVeiculos = state.customVeiculos || [];
+    if (countVeics) countVeics.textContent = allVeiculos.length;
+    if (listVeics) {
+        if (allVeiculos.length === 0) {
+            listVeics.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1rem;">Nenhum veículo cadastrado.</div>';
+        } else {
+            const sortedVeiculos = allVeiculos.map((item, originalIdx) => ({ item, originalIdx })).sort((a, b) => 
+                a.item.localeCompare(b.item, 'pt-BR', { numeric: true, sensitivity: 'base' })
+            );
+            listVeics.innerHTML = sortedVeiculos.map(({ item, originalIdx }) => {
+                const parts = item.split('-').map(s => s.trim());
+                const placa = parts[0] || item;
+                const modelo = parts[1] || '';
+                return `
+                    <div class="entity-item-row">
+                        <div class="entity-item-info">
+                            <span class="entity-item-title">${escapeHtml(placa)}</span>
+                            ${modelo ? `<span class="entity-item-badge-secondary">🚗 ${escapeHtml(modelo)}</span>` : ''}
+                        </div>
+                        <div class="entity-actions-group">
+                            <button type="button" class="entity-edit-btn" onclick="editCadEntity('veiculos', ${originalIdx})" title="Editar Veículo">
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                            <button type="button" class="entity-delete-btn" onclick="removeCadEntity('veiculos', ${originalIdx})" title="Remover Veículo">
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // 3. POSTOS & PREÇOS (Ordenados Alfabeticamente)
+    const listPostos = document.getElementById('list-cad-postos');
+    const countPostos = document.getElementById('count-cad-postos');
+    const allPostos = state.customPostos || [];
+    if (countPostos) countPostos.textContent = allPostos.length;
+    if (listPostos) {
+        if (allPostos.length === 0) {
+            listPostos.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1rem;">Nenhum posto cadastrado.</div>';
+        } else {
+            const sortedPostos = allPostos.map((item, originalIdx) => ({ item, originalIdx })).sort((a, b) => 
+                a.item.localeCompare(b.item, 'pt-BR', { numeric: true, sensitivity: 'base' })
+            );
+            listPostos.innerHTML = sortedPostos.map(({ item, originalIdx }) => {
+                const parts = item.split('-').map(s => s.trim());
+                const postoName = parts[0] || item;
+                const preco = parts[1] || '';
+                return `
+                    <div class="entity-item-row">
+                        <div class="entity-item-info">
+                            <span class="entity-item-title">${escapeHtml(postoName)}</span>
+                            ${preco ? `<span class="entity-item-badge">⛽ R$ ${escapeHtml(preco)}/L</span>` : ''}
+                        </div>
+                        <div class="entity-actions-group">
+                            <button type="button" class="entity-edit-btn" onclick="editCadEntity('postos', ${originalIdx})" title="Editar Posto">
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                            <button type="button" class="entity-delete-btn" onclick="removeCadEntity('postos', ${originalIdx})" title="Remover Posto">
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // 4. LOTES & REQUISIÇÕES COM CARDS AGRUPADOS E DROPLET DE SEQUÊNCIAS
+    const listReqs = document.getElementById('list-cad-lotes');
+    const countReqs = document.getElementById('count-cad-reqs');
+    const subtabsContainer = document.getElementById('lotes-subtabs-container');
+    const allReqs = state.customRequisicoes || [];
+
+    if (!state.activeLoteCadTab) state.activeLoteCadTab = 'TODOS';
+
+    // Helper para extrair metadados da requisição
+    function parseReqMeta(str) {
+        if (!str) return { control: 'AVULSO', seq: '000', litros: '30L', lote: 'OUTROS' };
+        
+        let lote = 'OUTROS';
+        const matchLote = str.match(/\((LOTE[^)]*)\)/i) || str.match(/(LOTE\s*[^-\n,)]+)/i);
+        if (matchLote && matchLote[1]) lote = matchLote[1].trim();
+
+        let litros = '30L';
+        const matchLitros = str.match(/(\d+(?:\.\d+)?)\s*(?:L|Litros)/i);
+        if (matchLitros && matchLitros[1]) litros = `${matchLitros[1]}L`;
+
+        let control = 'AVULSO';
+        let seq = '';
+        const matchFull = str.match(/^([^\s-]+)-(\d+)/);
+        if (matchFull) {
+            control = matchFull[1].trim();
+            seq = matchFull[2].trim();
+        } else {
+            const firstPart = str.split('-')[0].trim();
+            if (/^\d+$/.test(firstPart)) {
+                seq = firstPart;
+                control = 'SEQUENCIAL';
+            } else {
+                control = firstPart || 'AVULSO';
+                seq = str.split('-')[1]?.trim() || '001';
+            }
+        }
+
+        return { control, seq, litros, lote };
+    }
+
+    // Agrupar requisições por Lote + Código de Controle + Litragem
+    const groupsMap = new Map();
+    const loteCounts = { 'TODOS': allReqs.length };
+    const discoveredLots = new Set();
+
+    allReqs.forEach((item, originalIdx) => {
+        const meta = parseReqMeta(item);
+        if (meta.lote) {
+            discoveredLots.add(meta.lote);
+            loteCounts[meta.lote] = (loteCounts[meta.lote] || 0) + 1;
+        }
+
+        const groupKey = `${meta.lote}___${meta.control}___${meta.litros}`;
+        if (!groupsMap.has(groupKey)) {
+            groupsMap.set(groupKey, {
+                key: groupKey,
+                lote: meta.lote,
+                control: meta.control,
+                litros: meta.litros,
+                items: []
+            });
+        }
+        groupsMap.get(groupKey).items.push({
+            seq: meta.seq,
+            originalIdx,
+            fullStr: item
+        });
+    });
+
+    const lotTabsList = ['TODOS', ...Array.from(discoveredLots).filter(l => l !== 'TODOS')];
+
+    // Se a aba ativa não existe mais entre os lotes, voltar para TODOS
+    if (state.activeLoteCadTab !== 'TODOS' && !discoveredLots.has(state.activeLoteCadTab)) {
+        state.activeLoteCadTab = 'TODOS';
+    }
+
+    // Renderizar barra de Sub-abas por Lote com botão de Excluir
+    if (subtabsContainer) {
+        subtabsContainer.innerHTML = lotTabsList.map(loteName => {
+            const count = loteCounts[loteName] || 0;
+            const isActive = state.activeLoteCadTab === loteName;
+            return `
+                <button type="button" class="lote-subtab-btn ${isActive ? 'active' : ''}" onclick="setCadLoteSubTab('${escapeHtml(loteName)}')">
+                    ${loteName === 'TODOS' ? '🌐' : '📦'} ${escapeHtml(loteName)}
+                    <span class="lote-subtab-badge">${count}</span>
+                    ${loteName !== 'TODOS' ? `
+                        <span class="lote-subtab-del" onclick="event.stopPropagation(); removeEntireLote('${escapeHtml(loteName)}')" title="Excluir Todo o ${escapeHtml(loteName)}">&times;</span>
+                    ` : ''}
+                </button>
+            `;
+        }).join('');
+    }
+
+    // Filtrar grupos pelo lote ativo
+    let groups = Array.from(groupsMap.values());
+    if (state.activeLoteCadTab !== 'TODOS') {
+        groups = groups.filter(g => g.lote === state.activeLoteCadTab);
+    }
+
+    const currentTabCount = groups.reduce((acc, g) => acc + g.items.length, 0);
+    if (countReqs) {
+        countReqs.textContent = state.activeLoteCadTab === 'TODOS' 
+            ? `${allReqs.length}` 
+            : `${currentTabCount} de ${allReqs.length}`;
+    }
+
+    if (listReqs) {
+        if (groups.length === 0) {
+            listReqs.innerHTML = `<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1.5rem;">Nenhum grupo de requisições no estoque para o <strong>${escapeHtml(state.activeLoteCadTab)}</strong>. Gere uma nova faixa acima.</div>`;
+        } else {
+            listReqs.innerHTML = groups.map((g, gIdx) => {
+                const seqNums = g.items.map(i => parseInt(i.seq, 10)).filter(n => !isNaN(n)).sort((a, b) => a - b);
+                const minSeq = seqNums.length > 0 ? String(seqNums[0]).padStart(3, '0') : (g.items[0]?.seq || '001');
+                const maxSeq = seqNums.length > 0 ? String(seqNums[seqNums.length - 1]).padStart(3, '0') : (g.items[g.items.length - 1]?.seq || '001');
+                const cardId = `lote-card-${gIdx}`;
+
+                return `
+                    <div class="lote-group-card open" id="${cardId}">
+                        <div class="lote-group-header" onclick="toggleLoteGroupCard('${cardId}')">
+                            <div class="lote-group-meta">
+                                <span class="lote-group-title">📦 ${escapeHtml(g.lote)}</span>
+                                <span class="lote-badge-control">Controle: ${escapeHtml(g.control)}</span>
+                                <span class="lote-badge-litros">⛽ ${escapeHtml(g.litros)}</span>
+                                <span class="lote-badge-range">🔢 Faixa: ${minSeq} → ${maxSeq}</span>
+                                <span class="lote-badge-count">🏷️ ${g.items.length} reqs</span>
+                            </div>
+                            <div class="lote-group-actions" onclick="event.stopPropagation();">
+                                <button type="button" class="entity-delete-btn" onclick="removeLoteGroup('${escapeHtml(g.key)}')" title="Excluir Faixa Completa">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                </button>
+                                <button type="button" class="btn-lote-toggle-droplet" onclick="toggleLoteGroupCard('${cardId}')" title="Expandir/Recolher Sequências">
+                                    <span>Sequências</span>
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="lote-group-droplet">
+                            <div class="seq-chips-grid">
+                                ${g.items.map(it => `
+                                    <div class="seq-chip" title="${escapeHtml(it.fullStr)}">
+                                        <span>${escapeHtml(it.seq)}</span>
+                                        <button type="button" class="seq-chip-del" onclick="removeCadEntity('requisicoes', ${it.originalIdx})" title="Remover nº ${escapeHtml(it.seq)}">&times;</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // Sincronizar textareas do modo em massa
+    const taBases = document.getElementById('textarea-custom-bases');
+    const taPostos = document.getElementById('textarea-custom-postos');
+    const taVeics = document.getElementById('textarea-custom-veiculos');
+    const taReqs = document.getElementById('textarea-custom-requisicoes');
+    const taMots = document.getElementById('textarea-custom-motoristas');
+
+    if (taBases) taBases.value = (state.customBases || []).join('\n');
+    if (taPostos) taPostos.value = (state.customPostos || []).join('\n');
+    if (taVeics) taVeics.value = (state.customVeiculos || []).join('\n');
+    if (taReqs) taReqs.value = (state.customRequisicoes || []).join('\n');
+    if (taMots) taMots.value = (state.customMotoristas || []).join('\n');
+
+    // Exibir botão de reset HML apenas em homologação
+    const btnResetHml = document.getElementById('btn-reset-hml-db');
+    if (btnResetHml) {
+        btnResetHml.style.display = isHmlEnvironment() ? 'inline-flex' : 'none';
+    }
+}
+
+// Alternar sub-aba de base no cadastro
+window.setCadBaseSubTab = function(baseName) {
+    state.activeBaseCadTab = baseName;
+    const inputBaseNome = document.getElementById('input-new-base-nome');
+    if (inputBaseNome && baseName !== 'TODAS') {
+        inputBaseNome.value = baseName;
+    }
+    renderStructuredCadastrosUI();
+};
+
+// Excluir base completa e seus responsáveis
+window.removeBaseGroup = function(baseName) {
+    if (!confirm(`Deseja realmente excluir a base "${baseName}" e todos os seus responsáveis?`)) return;
+    state.customBases = (state.customBases || []).filter(item => {
+        const parts = item.split('-').map(s => s.trim());
+        const b = parts[0] || item;
+        return b !== baseName;
+    });
+    localStorage.setItem(getEnvKey('custom_bases'), JSON.stringify(state.customBases));
+    syncWithServerSilent();
+    updateRelationsMappings();
+    populateDatalist('datalist-bases', state.customBases);
+    buildFilterButtons();
+    renderStructuredCadastrosUI();
+};
+
+// Alternar sub-aba de lote no cadastro
+window.setCadLoteSubTab = function(loteName) {
+    state.activeLoteCadTab = loteName;
+    const inputLoteNome = document.getElementById('input-new-lote-nome');
+    if (inputLoteNome && loteName !== 'TODOS') {
+        inputLoteNome.value = loteName;
+    }
+    renderStructuredCadastrosUI();
+};
+
+// Expandir / Recolher Droplet do Grupo de Lote
+window.toggleLoteGroupCard = function(cardId) {
+    const card = document.getElementById(cardId);
+    if (card) {
+        card.classList.toggle('open');
+    }
+};
+
+// Excluir faixa inteira agrupada de requisições
+window.removeLoteGroup = function(groupKey) {
+    if (!confirm('Deseja realmente excluir toda esta faixa de requisições do estoque?')) return;
+    const parts = groupKey.split('___');
+    const lote = parts[0];
+    const control = parts[1];
+    const litros = parts[2];
+
+    function parseReqMetaLocal(str) {
+        if (!str) return { control: 'AVULSO', seq: '000', litros: '30L', lote: 'OUTROS' };
+        let l = 'OUTROS';
+        const mLote = str.match(/\((LOTE[^)]*)\)/i) || str.match(/(LOTE\s*[^-\n,)]+)/i);
+        if (mLote && mLote[1]) l = mLote[1].trim();
+
+        let lit = '30L';
+        const mLit = str.match(/(\d+(?:\.\d+)?)\s*(?:L|Litros)/i);
+        if (mLit && mLit[1]) lit = `${mLit[1]}L`;
+
+        let ctrl = 'AVULSO';
+        const mFull = str.match(/^([^\s-]+)-(\d+)/);
+        if (mFull) {
+            ctrl = mFull[1].trim();
+        } else {
+            const first = str.split('-')[0].trim();
+            ctrl = /^\d+$/.test(first) ? 'SEQUENCIAL' : (first || 'AVULSO');
+        }
+        return { control: ctrl, litros: lit, lote: l };
+    }
+
+    state.customRequisicoes = (state.customRequisicoes || []).filter(item => {
+        const meta = parseReqMetaLocal(item);
+        return !(meta.lote === lote && meta.control === control && meta.litros === litros);
+    });
+
+    localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+    syncWithServerSilent();
+    updateRelationsMappings();
+    populateDatalist('datalist-requisicoes', state.customRequisicoes);
+    buildFilterButtons();
+    renderStructuredCadastrosUI();
+};
+
+// Excluir lote inteiro e todas as suas requisições
+window.removeEntireLote = function(loteName) {
+    if (!confirm(`Deseja realmente excluir o lote "${loteName}" e todas as suas requisições do estoque?`)) return;
+
+    function parseReqMetaLocal(str) {
+        if (!str) return { lote: 'OUTROS' };
+        let l = 'OUTROS';
+        const mLote = str.match(/\((LOTE[^)]*)\)/i) || str.match(/(LOTE\s*[^-\n,)]+)/i);
+        if (mLote && mLote[1]) l = mLote[1].trim();
+        return { lote: l };
+    }
+
+    state.customRequisicoes = (state.customRequisicoes || []).filter(item => {
+        const meta = parseReqMetaLocal(item);
+        return meta.lote !== loteName && !item.includes(loteName);
+    });
+
+    state.activeLoteCadTab = 'TODOS';
+    localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+    syncWithServerSilent();
+    updateRelationsMappings();
+    populateDatalist('datalist-requisicoes', state.customRequisicoes);
+    buildFilterButtons();
+    renderStructuredCadastrosUI();
+};
+
+// Reinicializar / Zerar o banco de dados de Homologação (HML)
+window.resetHmlDatabase = async function() {
+    if (!confirm('⚠️ ATENÇÃO: Deseja realmente zerar todo o banco de dados de Homologação (HML)?\n\nIsso limpará todas as tabelas de teste em HML (requisições, bases, postos e veículos) para que você comece as validações 100% do zero.')) return;
+
+    try {
+        const response = await fetch('api/reset_hml_db.php', {
+            method: 'POST',
+            headers: {
+                'X-Trace-ID': 'trace-reset-hml-' + Date.now()
+            }
+        });
+        const result = await response.json();
+        if (result.success) {
+            // Limpar localStorage de HML
+            const keysToRemove = [
+                'hml_custom_bases',
+                'hml_custom_veiculos',
+                'hml_custom_postos',
+                'hml_custom_requisicoes',
+                'hml_custom_motoristas',
+                'hml_records',
+                'hml_abastecimentos',
+                'hml_last_sync',
+                'custom_bases',
+                'custom_veiculos',
+                'custom_postos',
+                'custom_requisicoes',
+                'custom_motoristas'
+            ];
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+
+            alert('✅ ' + result.message);
+            location.reload();
+        } else {
+            alert('❌ ' + (result.error || 'Erro ao reinicializar banco HML'));
+        }
+    } catch (e) {
+        alert('❌ Erro na requisição: ' + e.message);
+    }
+};
+
+// Editar entidade cadastrada
+window.editCadEntity = function(type, index) {
+    if (type === 'bases' && state.customBases && state.customBases[index]) {
+        const item = state.customBases[index];
+        const parts = item.split('-').map(s => s.trim());
+        const inputNome = document.getElementById('input-new-base-nome');
+        const inputResp = document.getElementById('input-new-base-resp');
+        const btnAdd = document.getElementById('btn-add-base-item');
+
+        if (inputNome) inputNome.value = parts[0] || '';
+        if (inputResp) inputResp.value = parts[1] || '';
+        if (btnAdd) {
+            btnAdd.dataset.editIndex = index;
+            btnAdd.textContent = '💾 Salvar Alterações';
+        }
+        if (inputNome) inputNome.focus();
+    } else if (type === 'veiculos' && state.customVeiculos && state.customVeiculos[index]) {
+        const item = state.customVeiculos[index];
+        const parts = item.split('-').map(s => s.trim());
+        const inputPlaca = document.getElementById('input-new-veic-placa');
+        const inputTipo = document.getElementById('input-new-veic-tipo');
+        const btnAdd = document.getElementById('btn-add-veic-item');
+
+        if (inputPlaca) inputPlaca.value = parts[0] || '';
+        if (inputTipo) inputTipo.value = parts[1] || '';
+        if (btnAdd) {
+            btnAdd.dataset.editIndex = index;
+            btnAdd.textContent = '💾 Salvar Alterações';
+        }
+        if (inputPlaca) inputPlaca.focus();
+    } else if (type === 'postos' && state.customPostos && state.customPostos[index]) {
+        const item = state.customPostos[index];
+        const parts = item.split('-').map(s => s.trim());
+        const inputNome = document.getElementById('input-new-posto-nome');
+        const inputPreco = document.getElementById('input-new-posto-preco');
+        const btnAdd = document.getElementById('btn-add-posto-item');
+
+        if (inputNome) inputNome.value = parts[0] || '';
+        if (inputPreco) inputPreco.value = parts[1] ? parseFloat(parts[1]) || '' : '';
+        if (btnAdd) {
+            btnAdd.dataset.editIndex = index;
+            btnAdd.textContent = '💾 Salvar Alterações';
+        }
+        if (inputNome) inputNome.focus();
+    } else if (type === 'requisicoes' && state.customRequisicoes && state.customRequisicoes[index]) {
+        const currentVal = state.customRequisicoes[index];
+        const newVal = prompt('Editar Sequência / Requisição:', currentVal);
+        if (newVal !== null && newVal.trim() !== '') {
+            state.customRequisicoes[index] = newVal.trim();
+            localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+            syncWithServerSilent();
+            updateRelationsMappings();
+            populateDatalist('datalist-requisicoes', state.customRequisicoes);
+            buildFilterButtons();
+            renderStructuredCadastrosUI();
+        }
+    }
+};
+
+// Remover entidade cadastrada pelo índice
+window.removeCadEntity = function(type, index) {
+    if (type === 'bases' && state.customBases) {
+        state.customBases.splice(index, 1);
+        localStorage.setItem(getEnvKey('custom_bases'), JSON.stringify(state.customBases));
+    } else if (type === 'veiculos' && state.customVeiculos) {
+        state.customVeiculos.splice(index, 1);
+        localStorage.setItem(getEnvKey('custom_veiculos'), JSON.stringify(state.customVeiculos));
+    } else if (type === 'postos' && state.customPostos) {
+        state.customPostos.splice(index, 1);
+        localStorage.setItem(getEnvKey('custom_postos'), JSON.stringify(state.customPostos));
+    } else if (type === 'requisicoes' && state.customRequisicoes) {
+        state.customRequisicoes.splice(index, 1);
+        localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+    }
+    syncWithServerSilent();
+    updateRelationsMappings();
+    buildFilterButtons();
+    renderStructuredCadastrosUI();
+};
+
+// Atualizar Datalists de sugestão
+function updateRelationsMappings() {
+    // Bases
+    const baseNames = (state.customBases || []).map(b => b.split('-')[0].trim()).filter(Boolean);
+    populateDatalist('datalist-bases', baseNames);
+
+    // Responsaveis
+    const responsaveis = (state.customBases || []).map(b => {
+        const parts = b.split('-');
+        return parts.length > 1 ? parts[1].trim() : '';
+    }).filter(Boolean);
+    populateDatalist('datalist-responsaveis', responsaveis);
+
+    // Postos
+    const postoNames = (state.customPostos || []).map(p => p.split('-')[0].trim()).filter(Boolean);
+    populateDatalist('datalist-postos', postoNames);
+
+    // Placas e Veículos
+    const placas = (state.customVeiculos || []).map(v => v.split('-')[0].trim()).filter(Boolean);
+    populateDatalist('datalist-placas', placas);
+
+    const modelos = (state.customVeiculos || []).map(v => {
+        const parts = v.split('-');
+        return parts.length > 1 ? parts[1].trim() : '';
+    }).filter(Boolean);
+    populateDatalist('datalist-veiculos', modelos);
+
+    // Motoristas
+    populateDatalist('datalist-motoristas', state.customMotoristas || []);
+
+    // Requisições
+    populateDatalist('datalist-requisicoes', state.customRequisicoes || []);
+}
+
+function populateDatalist(datalistId, items) {
+    let dl = document.getElementById(datalistId);
+    if (!dl) {
+        dl = document.createElement('datalist');
+        dl.id = datalistId;
+        document.body.appendChild(dl);
+    }
+    const uniqueItems = Array.from(new Set(items));
+    dl.innerHTML = uniqueItems.map(item => `<option value="${escapeHtml(item)}"></option>`).join('');
 }
 
 // 7. INICIALIZAÇÃO DE RANGE DE DATAS
@@ -1824,8 +3117,13 @@ function initDateFilterRange() {
     state.fullDateRange.start = minD;
     state.fullDateRange.end = maxD;
 
-    state.dateRange.start = new Date(minD);
-    state.dateRange.end = new Date(maxD);
+    // Inicializar por padrão com o período da última semana (últimos 7 dias de dados disponíveis)
+    const end = new Date(maxD);
+    const start = new Date(maxD);
+    start.setDate(end.getDate() - 7);
+
+    state.dateRange.start = start;
+    state.dateRange.end = end;
 
     const startInput = document.getElementById('date-start');
     const endInput = document.getElementById('date-end');
@@ -1838,7 +3136,7 @@ function initDateFilterRange() {
     startInput.value = formatDateIso(state.dateRange.start);
     endInput.value = formatDateIso(state.dateRange.end);
 
-    setActivePreset('all');
+    setActivePreset('7d');
 }
 
 // Preset logic helper
@@ -1979,6 +3277,40 @@ function buildFilterButtons() {
         });
     }
 
+    // Lotes de Requisição
+    const containerLotes = document.getElementById('filter-lotes');
+    if (containerLotes) {
+        containerLotes.innerHTML = '';
+        if (!state.filters.lotes) state.filters.lotes = new Set();
+        
+        const lotesUnicos = new Set(['LOTE 1 (7K)', 'LOTE 2 (2K)', 'LOTE 3 (15K)']);
+        if (state.rawData && state.rawData.length > 0) {
+            state.rawData.forEach(row => {
+                if (row.lote && row.lote !== 'Não Informado') lotesUnicos.add(row.lote);
+            });
+        }
+        const sortedLotes = Array.from(lotesUnicos).sort();
+
+        // Botão "Todos os Lotes"
+        const btnTodosLotes = document.createElement('button');
+        btnTodosLotes.className = `slicer-btn ${state.filters.lotes.size === 0 ? 'active' : ''}`;
+        btnTodosLotes.textContent = 'Todos os Lotes';
+        btnTodosLotes.addEventListener('click', () => {
+            state.filters.lotes.clear();
+            buildFilterButtons();
+            updateDashboard();
+        });
+        containerLotes.appendChild(btnTodosLotes);
+
+        sortedLotes.forEach(lote => {
+            const btn = document.createElement('button');
+            btn.className = `slicer-btn ${state.filters.lotes.has(lote) ? 'active' : ''}`;
+            btn.textContent = lote;
+            btn.addEventListener('click', () => toggleFilter('lotes', lote));
+            containerLotes.appendChild(btn);
+        });
+    }
+
     // 1. Popular Bases
     let basesList = [];
     if (state.customBases && state.customBases.length > 0) {
@@ -2075,19 +3407,8 @@ function buildFilterButtons() {
     // 6. Popular Placas (inicialmente sem filtro de veículo)
     updatePlacaDatalistOptions('');
 
-    // Popular o select de combustível do formulário de Nova Requisição (este se mantém select por facilidade)
-    const selectComb = document.getElementById('input-combustivel');
-    if (selectComb) {
-        const currentVal = selectComb.value;
-        selectComb.innerHTML = '<option value="">Selecione...</option>';
-        sortedComb.forEach(comb => {
-            const opt = document.createElement('option');
-            opt.value = comb;
-            opt.textContent = comb;
-            selectComb.appendChild(opt);
-        });
-        selectComb.value = currentVal;
-    }
+    // Popular o datalist de combustível do formulário de Nova Requisição
+    populateDatalist('datalist-combustiveis', sortedComb);
 }
 
 function updatePlacaDatalistOptions(selectedVeiculo = '') {
@@ -2351,18 +3672,67 @@ function applyNlqQuery() {
     updateDashboard();
 }
 
-// 10. ATUALIZAÇÃO DO PAINEL GERAL
+// FUNÇÃO AUXILIAR PARA CORRESPONDÊNCIA DE BUSCA GLOBAL
+function matchesSearchTerm(row, search) {
+    if (!search) return true;
+    
+    // Verificação de intervalo numérico ou correspondência parcial para sequências / requisições
+    let seqMatch = false;
+    const startObj = parseSeqString(row.inicioSeq);
+    const endObj = parseSeqString(row.fimSeq || row.inicioSeq);
+    
+    if (!isNaN(startObj.num)) {
+        const startNum = startObj.num;
+        const endNum = isNaN(endObj.num) ? startNum : endObj.num;
+        const match = (row.inicioSeq || '').toString().trim().match(/^(.*)-(\d+)$/);
+        const padLength = match ? match[2].length : 3;
+        
+        const limitNum = Math.min(endNum, startNum + 1000);
+        for (let n = startNum; n <= limitNum; n++) {
+            const seqStr = startObj.prefix ? 
+                `${startObj.prefix}-${n.toString().padStart(padLength, '0')}` : 
+                n.toString();
+            
+            if (seqStr.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search)) {
+                seqMatch = true;
+                break;
+            }
+        }
+    } else {
+        const startStr = row.inicioSeq ? String(row.inicioSeq).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : '';
+        const endStr = row.fimSeq ? String(row.fimSeq).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : '';
+        if (startStr.includes(search) || endStr.includes(search)) {
+            seqMatch = true;
+        }
+    }
+
+    const clean = (val) => (val || '').toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    return seqMatch ||
+        clean(row.responsavel).includes(search) ||
+        clean(row.motorista).includes(search) ||
+        clean(row.veiculo).includes(search) ||
+        clean(row.placa).includes(search) ||
+        clean(row.zona).includes(search) ||
+        clean(row.posto).includes(search) ||
+        clean(row.combustivel).includes(search);
+}
+
+// 10. ATUALIZAÇÃO DO PAINEL GERAL (REATIVIDADE GLOBAL)
 function updateDashboard() {
     state.filteredData = state.rawData.filter(row => {
         const matchZona = state.filters.zonas.size === 0 || state.filters.zonas.has(row.zona);
         const matchPosto = state.filters.postos.size === 0 || state.filters.postos.has(row.posto);
         const matchComb = state.filters.combustiveis.size === 0 || state.filters.combustiveis.has(row.combustivel);
+        const matchLote = !state.filters.lotes || state.filters.lotes.size === 0 || state.filters.lotes.has(row.lote);
 
         const rowDate = normalizeDate(row.date);
         const matchStart = !state.dateRange.start || rowDate >= normalizeDate(state.dateRange.start);
         const matchEnd = !state.dateRange.end || rowDate <= normalizeDate(state.dateRange.end);
 
-        return matchZona && matchPosto && matchComb && matchStart && matchEnd;
+        const matchSearch = matchesSearchTerm(row, state.searchText);
+
+        return matchZona && matchPosto && matchComb && matchLote && matchStart && matchEnd && matchSearch;
     });
 
     calculateKPIs();
@@ -2377,6 +3747,48 @@ function updateDashboard() {
     }
     if (typeof updateCalendarTriggerText === 'function') {
         updateCalendarTriggerText();
+    }
+    updateChartTitles();
+}
+
+function updateChartTitles() {
+    const fmt = (d) => {
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
+    let periodStr = 'Todo o Período';
+    if (state.dateRange.start && state.dateRange.end) {
+        const startStr = fmt(state.dateRange.start);
+        const endStr = fmt(state.dateRange.end);
+        
+        const isFullRange = state.fullDateRange.start && state.fullDateRange.end &&
+                            normalizeDate(state.dateRange.start).getTime() === normalizeDate(state.fullDateRange.start).getTime() &&
+                            normalizeDate(state.dateRange.end).getTime() === normalizeDate(state.fullDateRange.end).getTime();
+
+        if (isFullRange) {
+            periodStr = 'Todo o Período';
+        } else if (startStr === endStr) {
+            periodStr = startStr;
+        } else {
+            periodStr = `${startStr} a ${endStr}`;
+        }
+    }
+
+    const titles = {
+        '#card-combustivel-donut .chart-title': 'GASTO POR TIPO DE COMBUSTÍVEL',
+        '#card-zona-donut .chart-title': 'RANKING DE GASTO POR BASE / POSTO',
+        '#card-gasto-mensal .chart-title': 'TOTAL GASTO POR MÊS',
+        '#card-volume-mensal .chart-title': 'VOLUME CONSUMIDO POR MÊS (LITROS)'
+    };
+
+    for (const selector in titles) {
+        const el = document.querySelector(selector);
+        if (el) {
+            el.innerHTML = `${titles[selector]} <span class="chart-title-date" style="font-size: 0.7rem; font-weight: normal; color: var(--text-secondary); margin-left: 6px; text-transform: none;">(${periodStr})</span>`;
+        }
     }
 }
 function calculateKPIs() {
@@ -2492,7 +3904,7 @@ function renderCombustivelDonut() {
                             show: true,
                             fontSize: '18px',
                             fontWeight: '700',
-                            color: '#ffffff',
+                            color: chartTheme.valueColor,
                             formatter: (val) => 'R$ ' + Math.round(val).toLocaleString('pt-BR')
                         },
                         total: {
@@ -2508,9 +3920,10 @@ function renderCombustivelDonut() {
                 }
             }
         },
-        stroke: { show: true, width: 2, colors: ['#121824'] },
+        stroke: { show: true, width: 2, colors: [chartTheme.strokeColor] },
         legend: { show: showLegend, position: 'bottom', fontSize: '11px', markers: { radius: 4 } },
         tooltip: {
+            theme: chartTheme.tooltipTheme,
             y: { formatter: (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }
         }
     };
@@ -2575,7 +3988,7 @@ function renderZonaDonut() {
             enabled: showLabels,
             textAnchor: isHorizontal ? 'start' : 'middle',
             style: {
-                colors: isHorizontal ? ['#fff'] : ['#94a3b8'],
+                colors: isHorizontal ? ['#fff'] : [chartTheme.foreColor],
                 fontWeight: '600',
                 fontSize: '11px'
             },
@@ -2610,7 +4023,7 @@ function renderZonaDonut() {
         },
         legend: { show: showLegend },
         tooltip: {
-            theme: 'dark',
+            theme: chartTheme.tooltipTheme,
             y: { formatter: (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }
         }
     };
@@ -2675,7 +4088,7 @@ function renderBarChart() {
             enabled: showLabels,
             formatter: (val) => 'R$ ' + Math.round(val / 1000) + 'k',
             offsetY: -20,
-            style: { fontSize: '10px', fontWeight: '600', colors: ['#94a3b8'] }
+            style: { fontSize: '10px', fontWeight: '600', colors: [chartTheme.foreColor] }
         },
         colors: ['#ffb703'],
         fill: {
@@ -2707,6 +4120,7 @@ function renderBarChart() {
         },
         legend: { show: showLegend },
         tooltip: {
+            theme: chartTheme.tooltipTheme,
             y: { formatter: (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }
         }
     };
@@ -2797,6 +4211,7 @@ function renderAreaChart() {
         grid: { borderColor: chartTheme.gridColor, strokeDashArray: 4 },
         legend: { show: showLegend },
         tooltip: {
+            theme: chartTheme.tooltipTheme,
             y: { formatter: (val) => val.toLocaleString('pt-BR') + ' Litros' }
         }
     };
@@ -2807,81 +4222,139 @@ function renderAreaChart() {
     state.charts.area = new ApexCharts(document.querySelector("#chart-volume-mensal"), options);
     state.charts.area.render();
 }
-// 12. SISTEMA DE TABELAS DINÂMICAS E RANKINGS DE BUSCA
+// FUNÇÃO AUXILIAR DE ORDENAÇÃO UNIVERSAL
+function sortRecords(list, col, dir) {
+    if (!col) return list;
+    const isAsc = dir === 'asc';
+    return list.slice().sort((a, b) => {
+        let valA = a[col];
+        let valB = b[col];
+
+        if (col === 'date') {
+            const timeA = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
+            const timeB = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
+            return isAsc ? timeA - timeB : timeB - timeA;
+        }
+
+        if (col === 'totalLitros') {
+            valA = (a.litros || 0) * (a.qtdRequisicoes || 1);
+            valB = (b.litros || 0) * (b.qtdRequisicoes || 1);
+            return isAsc ? valA - valB : valB - valA;
+        }
+
+        if (typeof valA === 'number' || typeof valB === 'number') {
+            const numA = Number(valA) || 0;
+            const numB = Number(valB) || 0;
+            return isAsc ? numA - numB : numB - numA;
+        }
+
+        const strA = (valA || '').toString();
+        const strB = (valB || '').toString();
+        return isAsc ? strA.localeCompare(strB, 'pt-BR', { numeric: true, sensitivity: 'base' }) : strB.localeCompare(strA, 'pt-BR', { numeric: true, sensitivity: 'base' });
+    });
+}
+
+// HANDLER GLOBAL DE ORDENAÇÃO DE COLUNAS
+window.handleTableSort = function(columnKey) {
+    if (state.sortColumn === columnKey) {
+        state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        state.sortColumn = columnKey;
+        const numCols = ['date', 'valor', 'totalGasto', 'litros', 'totalLitros', 'qtdRequisicoes', 'totalReq', 'km', 'kmAnterior'];
+        state.sortDirection = numCols.includes(columnKey) ? 'desc' : 'asc';
+    }
+    renderTable();
+};
+
+function getSortHeaderHtml(label, key, extraClasses = '') {
+    const isSorted = state.sortColumn === key;
+    const sortClass = isSorted ? `sorted-${state.sortDirection}` : '';
+    const arrow = isSorted ? (state.sortDirection === 'asc' ? '▲' : '▼') : '↕';
+    return `<th class="sortable ${sortClass} ${extraClasses}" onclick="handleTableSort('${key}')" title="Clique para ordenar por ${label}">${label} <span class="sort-icon">${arrow}</span></th>`;
+}
+
+// 12. SISTEMA DE TABELAS DINÂMICAS, TOTALIZADORES E RANKINGS DE BUSCA
 function renderTable() {
     const table = document.getElementById('data-table');
+    if (!table) return;
     const thead = table.querySelector('thead');
     const tbody = document.getElementById('table-body');
+    const tfoot = document.getElementById('table-footer');
 
-    thead.innerHTML = '';
-    tbody.innerHTML = '';
-
-    const search = state.searchText;
+    if (thead) thead.innerHTML = '';
+    if (tbody) tbody.innerHTML = '';
+    if (tfoot) tfoot.innerHTML = '';
 
     if (state.activeTab === 'lancamentos') {
-        thead.innerHTML = `
-            <tr>
-                <th>Data Atual</th>
-                <th>Início Seq</th>
-                <th>Fim Seq</th>
-                <th class="col-number">Qtd Req</th>
-                <th>Base</th>
-                <th>Responsável</th>
-                <th>Motorista</th>
-                <th>Posto</th>
-                <th>Veículo</th>
-                <th>KM Ant.</th>
-                <th>KM</th>
-                <th>Combustível</th>
-                <th class="col-number">L/Req</th>
-                <th class="col-number">Total Litros</th>
-                <th class="col-number">Total Gasto</th>
-                <th class="th-actions">Ações</th>
-            </tr>
-        `;
+        if (thead) {
+            thead.innerHTML = `
+                <tr>
+                    ${getSortHeaderHtml('Data', 'date')}
+                    ${getSortHeaderHtml('Nº Requisição', 'inicioSeq')}
+                    ${getSortHeaderHtml('Qtd Req', 'qtdRequisicoes', 'col-number')}
+                    ${getSortHeaderHtml('Base', 'zona')}
+                    ${getSortHeaderHtml('Responsável', 'responsavel')}
+                    ${getSortHeaderHtml('Motorista', 'motorista')}
+                    ${getSortHeaderHtml('Posto', 'posto')}
+                    ${getSortHeaderHtml('Veículo', 'veiculo')}
+                    ${getSortHeaderHtml('KM Ant.', 'kmAnterior')}
+                    ${getSortHeaderHtml('KM', 'km')}
+                    ${getSortHeaderHtml('Combustível', 'combustivel')}
+                    ${getSortHeaderHtml('L/Req', 'litros', 'col-number')}
+                    ${getSortHeaderHtml('Total Litros', 'totalLitros', 'col-number')}
+                    ${getSortHeaderHtml('Total Gasto', 'valor', 'col-number')}
+                    <th class="th-actions">Ações</th>
+                </tr>
+            `;
+        }
 
-        const filtered = state.filteredData.filter(row => {
-            if (!search) return true;
-            return row.responsavel.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search) ||
-                (row.motorista && row.motorista.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search)) ||
-                row.veiculo.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search) ||
-                row.placa.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search) ||
-                row.zona.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search) ||
-                (row.posto && row.posto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search)) ||
-                row.combustivel.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search);
-        });
+        const filtered = state.filteredData || [];
+        const sorted = sortRecords(filtered, state.sortColumn || 'date', state.sortDirection || 'desc');
 
-        filtered.sort((a, b) => b.date - a.date);
-
-        if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="16" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhum lançamento encontrado para a pesquisa.</td></tr>`;
+        if (sorted.length === 0) {
+            if (tbody) tbody.innerHTML = `<tr><td colspan="15" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Nenhum lançamento encontrado para a pesquisa.</td></tr>`;
             return;
         }
 
-        filtered.forEach(row => {
+        let sumQtdReq = 0;
+        let sumLitros = 0;
+        let sumValor = 0;
+
+        sorted.forEach(row => {
+            sumQtdReq += (row.qtdRequisicoes || 1);
+            sumLitros += ((row.litros || 0) * (row.qtdRequisicoes || 1));
+            sumValor += (row.valor || 0);
+
             const tr = document.createElement('tr');
-            const dia = String(row.date.getDate()).padStart(2, '0');
-            const mes = String(row.date.getMonth() + 1).padStart(2, '0');
-            const dataFmt = `${dia}/${mes}/${row.date.getFullYear()}`;
-            const totalLitros = row.litros * row.qtdRequisicoes;
+            const dObj = safeParseDate(row.date);
+            const dia = String(isNaN(dObj.getTime()) ? 1 : dObj.getDate()).padStart(2, '0');
+            const mes = String(isNaN(dObj.getTime()) ? 1 : dObj.getMonth() + 1).padStart(2, '0');
+            const ano = isNaN(dObj.getTime()) ? 2026 : dObj.getFullYear();
+            const dataFmt = `${dia}/${mes}/${ano}`;
+            const totalLitros = (row.litros || 0) * (row.qtdRequisicoes || 1);
 
             tr.innerHTML = `
                 <td>${dataFmt}</td>
                 <td>${row.inicioSeq}</td>
-                <td>${row.fimSeq}</td>
                 <td class="col-number">${row.qtdRequisicoes}</td>
                 <td>${row.zona}</td>
                 <td><span class="text-highlight">${row.responsavel}</span></td>
-                <td>${row.motorista || 'Não Informado'}</td>
-                <td>${row.posto || 'Não Informado'}</td>
+                <td>${row.motorista || 'NÃO INFORMADO'}</td>
+                <td>${row.posto || 'NÃO INFORMADO'}</td>
                 <td>${row.veiculo} ${row.placa ? `(${row.placa})` : ''}</td>
-                <td>${row.kmAnterior !== undefined && row.kmAnterior !== null && row.kmAnterior !== '' ? (isNaN(row.kmAnterior) ? row.kmAnterior : Number(row.kmAnterior).toLocaleString('pt-BR')) : '-'}</td>
-                <td>${row.km !== undefined && row.km !== null && row.km !== '' ? (isNaN(row.km) ? row.km : Number(row.km).toLocaleString('pt-BR')) : '-'}</td>
+                <td>${row.kmAnterior !== undefined && row.kmAnterior !== null && row.kmAnterior !== '' && row.kmAnterior !== 0 && row.kmAnterior !== 'NÃO INFORMADO' ? (isNaN(row.kmAnterior) ? row.kmAnterior : Number(row.kmAnterior).toLocaleString('pt-BR')) : 'NÃO INFORMADO'}</td>
+                <td>${row.km !== undefined && row.km !== null && row.km !== '' && row.km !== 0 && row.km !== 'NÃO INFORMADO' ? (isNaN(row.km) ? row.km : Number(row.km).toLocaleString('pt-BR')) : 'NÃO INFORMADO'}</td>
                 <td>${row.combustivel}</td>
                 <td class="col-number">${row.litros} L</td>
                 <td class="col-number">${Math.round(totalLitros).toLocaleString('pt-BR')} L</td>
                 <td class="col-number text-highlight">${row.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                 <td class="td-actions">
+                    <button class="btn-edit" onclick="editRecord('${row.id}')" title="Editar requisição">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
                     <button class="btn-delete" onclick="deleteRecord('${row.id}')" title="Excluir requisição">
                         <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
                             <polyline points="3 6 5 6 21 6"></polyline>
@@ -2892,19 +4365,35 @@ function renderTable() {
                     </button>
                 </td>
             `;
-            tbody.appendChild(tr);
+            if (tbody) tbody.appendChild(tr);
         });
 
+        // LINHA DE TOTAL DO FILTRO NO RODAPÉ
+        if (tfoot) {
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="2"><span class="total-label">📊 TOTAL DO FILTRO (${sorted.length} registros)</span></td>
+                    <td class="col-number"><span class="total-value">${sumQtdReq.toLocaleString('pt-BR')}</span></td>
+                    <td colspan="9" style="text-align: right; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Somas do Filtro:</td>
+                    <td class="col-number"><span class="total-value">${Math.round(sumLitros).toLocaleString('pt-BR')} L</span></td>
+                    <td class="col-number"><span class="total-value">${sumValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></td>
+                    <td></td>
+                </tr>
+            `;
+        }
+
     } else if (state.activeTab === 'bases') {
-        thead.innerHTML = `
-            <tr>
-                <th class="col-rank">Pos</th>
-                <th>Base</th>
-                <th class="col-number">Qtd Requisições</th>
-                <th class="col-number">Total Consumido (Litros)</th>
-                <th class="col-number">Total Gasto (BRL)</th>
-            </tr>
-        `;
+        if (thead) {
+            thead.innerHTML = `
+                <tr>
+                    <th class="col-rank">Pos</th>
+                    ${getSortHeaderHtml('Base', 'base')}
+                    ${getSortHeaderHtml('Qtd Requisições', 'totalReq', 'col-number')}
+                    ${getSortHeaderHtml('Total Consumido (Litros)', 'totalLitros', 'col-number')}
+                    ${getSortHeaderHtml('Total Gasto (BRL)', 'totalGasto', 'col-number')}
+                </tr>
+            `;
+        }
 
         const agg = {};
         state.filteredData.forEach(row => {
@@ -2917,21 +4406,25 @@ function renderTable() {
             agg[baseKey].totalReq += row.qtdRequisicoes;
         });
 
-        const sorted = Object.values(agg).sort((a, b) => b.totalGasto - a.totalGasto);
+        const activeSortCol = ['base', 'totalReq', 'totalLitros', 'totalGasto'].includes(state.sortColumn) ? state.sortColumn : 'totalGasto';
+        const sorted = sortRecords(Object.values(agg), activeSortCol, state.sortDirection || 'desc');
 
-        const filtered = sorted.filter(row => {
-            if (!search) return true;
-            return row.base.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search);
-        });
-
-        if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhuma base encontrada para a pesquisa.</td></tr>`;
+        if (sorted.length === 0) {
+            if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Nenhuma base encontrada para a pesquisa.</td></tr>`;
             return;
         }
 
-        filtered.forEach((row, idx) => {
+        let sumQtdReq = 0;
+        let sumLitros = 0;
+        let sumValor = 0;
+
+        sorted.forEach((row, idx) => {
+            sumQtdReq += row.totalReq;
+            sumLitros += row.totalLitros;
+            sumValor += row.totalGasto;
+
             const tr = document.createElement('tr');
-            const isTop = idx === 0 && !search;
+            const isTop = idx === 0 && !state.searchText;
             if (isTop) tr.style.backgroundColor = 'rgba(255, 183, 3, 0.04)';
 
             tr.innerHTML = `
@@ -2941,19 +4434,32 @@ function renderTable() {
                 <td class="col-number">${Math.round(row.totalLitros).toLocaleString('pt-BR')} L</td>
                 <td class="col-number text-highlight">${row.totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
             `;
-            tbody.appendChild(tr);
+            if (tbody) tbody.appendChild(tr);
         });
 
+        if (tfoot) {
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="2"><span class="total-label">📊 TOTAL DO FILTRO (${sorted.length} bases)</span></td>
+                    <td class="col-number"><span class="total-value">${sumQtdReq.toLocaleString('pt-BR')}</span></td>
+                    <td class="col-number"><span class="total-value">${Math.round(sumLitros).toLocaleString('pt-BR')} L</span></td>
+                    <td class="col-number"><span class="total-value">${sumValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></td>
+                </tr>
+            `;
+        }
+
     } else if (state.activeTab === 'motoristas') {
-        thead.innerHTML = `
-            <tr>
-                <th class="col-rank">Pos</th>
-                <th>Motorista</th>
-                <th class="col-number">Qtd Requisições</th>
-                <th class="col-number">Total Consumido (Litros)</th>
-                <th class="col-number">Total Gasto (BRL)</th>
-            </tr>
-        `;
+        if (thead) {
+            thead.innerHTML = `
+                <tr>
+                    <th class="col-rank">Pos</th>
+                    ${getSortHeaderHtml('Motorista', 'motorista')}
+                    ${getSortHeaderHtml('Qtd Requisições', 'totalReq', 'col-number')}
+                    ${getSortHeaderHtml('Total Consumido (Litros)', 'totalLitros', 'col-number')}
+                    ${getSortHeaderHtml('Total Gasto (BRL)', 'totalGasto', 'col-number')}
+                </tr>
+            `;
+        }
 
         const agg = {};
         state.filteredData.forEach(row => {
@@ -2966,21 +4472,25 @@ function renderTable() {
             agg[motoristaKey].totalReq += row.qtdRequisicoes;
         });
 
-        const sorted = Object.values(agg).sort((a, b) => b.totalGasto - a.totalGasto);
+        const activeSortCol = ['motorista', 'totalReq', 'totalLitros', 'totalGasto'].includes(state.sortColumn) ? state.sortColumn : 'totalGasto';
+        const sorted = sortRecords(Object.values(agg), activeSortCol, state.sortDirection || 'desc');
 
-        const filtered = sorted.filter(row => {
-            if (!search) return true;
-            return row.motorista.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search);
-        });
-
-        if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhum motorista encontrado para a pesquisa.</td></tr>`;
+        if (sorted.length === 0) {
+            if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Nenhum motorista encontrado para a pesquisa.</td></tr>`;
             return;
         }
 
-        filtered.forEach((row, idx) => {
+        let sumQtdReq = 0;
+        let sumLitros = 0;
+        let sumValor = 0;
+
+        sorted.forEach((row, idx) => {
+            sumQtdReq += row.totalReq;
+            sumLitros += row.totalLitros;
+            sumValor += row.totalGasto;
+
             const tr = document.createElement('tr');
-            const isTop = idx === 0 && !search;
+            const isTop = idx === 0 && !state.searchText;
             if (isTop) tr.style.backgroundColor = 'rgba(255, 183, 3, 0.04)';
 
             tr.innerHTML = `
@@ -2990,49 +4500,65 @@ function renderTable() {
                 <td class="col-number">${Math.round(row.totalLitros).toLocaleString('pt-BR')} L</td>
                 <td class="col-number text-highlight">${row.totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
             `;
-            tbody.appendChild(tr);
+            if (tbody) tbody.appendChild(tr);
         });
 
+        if (tfoot) {
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="2"><span class="total-label">📊 TOTAL DO FILTRO (${sorted.length} motoristas)</span></td>
+                    <td class="col-number"><span class="total-value">${sumQtdReq.toLocaleString('pt-BR')}</span></td>
+                    <td class="col-number"><span class="total-value">${Math.round(sumLitros).toLocaleString('pt-BR')} L</span></td>
+                    <td class="col-number"><span class="total-value">${sumValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></td>
+                </tr>
+            `;
+        }
+
     } else if (state.activeTab === 'veiculos') {
-        thead.innerHTML = `
-            <tr>
-                <th class="col-rank">Pos</th>
-                <th>Veículo</th>
-                <th>Placas Associadas</th>
-                <th class="col-number">Qtd Requisições</th>
-                <th class="col-number">Total Consumido (Litros)</th>
-                <th class="col-number">Total Gasto (BRL)</th>
-            </tr>
-        `;
+        if (thead) {
+            thead.innerHTML = `
+                <tr>
+                    <th class="col-rank">Pos</th>
+                    ${getSortHeaderHtml('Veículo', 'veiculo')}
+                    <th>Placas Associadas</th>
+                    ${getSortHeaderHtml('Qtd Requisições', 'totalReq', 'col-number')}
+                    ${getSortHeaderHtml('Total Consumido (Litros)', 'totalLitros', 'col-number')}
+                    ${getSortHeaderHtml('Total Gasto (BRL)', 'totalGasto', 'col-number')}
+                </tr>
+            `;
+        }
 
         const agg = {};
         state.filteredData.forEach(row => {
-            if (!agg[row.veiculo]) {
-                agg[row.veiculo] = { veiculo: row.veiculo, totalGasto: 0, totalLitros: 0, totalReq: 0, placas: new Set() };
+            const veicKey = row.veiculo || 'Não Informado';
+            if (!agg[veicKey]) {
+                agg[veicKey] = { veiculo: veicKey, totalGasto: 0, totalLitros: 0, totalReq: 0, placas: new Set() };
             }
-            agg[row.veiculo].totalGasto += row.valor;
-            agg[row.veiculo].totalLitros += (row.litros * row.qtdRequisicoes);
-            agg[row.veiculo].totalReq += row.qtdRequisicoes;
-            if (row.placa) agg[row.veiculo].placas.add(row.placa);
+            agg[veicKey].totalGasto += row.valor;
+            agg[veicKey].totalLitros += (row.litros * row.qtdRequisicoes);
+            agg[veicKey].totalReq += row.qtdRequisicoes;
+            if (row.placa && row.placa !== 'Não Informado' && row.placa !== 'NÃO INFORMADO') agg[veicKey].placas.add(row.placa);
         });
 
-        const sorted = Object.values(agg).sort((a, b) => b.totalGasto - a.totalGasto);
+        const activeSortCol = ['veiculo', 'totalReq', 'totalLitros', 'totalGasto'].includes(state.sortColumn) ? state.sortColumn : 'totalGasto';
+        const sorted = sortRecords(Object.values(agg), activeSortCol, state.sortDirection || 'desc');
 
-        const filtered = sorted.filter(row => {
-            if (!search) return true;
-            const matchVeiculo = row.veiculo.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search);
-            const matchPlaca = Array.from(row.placas).some(p => p.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(search));
-            return matchVeiculo || matchPlaca;
-        });
-
-        if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhum veículo encontrado para a pesquisa.</td></tr>`;
+        if (sorted.length === 0) {
+            if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Nenhum veículo encontrado para a pesquisa.</td></tr>`;
             return;
         }
 
-        filtered.forEach((row, idx) => {
+        let sumQtdReq = 0;
+        let sumLitros = 0;
+        let sumValor = 0;
+
+        sorted.forEach((row, idx) => {
+            sumQtdReq += row.totalReq;
+            sumLitros += row.totalLitros;
+            sumValor += row.totalGasto;
+
             const tr = document.createElement('tr');
-            const isTop = idx === 0 && !search;
+            const isTop = idx === 0 && !state.searchText;
             if (isTop) tr.style.backgroundColor = 'rgba(255, 183, 3, 0.04)';
 
             const placasStr = Array.from(row.placas).join(', ') || '-';
@@ -3045,8 +4571,19 @@ function renderTable() {
                 <td class="col-number">${Math.round(row.totalLitros).toLocaleString('pt-BR')} L</td>
                 <td class="col-number text-highlight">${row.totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
             `;
-            tbody.appendChild(tr);
+            if (tbody) tbody.appendChild(tr);
         });
+
+        if (tfoot) {
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="3"><span class="total-label">📊 TOTAL DO FILTRO (${sorted.length} veículos)</span></td>
+                    <td class="col-number"><span class="total-value">${sumQtdReq.toLocaleString('pt-BR')}</span></td>
+                    <td class="col-number"><span class="total-value">${Math.round(sumLitros).toLocaleString('pt-BR')} L</span></td>
+                    <td class="col-number"><span class="total-value">${sumValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></td>
+                </tr>
+            `;
+        }
     }
 }
 
@@ -3180,21 +4717,104 @@ function generateAndDownloadMockData() {
     }
 }
 
+// EDITAR REGISTRO
+window.editRecord = function (id) {
+    const record = state.rawData.find(row => row.id === id);
+    if (!record) {
+        alert('Lançamento não encontrado.');
+        return;
+    }
+
+    // Setar ID do registro sob edição
+    const editIdInput = document.getElementById('input-edit-id');
+    if (editIdInput) editIdInput.value = id;
+
+    // Atualizar título do modal e botão
+    const modalTitle = document.getElementById('add-requisicao-modal-title');
+    if (modalTitle) modalTitle.textContent = 'Editar Requisição';
+    const submitBtn = document.getElementById('btn-submit-add-requisicao');
+    if (submitBtn) submitBtn.textContent = 'Salvar Alterações';
+
+    // Salvar seqs antigas para controle do pool
+    state.oldEditSeqs = { inicioSeq: record.inicioSeq, fimSeq: record.fimSeq };
+
+    // Popular os campos
+    const recordDate = (record.date instanceof Date) ? record.date : new Date(record.date);
+    document.getElementById('input-date').value = formatDateIso(recordDate);
+    document.getElementById('input-zona').value = record.zona === 'NÃO INFORMADO' ? '' : record.zona;
+    document.getElementById('input-responsavel').value = record.responsavel === 'NÃO INFORMADO' ? '' : record.responsavel;
+    document.getElementById('input-posto').value = record.posto === 'NÃO INFORMADO' ? '' : record.posto;
+    document.getElementById('input-motorista').value = record.motorista === 'NÃO INFORMADO' ? '' : record.motorista;
+    document.getElementById('input-veiculo').value = record.veiculo === 'NÃO INFORMADO' ? '' : record.veiculo;
+    document.getElementById('input-placa').value = record.placa === 'NÃO INFORMADO' ? '' : record.placa;
+    document.getElementById('input-combustivel').value = record.combustivel === 'NÃO INFORMADO' ? '' : record.combustivel;
+    document.getElementById('input-km-anterior').value = record.kmAnterior === 'NÃO INFORMADO' ? '' : record.kmAnterior;
+    document.getElementById('input-km').value = record.km === 'NÃO INFORMADO' ? '' : record.km;
+    document.getElementById('input-inicio-seq').value = record.inicioSeq || '';
+    const inputFimEl = document.getElementById('input-fim-seq');
+    if (inputFimEl) inputFimEl.value = record.fimSeq || '';
+    document.getElementById('input-qtd-req').value = record.qtdRequisicoes || 1;
+    document.getElementById('input-preco-litro').value = record.precoLitro || 0;
+
+    // Determinar e ajustar modo de abastecimento (Litros ou Valor)
+    const radioLitros = document.querySelector('input[name="input-modo-abastecimento"][value="litros"]');
+    const radioValor = document.querySelector('input[name="input-modo-abastecimento"][value="valor"]');
+    const groupLitros = document.getElementById('group-litros');
+    const groupValTotal = document.getElementById('group-valor-total');
+    const inputLitros = document.getElementById('input-litros');
+    const inputValTotal = document.getElementById('input-valor-total');
+
+    // Por padrão populamos os litros
+    if (radioLitros) radioLitros.checked = true;
+    if (groupLitros) groupLitros.style.display = 'flex';
+    if (groupValTotal) groupValTotal.style.display = 'none';
+    if (inputLitros) {
+        inputLitros.value = record.litros || 0;
+        inputLitros.setAttribute('required', '');
+    }
+    if (inputValTotal) {
+        inputValTotal.value = '';
+        inputValTotal.removeAttribute('required');
+    }
+
+    // Abrir o modal
+    document.getElementById('add-requisicao-modal').classList.add('active');
+};
+
 // EXCLUIR REGISTRO GLOBAL
 window.deleteRecord = function (id) {
     if (confirm("Tem certeza de que deseja excluir esta requisição?")) {
         const record = state.rawData.find(row => row.id === id);
         if (record && record.inicioSeq) {
-            const startNum = parseInt(record.inicioSeq);
-            const endNum = parseInt(record.fimSeq) || startNum;
+            const startObj = parseSeqString(record.inicioSeq);
+            const endObj = parseSeqString(record.fimSeq || record.inicioSeq);
             const restoredNumbers = [];
-            for (let n = startNum; n <= endNum; n++) {
-                restoredNumbers.push(n.toString());
+            if (!isNaN(startObj.num)) {
+                const startNum = startObj.num;
+                const endNum = isNaN(endObj.num) ? startNum : endObj.num;
+                for (let n = startNum; n <= endNum; n++) {
+                    if (startObj.prefix) {
+                        const match = record.inicioSeq.toString().trim().match(/^(.*)-(\d+)$/);
+                        const padLength = match ? match[2].length : 3;
+                        restoredNumbers.push(`${startObj.prefix}-${n.toString().padStart(padLength, '0')}`);
+                    } else {
+                        restoredNumbers.push(n.toString());
+                    }
+                }
+            } else {
+                restoredNumbers.push(record.inicioSeq.toString().trim());
             }
             
             // Adicionar de volta à lista de requisições personalizadas se não estiverem lá
             const currentPool = state.customRequisicoes || [];
-            const newPool = Array.from(new Set([...currentPool, ...restoredNumbers])).sort((a, b) => parseInt(a) - parseInt(b));
+            const newPool = Array.from(new Set([...currentPool, ...restoredNumbers])).sort((a, b) => {
+                const aObj = parseSeqString(a);
+                const bObj = parseSeqString(b);
+                if (aObj.prefix !== bObj.prefix) {
+                    return aObj.prefix.localeCompare(bObj.prefix);
+                }
+                return aObj.num - bObj.num;
+            });
             state.customRequisicoes = newPool;
             localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
             
@@ -3217,9 +4837,10 @@ function generateExcelWorkbook() {
         return s;
     }
 
-    // 1. Aba "Lançamentos Filtrados"
-    const filtradosData = state.filteredData.map(row => {
-        const dObj = (row.date instanceof Date) ? row.date : new Date(row.date);
+    // 1. Aba "Lançamentos Filtrados" (respeitando rigorosamente a ordenação e filtros ativos na tela)
+    const sortedFiltrados = sortRecords(state.filteredData || [], state.sortColumn || 'date', state.sortDirection || 'desc');
+    const filtradosData = sortedFiltrados.map(row => {
+        const dObj = safeParseDate(row.date);
         const dia = padZero(isNaN(dObj.getTime()) ? 1 : dObj.getDate(), 2);
         const mes = padZero(isNaN(dObj.getTime()) ? 1 : dObj.getMonth() + 1, 2);
         const ano = isNaN(dObj.getTime()) ? 2026 : dObj.getFullYear();
@@ -3231,8 +4852,7 @@ function generateExcelWorkbook() {
 
         return {
             'Data': dataFmt,
-            'Início da Sequência': row.inicioSeq,
-            'Fim da Sequência': row.fimSeq,
+            'Nº da Requisição': row.inicioSeq,
             'Qtd Requisições': row.qtdRequisicoes,
             'Base': row.zona,
             'Responsável': row.responsavel,
@@ -3240,8 +4860,8 @@ function generateExcelWorkbook() {
             'Posto': row.posto || 'Não Informado',
             'Veículo': row.veiculo,
             'Placa': row.placa,
-            'KM Anterior': row.kmAnterior || '',
-            'KM Atual': row.km || '',
+            'KM Anterior': (row.kmAnterior !== undefined && row.kmAnterior !== null && row.kmAnterior !== '' && row.kmAnterior !== 0 && row.kmAnterior !== 'NÃO INFORMADO') ? row.kmAnterior : 'NÃO INFORMADO',
+            'KM Atual': (row.km !== undefined && row.km !== null && row.km !== '' && row.km !== 0 && row.km !== 'NÃO INFORMADO') ? row.km : 'NÃO INFORMADO',
             'Tipo Combustível': row.combustivel,
             'Litros/Req': row.litros,
             'Total Litros': totalLitros,
@@ -3300,15 +4920,14 @@ function generateExcelWorkbook() {
 
     // 5. Aba "Banco de Dados Completo"
     const backupData = state.rawData.map(row => {
-        const dObj = (row.date instanceof Date) ? row.date : new Date(row.date);
+        const dObj = safeParseDate(row.date);
         const dia = padZero(isNaN(dObj.getTime()) ? 1 : dObj.getDate(), 2);
         const mes = padZero(isNaN(dObj.getTime()) ? 1 : dObj.getMonth() + 1, 2);
         const dataFmt = `${dia}/${mes}/${isNaN(dObj.getTime()) ? 2026 : dObj.getFullYear()}`;
 
         return {
             'Data': dataFmt,
-            'Início da Sequência': row.inicioSeq,
-            'Fim da Sequência': row.fimSeq,
+            'Nº da Requisição': row.inicioSeq,
             'Qtd Requisições': row.qtdRequisicoes,
             'Base': row.zona,
             'Responsável': row.responsavel,
@@ -3316,8 +4935,8 @@ function generateExcelWorkbook() {
             'Posto': row.posto || 'Não Informado',
             'Veículo': row.veiculo,
             'Placa': row.placa,
-            'KM Anterior': row.kmAnterior || '',
-            'KM Atual': row.km || '',
+            'KM Anterior': (row.kmAnterior !== undefined && row.kmAnterior !== null && row.kmAnterior !== '' && row.kmAnterior !== 0 && row.kmAnterior !== 'NÃO INFORMADO') ? row.kmAnterior : 'NÃO INFORMADO',
+            'KM Atual': (row.km !== undefined && row.km !== null && row.km !== '' && row.km !== 0 && row.km !== 'NÃO INFORMADO') ? row.km : 'NÃO INFORMADO',
             'Tipo Combustível': row.combustivel,
             'Litros': row.litros,
             'Preço Litro': row.precoLitro,
@@ -3671,6 +5290,103 @@ function populateInfografico() {
             `;
             gridContainer.appendChild(card);
         });
+    }
+}
+
+// 14.1 GERADOR DE CONTEÚDO DO RELATÓRIO SIMPLIFICADO
+function populateRelatorioSimplificado() {
+    // 1. Período
+    const startFmt = state.dateRange.start ? String(state.dateRange.start.getDate()).padStart(2, '0') + '/' + String(state.dateRange.start.getMonth() + 1).padStart(2, '0') + '/' + state.dateRange.start.getFullYear() : '-';
+    const endFmt = state.dateRange.end ? String(state.dateRange.end.getDate()).padStart(2, '0') + '/' + String(state.dateRange.end.getMonth() + 1).padStart(2, '0') + '/' + state.dateRange.end.getFullYear() : '-';
+    const periodText = document.getElementById('rel-period-text');
+    if (periodText) periodText.textContent = `Período: ${startFmt} até ${endFmt}`;
+
+    // 2. Timestamp de geração
+    const timestampEl = document.getElementById('rel-generation-timestamp');
+    if (timestampEl) {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        timestampEl.textContent = `${dd}/${mm}/${yyyy} às ${hh}:${min}`;
+    }
+
+    // 3. Cálculos de KPIs
+    let totalLitros = 0;
+    let totalReq = 0;
+    const responsavelMetrics = {};
+
+    state.filteredData.forEach(row => {
+        const reqs = row.qtdRequisicoes || 0;
+        const litros = (row.litros || 0) * reqs;
+        
+        totalLitros += litros;
+        totalReq += reqs;
+
+        if (row.responsavel) {
+            const resp = row.responsavel.trim();
+            if (!responsavelMetrics[resp]) {
+                responsavelMetrics[resp] = { reqs: 0, litros: 0 };
+            }
+            responsavelMetrics[resp].reqs += reqs;
+            responsavelMetrics[resp].litros += litros;
+        }
+    });
+
+    const qtdResponsaveis = Object.keys(responsavelMetrics).length;
+    const reqsDisponiveis = state.customRequisicoes ? state.customRequisicoes.length : 0;
+    const reqsDistribuidas = totalReq;
+    const volumeTotalLitros = totalLitros;
+
+    const kpiResponsaveis = document.getElementById('rel-kpi-responsaveis');
+    const kpiDisponiveis = document.getElementById('rel-kpi-disponiveis');
+    const kpiDistribuidas = document.getElementById('rel-kpi-distribuidas');
+    const kpiLitros = document.getElementById('rel-kpi-litros-total');
+
+    if (kpiResponsaveis) kpiResponsaveis.textContent = qtdResponsaveis.toLocaleString('pt-BR');
+    if (kpiDisponiveis) kpiDisponiveis.textContent = reqsDisponiveis.toLocaleString('pt-BR');
+    if (kpiDistribuidas) kpiDistribuidas.textContent = reqsDistribuidas.toLocaleString('pt-BR');
+    if (kpiLitros) kpiLitros.textContent = Math.round(volumeTotalLitros).toLocaleString('pt-BR') + ' L';
+
+    // 4. Preencher Tabela de Responsáveis
+    const tbody = document.getElementById('rel-responsavel-tbody');
+    const tfoot = document.getElementById('rel-responsavel-tfoot');
+
+    if (tbody) {
+        tbody.innerHTML = '';
+        
+        const sortedResponsaveis = Object.entries(responsavelMetrics).sort((a, b) => b[1].litros - a[1].litros);
+
+        sortedResponsaveis.forEach(([resp, metrics]) => {
+            const pct = totalLitros > 0 ? (metrics.litros / totalLitros) * 100 : 0;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-weight: 600; color: var(--text-primary);">${resp}</td>
+                <td style="text-align: center;">${metrics.reqs.toLocaleString('pt-BR')}</td>
+                <td style="text-align: center; font-weight: bold; color: var(--accent-yellow);">${Math.round(metrics.litros).toLocaleString('pt-BR')} L</td>
+                <td style="text-align: center;">${pct.toFixed(1)}%</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        if (sortedResponsaveis.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum dado encontrado para o período filtrado.</td>`;
+            tbody.appendChild(tr);
+        }
+    }
+
+    if (tfoot) {
+        tfoot.innerHTML = `
+            <tr>
+                <td style="font-weight: 700; color: var(--text-primary);">TOTAL (${qtdResponsaveis} Responsáveis)</td>
+                <td style="text-align: center; font-weight: 700; color: var(--text-primary);">${totalReq.toLocaleString('pt-BR')}</td>
+                <td style="text-align: center; font-weight: 800; color: var(--accent-yellow);">${Math.round(totalLitros).toLocaleString('pt-BR')} L</td>
+                <td style="text-align: center; font-weight: 700; color: var(--text-primary);">100%</td>
+            </tr>
+        `;
     }
 }
 
@@ -4643,29 +6359,43 @@ function updateContratadosMappings() {
 }
 
 // Auxiliar para validar unicidade da faixa de requisições
-function isRequisitionRangeUsed(startNum, endNum, rawInicioSeq) {
+function isRequisitionRangeUsed(rawInicioSeq, rawFimSeq) {
+    if (!rawInicioSeq) return null;
+    const startObj = parseSeqString(rawInicioSeq);
+    const endObj = parseSeqString(rawFimSeq || rawInicioSeq);
+
+    if (isNaN(startObj.num)) return null;
+
+    const startNum = startObj.num;
+    const endNum = isNaN(endObj.num) ? startNum : endObj.num;
+
     for (const r of state.rawData) {
         if (!r.inicioSeq) continue;
 
-        // Checagem de correspondência exata de código de requisição (para requisições formatadas com hífens/letras)
-        if (rawInicioSeq) {
-            const rawTrim = rawInicioSeq.toString().trim();
-            if (r.inicioSeq.toString().trim() === rawTrim || (r.fimSeq && r.fimSeq.toString().trim() === rawTrim)) {
-                return rawTrim;
-            }
+        const rStartObj = parseSeqString(r.inicioSeq);
+        const rFimSeq = r.fimSeq || r.inicioSeq;
+        const rEndObj = parseSeqString(rFimSeq);
+
+        if (isNaN(rStartObj.num)) continue;
+
+        const rStart = rStartObj.num;
+        const rEnd = isNaN(rEndObj.num) ? rStart : rEndObj.num;
+
+        // Se os prefixos forem diferentes, não há conflito!
+        if (startObj.prefix !== rStartObj.prefix) {
+            continue;
         }
-        
-        if (isNaN(startNum)) continue;
-        
-        const rStart = parseInt(r.inicioSeq);
-        const rEnd = parseInt(r.fimSeq) || rStart;
-        
-        if (isNaN(rStart)) continue;
-        
+
         // Verificar se há interseção
         for (let num = startNum; num <= endNum; num++) {
             if (num >= rStart && num <= rEnd) {
-                return num; // Retorna o número duplicado
+                if (startObj.prefix) {
+                    const match = rawInicioSeq.toString().trim().match(/^(.*)-(\d+)$/);
+                    const padLength = match ? match[2].length : 3;
+                    return `${startObj.prefix}-${num.toString().padStart(padLength, '0')}`;
+                } else {
+                    return num;
+                }
             }
         }
     }
