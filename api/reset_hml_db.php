@@ -20,11 +20,15 @@ if (!$isHml) {
     exit;
 }
 
+$empty = isset($_GET['empty']) && $_GET['empty'] === 'true';
+
 try {
     // 1. Limpar e Clonar tabela de requisições PROD para HML
     $pdo->exec("DROP TABLE IF EXISTS hml_requisicoes");
     $pdo->exec("CREATE TABLE hml_requisicoes LIKE requisicoes");
-    $pdo->exec("INSERT INTO hml_requisicoes SELECT * FROM requisicoes");
+    if (!$empty) {
+        $pdo->exec("INSERT INTO hml_requisicoes SELECT * FROM requisicoes");
+    }
     try {
         $pdo->exec("ALTER TABLE hml_requisicoes ADD COLUMN lote VARCHAR(50) DEFAULT 'LOTE 1'");
     } catch (Exception $e) {}
@@ -32,19 +36,25 @@ try {
     // 2. Limpar e Clonar tabela de configurações PROD para HML
     $pdo->exec("DROP TABLE IF EXISTS hml_configuracoes");
     $pdo->exec("CREATE TABLE hml_configuracoes LIKE configuracoes");
-    $pdo->exec("INSERT INTO hml_configuracoes SELECT * FROM configuracoes");
+    if (!$empty) {
+        $pdo->exec("INSERT INTO hml_configuracoes SELECT * FROM configuracoes");
+    }
 
     // 3. Limpar e Clonar tabela de veículos contratados PROD para HML
     $pdo->exec("DROP TABLE IF EXISTS hml_veiculos_contratados");
     $pdo->exec("CREATE TABLE hml_veiculos_contratados LIKE veiculos_contratados");
-    $pdo->exec("INSERT INTO hml_veiculos_contratados SELECT * FROM veiculos_contratados");
+    if (!$empty) {
+        $pdo->exec("INSERT INTO hml_veiculos_contratados SELECT * FROM veiculos_contratados");
+    }
 
     // 4. Limpar / Reinicializar logs de atividade HML
     $pdo->exec("DROP TABLE IF EXISTS hml_activity_logs");
     $pdo->exec("CREATE TABLE hml_activity_logs LIKE activity_logs");
 
     // Registrar log da operação
-    writeAuditLog($pdo, 'CLONE_PROD_TO_HML_DATABASE', ['msg' => 'Banco HML sincronizado com dados de produção'], 'Homologacao');
+    $actionName = $empty ? 'RESET_HML_DATABASE_EMPTY' : 'CLONE_PROD_TO_HML_DATABASE';
+    $actionMsg = $empty ? 'Banco HML reinicializado vazio' : 'Banco HML sincronizado com dados de produção';
+    writeAuditLog($pdo, $actionName, ['msg' => $actionMsg], 'Homologacao');
 
     echo json_encode([
         'success' => true,

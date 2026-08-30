@@ -67,6 +67,13 @@ if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/hml/') !
                 </svg>
                 Resetar Simulação
             </button>
+            <button class="btn-lab" id="btn-clear-all" style="background: #e11d48; border-color: #e11d48;" title="Limpar todo o cache local e começar do zero">
+                <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Zerar Tudo
+            </button>
         </div>
     </header>
 
@@ -314,6 +321,6 @@ if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/hml/') !
     <!-- SCRIPTS -->
     <script src="./libs/xlsx.mini.min.js"></script>
     <script src="./libs/papaparse.min.js"></script>
-    <script src="./dispensador.js?v=36"></script>
+    <script src="./dispensador.js?v=37"></script>
 </body>
 </html>
