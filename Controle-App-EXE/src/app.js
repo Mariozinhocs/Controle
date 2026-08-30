@@ -412,6 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buildFilterButtons(); // Carrega os botões de filtros imediatamente
     initDragAndDrop();    // Inicializa o drag & drop de KPIs e Gráficos
     initCalendarWidget(); // Inicializa o calendário
+    initDispensadorModule(); // Inicializa o dispensador visual integrado
 });
 
 // SISTEMA DE GESTÃO MULTIAMBIENTE (FROTAS)
@@ -6514,5 +6515,734 @@ function isRequisitionRangeUsed(rawInicioSeq, rawFimSeq) {
         }
     }
     return null;
+}
+
+// =========================================================
+// MÓDULO DISPENSADOR VISUAL INTEGRADO
+// Desenvolvido por Mario Henrique (mariozinhocs) - mariozinhocs@gmail.com
+// "si vis pacem para bellum"
+// =========================================================
+function initDispensadorModule() {
+    const btnOpen = document.getElementById('btn-open-dispensador');
+    const modal = document.getElementById('dispensador-modal');
+    const btnClose = document.getElementById('btn-close-dispensador-modal');
+    
+    if (!modal) return;
+    
+    let dispState = {
+        selectedLote: null,
+        selectedLiters: null,
+        selectedGroup: null,
+        selectedTickets: [],
+        isMultiSelect: false,
+        
+        selectedBase: null,
+        selectedResponsavel: null,
+        selectedMotorista: null,
+        
+        deliveredSessionCount: 0
+    };
+    
+    if (btnOpen) {
+        btnOpen.addEventListener('click', () => {
+            modal.classList.add('active');
+            refreshDispensadorData();
+        });
+    }
+    
+    if (btnClose) {
+        btnClose.addEventListener('click', () => {
+            modal.classList.remove('active');
+            closeDrawer();
+        });
+    }
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+            closeDrawer();
+        }
+    });
+    
+    function getActivePool() {
+        const pool = [];
+        (state.customRequisicoes || []).forEach(line => {
+            const parts = splitByRelationalHyphen(line);
+            if (parts.length >= 2) {
+                const id = parts[0].trim();
+                let litros = 15;
+                let lote = 'LOTE 1';
+                
+                if (parts.length >= 3) {
+                    litros = parseFloat(parts[1].trim()) || 15;
+                    lote = parts[2].trim();
+                } else {
+                    const secondVal = parts[1].trim();
+                    if (!isNaN(parseFloat(secondVal))) {
+                        litros = parseFloat(secondVal);
+                    } else {
+                        lote = secondVal;
+                    }
+                }
+                
+                const prefixObj = parseSeqString(id);
+                const grupo = prefixObj.prefix || 'SEQUENCIA';
+                
+                pool.push({
+                    id: id,
+                    litros: litros,
+                    lote: lote,
+                    grupo: grupo,
+                    num: prefixObj.num
+                });
+            }
+        });
+        return pool;
+    }
+    
+    function refreshDispensadorData() {
+        const pool = getActivePool();
+        const lotesSet = new Set(pool.map(p => p.lote));
+        const lotes = Array.from(lotesSet).sort();
+        
+        if (lotes.length > 0) {
+            if (!dispState.selectedLote || !lotesSet.has(dispState.selectedLote)) {
+                dispState.selectedLote = lotes[0];
+            }
+        } else {
+            dispState.selectedLote = null;
+        }
+        
+        renderLotes(lotes, pool);
+        renderLitragens(pool);
+    }
+    
+    function renderLotes(lotes, pool) {
+        const container = document.getElementById('disp-lotes-container');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        if (lotes.length === 0) {
+            container.innerHTML = `<span style="font-size: 0.85rem; color: var(--text-muted); padding: 0.5rem 0;">Nenhum lote de requisições cadastrado em estoque.</span>`;
+            return;
+        }
+        
+        lotes.forEach(l => {
+            const count = pool.filter(p => p.lote === l).length;
+            const btn = document.createElement('button');
+            btn.className = `lote-pill ${dispState.selectedLote === l ? 'active' : ''}`;
+            btn.innerHTML = `
+                <span>${l}</span>
+                <span class="lote-badge-count">${count} disp.</span>
+            `;
+            btn.addEventListener('click', () => {
+                dispState.selectedLote = l;
+                dispState.selectedLiters = null;
+                dispState.selectedGroup = null;
+                dispState.selectedTickets = [];
+                refreshDispensadorData();
+                closeDrawer();
+            });
+            container.appendChild(btn);
+        });
+    }
+    
+    function renderLitragens(pool) {
+        const grid = document.getElementById('disp-litros-cards-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        
+        if (!dispState.selectedLote) {
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Selecione um lote acima para visualizar as litragens.</div>`;
+            return;
+        }
+        
+        const lotePool = pool.filter(p => p.lote === dispState.selectedLote);
+        const litragensValidas = [15, 20, 25, 30, 50];
+        
+        let autoSelectLiters = dispState.selectedLiters;
+        if (!autoSelectLiters) {
+            for (const lit of litragensValidas) {
+                if (lotePool.some(p => p.litros === lit)) {
+                    autoSelectLiters = lit;
+                    break;
+                }
+            }
+            if (!autoSelectLiters && lotePool.length > 0) {
+                autoSelectLiters = lotePool[0].litros;
+            }
+            dispState.selectedLiters = autoSelectLiters;
+        }
+        
+        litragensValidas.forEach(lit => {
+            const count = lotePool.filter(p => p.litros === lit).length;
+            const card = document.createElement('div');
+            card.className = `litro-card ${count === 0 ? 'disabled' : ''} ${dispState.selectedLiters === lit ? 'active' : ''}`;
+            
+            card.innerHTML = `
+                <div class="litro-val">${lit}L</div>
+                <div class="litro-status-badge ${count > 0 ? 'available' : 'empty'}">
+                    ${count > 0 ? 'Disponível' : 'Esgotado'}
+                </div>
+                <div class="litro-count-info">${count} disponíveis</div>
+            `;
+            
+            if (count > 0) {
+                card.addEventListener('click', () => {
+                    dispState.selectedLiters = lit;
+                    dispState.selectedGroup = null;
+                    dispState.selectedTickets = [];
+                    refreshDispensadorData();
+                    closeDrawer();
+                });
+            }
+            grid.appendChild(card);
+        });
+        
+        renderGrupos(lotePool);
+    }
+    
+    function renderGrupos(lotePool) {
+        const container = document.getElementById('disp-grupos-container');
+        const list = document.getElementById('disp-grupos-chips-list');
+        if (!container || !list) return;
+        
+        if (!dispState.selectedLiters) {
+            container.style.display = 'none';
+            return;
+        }
+        
+        const filteredPool = lotePool.filter(p => p.litros === dispState.selectedLiters);
+        
+        if (filteredPool.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        
+        container.style.display = 'block';
+        list.innerHTML = '';
+        
+        const gruposSet = new Set(filteredPool.map(p => p.grupo));
+        const grupos = Array.from(gruposSet).sort();
+        
+        if (!dispState.selectedGroup || !gruposSet.has(dispState.selectedGroup)) {
+            dispState.selectedGroup = grupos[0];
+        }
+        
+        grupos.forEach(g => {
+            const count = filteredPool.filter(p => p.grupo === g).length;
+            const chip = document.createElement('button');
+            chip.className = `grupo-chip ${dispState.selectedGroup === g ? 'active' : ''}`;
+            chip.textContent = `${g} (${count})`;
+            chip.addEventListener('click', () => {
+                dispState.selectedGroup = g;
+                dispState.selectedTickets = [];
+                refreshDispensadorData();
+                closeDrawer();
+            });
+            list.appendChild(chip);
+        });
+        
+        renderTickets(filteredPool);
+    }
+    
+    function renderTickets(filteredPool) {
+        const container = document.getElementById('disp-tickets-container');
+        const grid = document.getElementById('disp-tickets-grid');
+        const title = document.getElementById('disp-current-group-title');
+        if (!container || !grid) return;
+        
+        if (!dispState.selectedGroup) {
+            container.style.display = 'none';
+            return;
+        }
+        
+        const groupTickets = filteredPool.filter(p => p.grupo === dispState.selectedGroup);
+        groupTickets.sort((a, b) => (a.num || 0) - (b.num || 0));
+        
+        container.style.display = 'block';
+        grid.innerHTML = '';
+        
+        if (title) {
+            title.textContent = `Sequências Disponíveis - Grupo ${dispState.selectedGroup}`;
+        }
+        
+        const searchVal = (document.getElementById('disp-ticket-search')?.value || '').trim();
+        
+        groupTickets.forEach(t => {
+            const numPart = t.id.split('-').pop();
+            
+            if (searchVal && !numPart.includes(searchVal)) {
+                return;
+            }
+            
+            const btn = document.createElement('button');
+            btn.className = `ticket-btn`;
+            
+            const isSelected = dispState.selectedTickets.some(st => st.id === t.id);
+            if (isSelected) btn.classList.add('selected');
+            
+            btn.innerHTML = `
+                <span>${numPart}</span>
+                <span class="ticket-tag-litros">${t.litros}L</span>
+            `;
+            
+            btn.addEventListener('click', () => {
+                handleTicketClick(t, btn);
+            });
+            grid.appendChild(btn);
+        });
+    }
+    
+    const searchInput = document.getElementById('disp-ticket-search');
+    if (searchInput) {
+        searchInput.replaceWith(searchInput.cloneNode(true));
+        const newSearchInput = document.getElementById('disp-ticket-search');
+        newSearchInput.addEventListener('input', () => {
+            const pool = getActivePool();
+            const lotePool = pool.filter(p => p.lote === dispState.selectedLote);
+            const filteredPool = lotePool.filter(p => p.litros === dispState.selectedLiters);
+            renderTickets(filteredPool);
+        });
+    }
+    
+    const btnMultiSelect = document.getElementById('disp-btn-select-multiple');
+    const btnDeliverSelected = document.getElementById('disp-btn-deliver-selected');
+    
+    if (btnMultiSelect) {
+        btnMultiSelect.replaceWith(btnMultiSelect.cloneNode(true));
+        const newBtnMultiSelect = document.getElementById('disp-btn-select-multiple');
+        newBtnMultiSelect.addEventListener('click', () => {
+            dispState.isMultiSelect = !dispState.isMultiSelect;
+            dispState.selectedTickets = [];
+            
+            const newStatusText = document.getElementById('disp-multi-select-status');
+            const newBtnDeliverSelected = document.getElementById('disp-btn-deliver-selected');
+            
+            if (dispState.isMultiSelect) {
+                newStatusText.textContent = 'LIGADA';
+                newStatusText.style.color = 'var(--accent-yellow)';
+            } else {
+                newStatusText.textContent = 'DESLIGADA';
+                newStatusText.style.color = 'var(--text-muted)';
+                newBtnDeliverSelected.style.display = 'none';
+            }
+            
+            refreshDispensadorData();
+            closeDrawer();
+        });
+    }
+    
+    if (btnDeliverSelected) {
+        btnDeliverSelected.replaceWith(btnDeliverSelected.cloneNode(true));
+        const newBtnDeliverSelected = document.getElementById('disp-btn-deliver-selected');
+        newBtnDeliverSelected.addEventListener('click', () => {
+            if (dispState.selectedTickets.length > 0) {
+                openDrawer(dispState.selectedTickets);
+            }
+        });
+    }
+    
+    function handleTicketClick(ticket, btnEl) {
+        if (dispState.isMultiSelect) {
+            const idx = dispState.selectedTickets.findIndex(st => st.id === ticket.id);
+            if (idx === -1) {
+                dispState.selectedTickets.push(ticket);
+                btnEl.classList.add('selected');
+            } else {
+                dispState.selectedTickets.splice(idx, 1);
+                btnEl.classList.remove('selected');
+            }
+            
+            const deliverBtn = document.getElementById('disp-btn-deliver-selected');
+            if (deliverBtn) {
+                if (dispState.selectedTickets.length > 0) {
+                    deliverBtn.style.display = 'inline-flex';
+                    deliverBtn.textContent = `✅ Entregar Selecionados (${dispState.selectedTickets.length})`;
+                } else {
+                    deliverBtn.style.display = 'none';
+                }
+            }
+        } else {
+            dispState.selectedTickets = [ticket];
+            openDrawer([ticket]);
+        }
+    }
+    
+    const drawerOverlay = document.getElementById('disp-drawer-overlay');
+    const drawerCloseBtn = document.getElementById('disp-drawer-close-btn');
+    const btnCancel = document.getElementById('disp-drawer-btn-cancel');
+    const btnConfirm = document.getElementById('disp-drawer-btn-confirm');
+    
+    if (drawerCloseBtn) {
+        drawerCloseBtn.addEventListener('click', closeDrawer);
+    }
+    if (btnCancel) {
+        btnCancel.addEventListener('click', closeDrawer);
+    }
+    
+    function openDrawer(tickets) {
+        if (!drawerOverlay) return;
+        
+        const numEl = document.getElementById('disp-drawer-ticket-number');
+        const litEl = document.getElementById('disp-drawer-ticket-litros');
+        
+        if (tickets.length === 1) {
+            numEl.textContent = tickets[0].id.split('-').pop();
+            litEl.textContent = `Litragem: ${tickets[0].litros} Litros • ${tickets[0].lote}`;
+        } else {
+            numEl.textContent = `${tickets.length} requisições`;
+            litEl.textContent = `Litragem: ${tickets[0].litros}L cada • ${tickets[0].lote}`;
+        }
+        
+        dispState.selectedBase = null;
+        dispState.selectedResponsavel = null;
+        dispState.selectedMotorista = null;
+        
+        renderDrawerBases();
+        
+        document.getElementById('disp-drawer-container-responsavel').style.display = 'none';
+        document.getElementById('disp-drawer-container-motorista').style.display = 'none';
+        document.getElementById('disp-drawer-container-km').style.display = 'none';
+        
+        drawerOverlay.classList.add('active');
+    }
+    
+    function closeDrawer() {
+        if (drawerOverlay) {
+            drawerOverlay.classList.remove('active');
+        }
+    }
+    
+    function renderDrawerBases() {
+        const grid = document.getElementById('disp-drawer-bases-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        
+        const bases = (state.customBases || []).map(line => {
+            if (line.includes(' - ')) {
+                const parts = line.split(' - ');
+                return { name: parts[0].trim(), resp: parts[1].trim() };
+            }
+            return { name: line.trim(), resp: null };
+        }).filter(b => b.name);
+        
+        if (bases.length === 0) {
+            grid.innerHTML = `<span style="font-size: 0.8rem; color: var(--text-muted); grid-column: 1/-1;">Cadastre bases no painel para selecionar.</span>`;
+            return;
+        }
+        
+        bases.forEach(b => {
+            const btn = document.createElement('button');
+            btn.className = `touch-btn`;
+            btn.textContent = b.name;
+            btn.addEventListener('click', () => {
+                grid.querySelectorAll('.touch-btn').forEach(btn => btn.classList.remove('active'));
+                btn.classList.add('active');
+                
+                dispState.selectedBase = b.name;
+                dispState.selectedResponsavel = b.resp;
+                
+                if (b.resp) {
+                    dispState.selectedResponsavel = b.resp;
+                    renderDrawerResponsaveis(b.resp);
+                } else {
+                    dispState.selectedResponsavel = 'NÃO INFORMADO';
+                    document.getElementById('disp-drawer-container-responsavel').style.display = 'none';
+                    renderDrawerMotoristas();
+                }
+            });
+            grid.appendChild(btn);
+        });
+    }
+    
+    function renderDrawerResponsaveis(respName) {
+        const container = document.getElementById('disp-drawer-container-responsavel');
+        const grid = document.getElementById('disp-drawer-responsaveis-grid');
+        if (!container || !grid) return;
+        
+        container.style.display = 'block';
+        grid.innerHTML = '';
+        
+        const btn = document.createElement('button');
+        btn.className = `touch-btn active`;
+        btn.textContent = respName;
+        btn.addEventListener('click', () => {
+            dispState.selectedResponsavel = respName;
+            renderDrawerMotoristas();
+        });
+        grid.appendChild(btn);
+        
+        renderDrawerMotoristas();
+    }
+    
+    function renderDrawerMotoristas() {
+        const container = document.getElementById('disp-drawer-container-motorista');
+        const grid = document.getElementById('disp-drawer-motoristas-grid');
+        const inputCustom = document.getElementById('disp-drawer-custom-motorista');
+        if (!container || !grid) return;
+        
+        container.style.display = 'block';
+        grid.innerHTML = '';
+        if (inputCustom) inputCustom.value = '';
+        
+        const motoristasVinculados = [];
+        const lowerBase = dispState.selectedBase.toLowerCase();
+        
+        (state.customMotoristas || []).forEach(line => {
+            if (line.includes(' - ')) {
+                const parts = line.split(' - ');
+                const b = parts[0].trim();
+                const m = parts[1].trim();
+                if (b.toLowerCase() === lowerBase) {
+                    motoristasVinculados.push(m);
+                }
+            }
+        });
+        
+        if (inputCustom) {
+            inputCustom.replaceWith(inputCustom.cloneNode(true));
+            const newInputCustom = document.getElementById('disp-drawer-custom-motorista');
+            newInputCustom.addEventListener('input', (e) => {
+                grid.querySelectorAll('.touch-btn').forEach(btn => btn.classList.remove('active'));
+                dispState.selectedMotorista = e.target.value.trim().toUpperCase();
+                
+                if (dispState.selectedMotorista) {
+                    showKmFields();
+                }
+            });
+        }
+        
+        if (motoristasVinculados.length === 0) {
+            grid.innerHTML = `<span style="font-size: 0.75rem; color: var(--text-muted); grid-column: 1/-1;">Sem motoristas vinculados a esta base. Digite abaixo.</span>`;
+            return;
+        }
+        
+        motoristasVinculados.forEach(m => {
+            const btn = document.createElement('button');
+            btn.className = `touch-btn`;
+            btn.textContent = m;
+            btn.addEventListener('click', () => {
+                grid.querySelectorAll('.touch-btn').forEach(btn => btn.classList.remove('active'));
+                btn.classList.add('active');
+                if (inputCustom) inputCustom.value = '';
+                
+                dispState.selectedMotorista = m;
+                showKmFields(m);
+            });
+            grid.appendChild(btn);
+        });
+    }
+    
+    function showKmFields(motoristaName = '') {
+        const container = document.getElementById('disp-drawer-container-km');
+        if (!container) return;
+        
+        container.style.display = 'flex';
+        
+        let placaEncontrada = '';
+        let veiculoEncontrado = '';
+        let kmAnterior = 0;
+        
+        if (motoristaName) {
+            if (state.veiculosContratados && state.veiculosContratados.length > 0) {
+                const lowerName = motoristaName.toLowerCase();
+                const matched = state.veiculosContratados.find(vc => vc.motorista && vc.motorista.toLowerCase() === lowerName);
+                if (matched) {
+                    placaEncontrada = matched.placa;
+                    veiculoEncontrado = matched.tipo_veiculo;
+                }
+            }
+            
+            if (!placaEncontrada && state.rawData && state.rawData.length > 0) {
+                const lowerName = motoristaName.toLowerCase();
+                const matched = [...state.rawData].reverse().find(row => row.motorista && row.motorista.toLowerCase() === lowerName);
+                if (matched) {
+                    placaEncontrada = matched.placa;
+                    veiculoEncontrado = matched.veiculo;
+                }
+            }
+            
+            if (placaEncontrada) {
+                const lowerPlaca = placaEncontrada.toLowerCase().trim();
+                const matchedKm = [...state.rawData].reverse().find(row => row.placa && row.placa.toLowerCase().trim() === lowerPlaca);
+                if (matchedKm && matchedKm.km) {
+                    kmAnterior = parseFloat(matchedKm.km) || 0;
+                }
+            }
+        }
+        
+        const inputPlaca = document.getElementById('disp-drawer-placa');
+        const inputVeiculo = document.getElementById('disp-drawer-veiculo');
+        const inputKmAnterior = document.getElementById('disp-drawer-km-anterior');
+        const inputKmAtual = document.getElementById('disp-drawer-km-atual');
+        
+        if (inputPlaca) inputPlaca.value = placaEncontrada;
+        if (inputVeiculo) inputVeiculo.value = veiculoEncontrado;
+        if (inputKmAnterior) inputKmAnterior.value = kmAnterior || '';
+        if (inputKmAtual) inputKmAtual.value = '';
+        
+        if (inputPlaca) {
+            inputPlaca.replaceWith(inputPlaca.cloneNode(true));
+            const newInputPlaca = document.getElementById('disp-drawer-placa');
+            newInputPlaca.addEventListener('input', (e) => {
+                const inputVal = e.target.value.toUpperCase().trim();
+                if (state.mappings && state.mappings.placaToVeiculo && state.mappings.placaToVeiculo[inputVal]) {
+                    const matchedVeiculo = state.mappings.placaToVeiculo[inputVal];
+                    if (inputVeiculo) inputVeiculo.value = matchedVeiculo;
+                    
+                    const matchedKm = [...state.rawData].reverse().find(row => row.placa && row.placa.toUpperCase().trim() === inputVal);
+                    if (matchedKm && matchedKm.km) {
+                        if (inputKmAnterior) inputKmAnterior.value = parseFloat(matchedKm.km) || 0;
+                    }
+                } else {
+                    if (inputVeiculo) inputVeiculo.value = '';
+                }
+            });
+        }
+    }
+    
+    if (btnConfirm) {
+        btnConfirm.replaceWith(btnConfirm.cloneNode(true));
+        const newBtnConfirm = document.getElementById('disp-drawer-btn-confirm');
+        newBtnConfirm.addEventListener('click', () => {
+            const base = dispState.selectedBase;
+            const responsavel = dispState.selectedResponsavel;
+            const motorista = dispState.selectedMotorista;
+            const tickets = dispState.selectedTickets;
+            
+            const placa = (document.getElementById('disp-drawer-placa')?.value || '').trim().toUpperCase();
+            const veiculo = (document.getElementById('disp-drawer-veiculo')?.value || '').trim();
+            const kmAnterior = parseFloat(document.getElementById('disp-drawer-km-anterior')?.value) || 0;
+            const kmAtual = parseFloat(document.getElementById('disp-drawer-km-atual')?.value) || 0;
+            
+            if (!base) { alert('Selecione a Base.'); return; }
+            if (!responsavel) { alert('Selecione o Responsável.'); return; }
+            if (!motorista) { alert('Selecione ou digite o Motorista.'); return; }
+            if (!tickets || tickets.length === 0) { alert('Nenhum ticket selecionado.'); return; }
+            if (kmAtual > 0 && kmAnterior > 0 && kmAtual < kmAnterior) {
+                alert('O KM atual não pode ser menor que o KM anterior.');
+                return;
+            }
+            
+            let precoLitro = 0;
+            let postoName = 'NÃO INFORMADO';
+            
+            if (state.customPostos && state.customPostos.length > 0) {
+                const firstPosto = state.customPostos[0];
+                if (firstPosto.includes(' - ')) {
+                    const pParts = firstPosto.split(' - ');
+                    postoName = pParts[0].trim();
+                    precoLitro = parseFloat(pParts[1].trim()) || 0;
+                } else {
+                    postoName = firstPosto.trim();
+                }
+            }
+            
+            const newRecords = [];
+            const ticketsIds = tickets.map(t => t.id);
+            const dateVal = new Date();
+            const formattedDate = dateVal.getFullYear() + '-' + String(dateVal.getMonth() + 1).padStart(2, '0') + '-' + String(dateVal.getDate()).padStart(2, '0');
+            
+            tickets.forEach(t => {
+                const recVal = t.litros * precoLitro;
+                newRecords.push({
+                    id: Date.now() + '-' + Math.random(),
+                    date: formattedDate,
+                    month: dateVal.getMonth(),
+                    year: dateVal.getFullYear(),
+                    inicioSeq: t.id,
+                    fimSeq: t.id,
+                    qtdRequisicoes: 1,
+                    zona: base,
+                    responsavel: responsavel,
+                    posto: postoName,
+                    motorista: motorista,
+                    veiculo: veiculo || 'NÃO INFORMADO',
+                    placa: placa || 'NÃO INFORMADO',
+                    kmAnterior: kmAnterior || 0,
+                    km: kmAtual || 0,
+                    combustivel: 'DIESEL',
+                    lote: t.lote,
+                    litros: t.litros,
+                    precoLitro: precoLitro,
+                    valor: recVal
+                });
+            });
+            
+            let tempCustomRequisicoes = (state.customRequisicoes || []).filter(line => {
+                const parts = splitByRelationalHyphen(line);
+                if (parts.length > 0) {
+                    const id = parts[0].trim();
+                    return !ticketsIds.includes(id);
+                }
+                return true;
+            });
+            
+            const syncPayload = {
+                environment: state.activeEnv,
+                requisicoes: [...state.rawData, ...newRecords],
+                custom_bases: state.customBases,
+                custom_postos: state.customPostos,
+                custom_motoristas: state.customMotoristas,
+                custom_veiculos: state.customVeiculos,
+                custom_requisicoes: tempCustomRequisicoes
+            };
+            
+            const isFileProtocol = window.location.protocol === 'file:';
+            if (isFileProtocol) {
+                state.rawData = [...state.rawData, ...newRecords];
+                state.customRequisicoes = tempCustomRequisicoes;
+                localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
+                localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+                
+                dispState.deliveredSessionCount += tickets.length;
+                updateSessionCountUI();
+                closeDrawer();
+                refreshDispensadorData();
+                if (typeof loadData === 'function') loadData();
+            } else {
+                showLoading('Processando distribuição de requisições...');
+                fetch('./api/sync_data.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(syncPayload)
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error('Erro de resposta HTTP.');
+                    return res.json();
+                })
+                .then(result => {
+                    hideLoading();
+                    if (result.success) {
+                        state.rawData = [...state.rawData, ...newRecords];
+                        state.customRequisicoes = tempCustomRequisicoes;
+                        localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
+                        localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+                        
+                        dispState.deliveredSessionCount += tickets.length;
+                        updateSessionCountUI();
+                        closeDrawer();
+                        refreshDispensadorData();
+                        if (typeof loadData === 'function') loadData();
+                    } else {
+                        alert('Erro ao sincronizar: ' + result.message);
+                    }
+                })
+                .catch(err => {
+                    hideLoading();
+                    console.error(err);
+                    alert('Erro ao processar distribuição online: ' + err.message);
+                });
+            }
+        });
+    }
+    
+    function updateSessionCountUI() {
+        const counterEl = document.getElementById('disp-session-counter');
+        if (counterEl) {
+            counterEl.textContent = `Entregues nesta sessão: ${dispState.deliveredSessionCount} reqs`;
+        }
+    }
 }
 

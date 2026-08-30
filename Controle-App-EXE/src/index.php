@@ -314,7 +314,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                         Cadastros
                     </button>
                     <!-- Botão Dispensador Visual -->
-                    <button class="btn btn-primary btn-icon" id="btn-open-dispensador" title="Acessar o Dispensador Visual de Requisições por Lotes" onclick="window.location.href='./lab/'" style="background: linear-gradient(135deg, #ffb703, #fb8500); color: #000; font-weight: 700; border: none;">
+                    <button class="btn btn-primary btn-icon" id="btn-open-dispensador" title="Acessar o Dispensador Visual de Requisições por Lotes" style="background: linear-gradient(135deg, #ffb703, #fb8500); color: #000; font-weight: 700; border: none;">
                         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align: middle; margin-right:4px;">
                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                         </svg>
@@ -870,6 +870,154 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                     <button type="submit" class="btn btn-primary" id="btn-submit-add-requisicao">Salvar Requisição</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL DO DISPENSADOR VISUAL DE REQUISIÇÕES (SANDBOX INTEGRADA) -->
+    <div class="modal-overlay" id="dispensador-modal" style="z-index: 2500;">
+        <div class="modal-content" style="max-width: 1400px; width: 95vw; height: 90vh; display: flex; flex-direction: column; padding: 0; background-color: var(--bg-primary); border: 1px solid var(--border-color); overflow: hidden;">
+            <button class="modal-close" id="btn-close-dispensador-modal" style="top: 1rem; right: 1.5rem; z-index: 10;">&times;</button>
+            
+            <div class="dispensador-modal-header" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <div>
+                    <h2 style="margin: 0; color: var(--accent-yellow); font-weight: 800; display: flex; align-items: center; gap: 0.5rem; font-size: 1.35rem;">
+                        ⚡ Dispensador Visual
+                    </h2>
+                    <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: var(--text-secondary);">
+                        Atribuição rápida de requisições de estoque para postos, bases e motoristas.
+                    </p>
+                </div>
+                <div style="margin-right: 3rem; display: flex; align-items: center; gap: 1rem;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono);" id="disp-session-counter">Entregues nesta sessão: 0 reqs</span>
+                </div>
+            </div>
+            
+            <div class="dispensador-modal-body" style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; background-color: var(--bg-primary);">
+                <!-- NÍVEL 1: LOTES -->
+                <div class="lotes-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; border-radius: 14px;">
+                    <div class="lotes-list" id="disp-lotes-container">
+                        <!-- Gerado dinamicamente -->
+                    </div>
+                </div>
+
+                <!-- NÍVEL 2: LITRAGENS (CARDS TÁTEIS) -->
+                <div>
+                    <div class="touch-section-title">1. Selecione a Litragem Desejada:</div>
+                    <div class="litros-grid" id="disp-litros-cards-grid">
+                        <!-- Gerado dinamicamente -->
+                    </div>
+                </div>
+
+                <!-- NÍVEL 3: GRUPOS DE CONTROLE (PREFIXOS) -->
+                <div id="disp-grupos-container" style="display: none;">
+                    <div class="grupos-bar">
+                        <span class="grupos-label">2. Grupo de Controle:</span>
+                        <div id="disp-grupos-chips-list" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <!-- Gerado dinamicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NÍVEL 4: MATRIZ DE TICKETS -->
+                <div id="disp-tickets-container" style="display: none;">
+                    <div class="tickets-section">
+                        <div class="tickets-header">
+                            <div class="tickets-title-group">
+                                <h3 id="disp-current-group-title" style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">Sequências Disponíveis</h3>
+                                <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-secondary);">Clique no número para entregar a requisição ou selecione várias</p>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                <input type="text" id="disp-ticket-search" class="ticket-search-input" placeholder="🔍 Buscar ticket (ex: 042)..." style="width: 180px;">
+                                <button class="btn btn-secondary" id="disp-btn-select-multiple" style="font-size: 0.8rem; padding: 0.5rem 0.75rem;">
+                                    Seleção Múltipla: <strong id="disp-multi-select-status" style="color: var(--text-muted);">DESLIGADA</strong>
+                                </button>
+                                <button class="btn btn-primary" id="disp-btn-deliver-selected" style="display: none; font-size: 0.8rem; padding: 0.5rem 0.75rem; background: linear-gradient(135deg, #ffb703, #fb8500); border: none; color: #000; font-weight: 700;">
+                                    ✅ Entregar Selecionados
+                                </button>
+                            </div>
+                        </div>
+                        <div class="tickets-grid" id="disp-tickets-grid">
+                            <!-- Gerado dinamicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DRAWER DESLIZANTE DE ATRIBUIÇÃO (DENTRO DO MODAL) -->
+            <div class="drawer-overlay" id="disp-drawer-overlay">
+                <div class="drawer-panel" id="disp-drawer-panel">
+                    <div class="drawer-header">
+                        <h3>⚡ Confirmar Entrega</h3>
+                        <button class="drawer-close-btn" id="disp-drawer-close-btn">&times;</button>
+                    </div>
+                    <div class="drawer-body">
+                        <div class="ticket-preview-box">
+                            <div class="ticket-preview-number" id="disp-drawer-ticket-number">-</div>
+                            <div class="ticket-preview-litros" id="disp-drawer-ticket-litros">-</div>
+                        </div>
+
+                        <!-- 1. BASE -->
+                        <div>
+                            <div class="touch-section-title">1. Selecione a Base:</div>
+                            <div class="touch-buttons-grid" id="disp-drawer-bases-grid">
+                                <!-- Dinâmico -->
+                            </div>
+                        </div>
+
+                        <!-- 2. RESPONSÁVEL -->
+                        <div id="disp-drawer-container-responsavel" style="display: none;">
+                            <div class="touch-section-title">2. Selecione o Responsável:</div>
+                            <div class="touch-buttons-grid" id="disp-drawer-responsaveis-grid">
+                                <!-- Dinâmico -->
+                            </div>
+                        </div>
+
+                        <!-- 3. MOTORISTA -->
+                        <div id="disp-drawer-container-motorista" style="display: none;">
+                            <div class="touch-section-title">3. Selecione o Motorista / Destinatário:</div>
+                            <div class="touch-buttons-grid" id="disp-drawer-motoristas-grid">
+                                <!-- Dinâmico -->
+                            </div>
+                            <div style="margin-top: 0.5rem;">
+                                <input type="text" id="disp-drawer-custom-motorista" class="ticket-search-input" placeholder="Ou digite o nome do novo motorista..." style="width: 100%;">
+                            </div>
+                        </div>
+
+                        <!-- 4. VÍNCULOS E KILOMETRAGEM -->
+                        <div id="disp-drawer-container-km" style="display: none; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div class="touch-section-title">4. Dados do Veículo & KM:</div>
+                            
+                            <div style="display: flex; gap: 0.5rem;">
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">Placa do Veículo</label>
+                                    <input type="text" id="disp-drawer-placa" class="ticket-search-input" placeholder="ABC1D23" style="text-transform: uppercase;">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">Tipo Veículo (Auto)</label>
+                                    <input type="text" id="disp-drawer-veiculo" class="ticket-search-input" readonly placeholder="Veículo" style="background-color: var(--bg-primary); border-color: transparent; opacity: 0.7;">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 0.5rem;">
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">KM Anterior</label>
+                                    <input type="number" id="disp-drawer-km-anterior" class="ticket-search-input" placeholder="Ex: 10200">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">KM Atual</label>
+                                    <input type="number" id="disp-drawer-km-atual" class="ticket-search-input" placeholder="Ex: 10350">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="drawer-footer">
+                        <button class="btn btn-secondary" id="disp-drawer-btn-cancel">Cancelar</button>
+                        <button class="btn btn-primary" id="disp-drawer-btn-confirm" style="background: linear-gradient(135deg, #ffb703, #fb8500); border: none; color: #000; font-weight: 700;">
+                            ✅ Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
