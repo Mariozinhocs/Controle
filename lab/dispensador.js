@@ -808,25 +808,7 @@ function initDispensadorEvents() {
         });
     }
 
-    // Botão de zerar tudo (limpar cache e banco local)
-    const btnClearAll = document.getElementById('btn-clear-all');
-    if (btnClearAll) {
-        btnClearAll.addEventListener('click', () => {
-            if (confirm('Deseja limpar TODO o estoque local e histórico do laboratório para iniciar de forma 100% vazia?')) {
-                localStorage.removeItem('lab_dispensador_pool');
-                localStorage.removeItem('lab_dispensador_lancamentos');
-                localStorage.removeItem('lab_session_counter');
-                
-                labState.pool = [];
-                labState.lancamentos = [];
-                labState.deliveredSessionCount = 0;
-                
-                updateSessionCounterUI();
-                renderDispensador();
-                if (labState.activeView === 'relatorios') renderCustomReport();
-            }
-        });
-    }
+
 
     // Alternar seleção múltipla
     const btnMulti = document.getElementById('btn-select-multiple');
