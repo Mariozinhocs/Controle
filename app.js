@@ -3306,7 +3306,18 @@ function buildFilterButtons() {
         containerLotes.innerHTML = '';
         if (!state.filters.lotes) state.filters.lotes = new Set();
         
-        const lotesUnicos = new Set(['LOTE 1 (7K)', 'LOTE 2 (2K)', 'LOTE 3 (15K)']);
+        const lotesUnicos = new Set();
+        if (state.customRequisicoes && state.customRequisicoes.length > 0) {
+            state.customRequisicoes.forEach(item => {
+                const match = item.match(/\((.*?)\)/);
+                if (match && match[1]) {
+                    lotesUnicos.add(match[1].trim());
+                } else {
+                    const loteMatch = item.match(/(LOTE\s*\d+)/i);
+                    if (loteMatch) lotesUnicos.add(loteMatch[1].toUpperCase());
+                }
+            });
+        }
         if (state.rawData && state.rawData.length > 0) {
             state.rawData.forEach(row => {
                 if (row.lote && row.lote !== 'Não Informado') lotesUnicos.add(row.lote);
