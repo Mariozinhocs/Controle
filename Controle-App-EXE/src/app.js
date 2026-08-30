@@ -2744,7 +2744,7 @@ function renderStructuredCadastrosUI() {
         state.activeLoteCadTab = 'TODOS';
     }
 
-    // Renderizar barra de Sub-abas por Lote com botão de Excluir
+    // Renderizar barra de Sub-abas por Lote (sem botão de excluir para evitar exclusão acidental)
     if (subtabsContainer) {
         subtabsContainer.innerHTML = lotTabsList.map(loteName => {
             const count = loteCounts[loteName] || 0;
@@ -2753,9 +2753,6 @@ function renderStructuredCadastrosUI() {
                 <button type="button" class="lote-subtab-btn ${isActive ? 'active' : ''}" onclick="setCadLoteSubTab('${escapeHtml(loteName)}')">
                     ${loteName === 'TODOS' ? '🌐' : '📦'} ${escapeHtml(loteName)}
                     <span class="lote-subtab-badge">${count}</span>
-                    ${loteName !== 'TODOS' ? `
-                        <span class="lote-subtab-del" onclick="event.stopPropagation(); removeEntireLote('${escapeHtml(loteName)}')" title="Excluir Todo o ${escapeHtml(loteName)}">&times;</span>
-                    ` : ''}
                 </button>
             `;
         }).join('');
@@ -3903,8 +3900,9 @@ function calculateKPIs() {
         }
     }
 
-    // Calcular as requisições disponíveis em estoque
+    // Calcular as requisições disponíveis em estoque e litros disponíveis
     let totalDisponiveis = 0;
+    let totalLitrosDisponiveis = 0;
     if (state.customRequisicoes) {
         state.customRequisicoes.forEach(item => {
             let lote = 'OUTROS';
@@ -3917,6 +3915,13 @@ function calculateKPIs() {
             }
             if (state.filters.lotes.size === 0 || state.filters.lotes.has(lote)) {
                 totalDisponiveis++;
+
+                let litros = 15;
+                const matchLiters = item.match(/(\d+(?:\.\d+)?)\s*L/i);
+                if (matchLiters && matchLiters[1]) {
+                    litros = parseFloat(matchLiters[1]);
+                }
+                totalLitrosDisponiveis += litros;
             }
         });
     }
@@ -3935,6 +3940,9 @@ function calculateKPIs() {
     
     const reqDispEl = document.getElementById('kpi-req-disponiveis');
     if (reqDispEl) reqDispEl.querySelector('.kpi-value').textContent = totalDisponiveis.toLocaleString('pt-BR');
+
+    const litrosDispEl = document.getElementById('kpi-litros-disponiveis');
+    if (litrosDispEl) litrosDispEl.querySelector('.kpi-value').textContent = Math.round(totalLitrosDisponiveis).toLocaleString('pt-BR') + ' L';
 
     // KPI legado caso exista na página
     const reqEl = document.querySelector('#kpi-requisicoes .kpi-value');
