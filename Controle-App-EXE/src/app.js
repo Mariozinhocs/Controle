@@ -3084,8 +3084,15 @@ function updateRelationsMappings() {
     }).filter(Boolean);
     populateDatalist('datalist-veiculos', modelos);
 
-    // Motoristas
-    populateDatalist('datalist-motoristas', state.customMotoristas || []);
+    // Motoristas (extrai o nome do motorista de 'Base - Motorista' ou usa plano se não houver hífen)
+    const motoristaNames = (state.customMotoristas || []).map(m => {
+        if (m.includes(' - ')) {
+            const parts = m.split(' - ');
+            return parts.length > 1 ? parts[1].trim() : '';
+        }
+        return m.trim();
+    }).filter(Boolean);
+    populateDatalist('datalist-motoristas', motoristaNames);
 
     // Requisições
     populateDatalist('datalist-requisicoes', state.customRequisicoes || []);

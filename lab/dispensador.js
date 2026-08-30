@@ -146,8 +146,8 @@ function loadSystemEntities() {
             if (line && line.trim()) {
                 if (line.includes(' - ')) {
                     const parts = line.split(' - ');
-                    const m = parts[0].trim();
-                    const b = cleanBaseName(parts[1]);
+                    const b = cleanBaseName(parts[0]);
+                    const m = parts.length > 1 ? parts[1].trim() : '';
                     if (m) {
                         motSet.add(m);
                         if (b) {
@@ -210,8 +210,8 @@ function loadSystemEntities() {
                             if (line && line.trim()) {
                                 if (line.includes(' - ')) {
                                     const parts = line.split(' - ');
-                                    const m = parts[0].trim();
-                                    const b = cleanBaseName(parts[1]);
+                                    const b = cleanBaseName(parts[0]);
+                                    const m = parts.length > 1 ? parts[1].trim() : '';
                                     if (m) {
                                         motSet.add(m);
                                         if (b) {
