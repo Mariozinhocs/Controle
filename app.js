@@ -2473,7 +2473,7 @@ function renderStructuredCadastrosUI() {
     const baseCounts = { 'TODAS': allBases.length };
 
     allBases.forEach((item, originalIdx) => {
-        const parts = item.split('-').map(s => s.trim());
+        const parts = item.includes(' - ') ? item.split(' - ') : [item];
         const baseName = parts[0] || item;
         const respName = parts[1] || '';
 
@@ -2593,7 +2593,7 @@ function renderStructuredCadastrosUI() {
                 a.item.localeCompare(b.item, 'pt-BR', { numeric: true, sensitivity: 'base' })
             );
             listVeics.innerHTML = sortedVeiculos.map(({ item, originalIdx }) => {
-                const parts = item.split('-').map(s => s.trim());
+                const parts = item.includes(' - ') ? item.split(' - ') : [item];
                 const placa = parts[0] || item;
                 const modelo = parts[1] || '';
                 return `
@@ -2629,7 +2629,7 @@ function renderStructuredCadastrosUI() {
                 a.item.localeCompare(b.item, 'pt-BR', { numeric: true, sensitivity: 'base' })
             );
             listPostos.innerHTML = sortedPostos.map(({ item, originalIdx }) => {
-                const parts = item.split('-').map(s => s.trim());
+                const parts = item.includes(' - ') ? item.split(' - ') : [item];
                 const postoName = parts[0] || item;
                 const preco = parts[1] || '';
                 return `
@@ -2838,7 +2838,7 @@ window.setCadBaseSubTab = function(baseName) {
 window.removeBaseGroup = function(baseName) {
     if (!confirm(`Deseja realmente excluir a base "${baseName}" e todos os seus responsáveis?`)) return;
     state.customBases = (state.customBases || []).filter(item => {
-        const parts = item.split('-').map(s => s.trim());
+        const parts = item.includes(' - ') ? item.split(' - ') : [item];
         const b = parts[0] || item;
         return b !== baseName;
     });
@@ -2981,7 +2981,7 @@ window.resetHmlDatabase = async function() {
 window.editCadEntity = function(type, index) {
     if (type === 'bases' && state.customBases && state.customBases[index]) {
         const item = state.customBases[index];
-        const parts = item.split('-').map(s => s.trim());
+        const parts = item.includes(' - ') ? item.split(' - ') : [item];
         const inputNome = document.getElementById('input-new-base-nome');
         const inputResp = document.getElementById('input-new-base-resp');
         const btnAdd = document.getElementById('btn-add-base-item');
@@ -2995,7 +2995,7 @@ window.editCadEntity = function(type, index) {
         if (inputNome) inputNome.focus();
     } else if (type === 'veiculos' && state.customVeiculos && state.customVeiculos[index]) {
         const item = state.customVeiculos[index];
-        const parts = item.split('-').map(s => s.trim());
+        const parts = item.includes(' - ') ? item.split(' - ') : [item];
         const inputPlaca = document.getElementById('input-new-veic-placa');
         const inputTipo = document.getElementById('input-new-veic-tipo');
         const btnAdd = document.getElementById('btn-add-veic-item');
@@ -3009,7 +3009,7 @@ window.editCadEntity = function(type, index) {
         if (inputPlaca) inputPlaca.focus();
     } else if (type === 'postos' && state.customPostos && state.customPostos[index]) {
         const item = state.customPostos[index];
-        const parts = item.split('-').map(s => s.trim());
+        const parts = item.includes(' - ') ? item.split(' - ') : [item];
         const inputNome = document.getElementById('input-new-posto-nome');
         const inputPreco = document.getElementById('input-new-posto-preco');
         const btnAdd = document.getElementById('btn-add-posto-item');
@@ -3060,26 +3060,26 @@ window.removeCadEntity = function(type, index) {
 // Atualizar Datalists de sugestão
 function updateRelationsMappings() {
     // Bases
-    const baseNames = (state.customBases || []).map(b => b.split('-')[0].trim()).filter(Boolean);
+    const baseNames = (state.customBases || []).map(b => (b.includes(' - ') ? b.split(' - ')[0] : b).trim()).filter(Boolean);
     populateDatalist('datalist-bases', baseNames);
 
     // Responsaveis
     const responsaveis = (state.customBases || []).map(b => {
-        const parts = b.split('-');
+        const parts = b.includes(' - ') ? b.split(' - ') : [b];
         return parts.length > 1 ? parts[1].trim() : '';
     }).filter(Boolean);
     populateDatalist('datalist-responsaveis', responsaveis);
 
     // Postos
-    const postoNames = (state.customPostos || []).map(p => p.split('-')[0].trim()).filter(Boolean);
+    const postoNames = (state.customPostos || []).map(p => (p.includes(' - ') ? p.split(' - ')[0] : p).trim()).filter(Boolean);
     populateDatalist('datalist-postos', postoNames);
 
     // Placas e Veículos
-    const placas = (state.customVeiculos || []).map(v => v.split('-')[0].trim()).filter(Boolean);
+    const placas = (state.customVeiculos || []).map(v => (v.includes(' - ') ? v.split(' - ')[0] : v).trim()).filter(Boolean);
     populateDatalist('datalist-placas', placas);
 
     const modelos = (state.customVeiculos || []).map(v => {
-        const parts = v.split('-');
+        const parts = v.includes(' - ') ? v.split(' - ') : [v];
         return parts.length > 1 ? parts[1].trim() : '';
     }).filter(Boolean);
     populateDatalist('datalist-veiculos', modelos);
