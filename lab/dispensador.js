@@ -20,6 +20,7 @@ const labState = {
     bases: [],         // Lista de nomes limpos de bases
     responsaveis: [],  // Lista de responsáveis
     motoristas: [],    // Lista de motoristas
+    configRaw: null,   // Armazena as configurações originais do CONTROLE
     mappings: {
         baseToResp: {},
         respToBase: {},
@@ -151,6 +152,14 @@ function loadSystemEntities() {
         .then(res => res.json())
         .then(res => {
             if (res.success && res.config) {
+                // Preservar as configurações brutas do CONTROLE para futuras sincronizações
+                labState.configRaw = {
+                    bases: res.config.custom_bases ? JSON.parse(res.config.custom_bases) : [],
+                    postos: res.config.custom_postos ? JSON.parse(res.config.custom_postos) : [],
+                    motoristas: res.config.custom_motoristas ? JSON.parse(res.config.custom_motoristas) : [],
+                    veiculos: res.config.custom_veiculos ? JSON.parse(res.config.custom_veiculos) : []
+                };
+
                 // Bases customizadas salvas
                 if (res.config.custom_bases) {
                     try {
@@ -780,6 +789,76 @@ function confirmDelivery() {
     if (labState.activeView === 'relatorios') {
         renderCustomReport();
     }
+
+    // Sincroniza em tempo real com o banco de dados remoto do CONTROLE
+    syncLabWithServer();
+}
+
+function syncLabWithServer() {
+    const requisicoesPayload = labState.lancamentos.map(l => {
+        const idParts = l.id.split('-');
+        const grupo = idParts[0] || '1787595670733';
+        const seq = idParts[1] || '001';
+        return {
+            id: l.id,
+            date: l.data || new Date().toISOString().split('T')[0],
+            inicioSeq: `${grupo}-${seq}`,
+            fimSeq: '',
+            qtdRequisicoes: 1,
+            zona: l.base || 'NÃO INFORMADO',
+            responsavel: l.responsavel || 'NÃO INFORMADO',
+            posto: 'PETROVAN',
+            motorista: l.motorista || 'NÃO INFORMADO',
+            veiculo: 'NÃO INFORMADO',
+            placa: 'NÃO INFORMADO',
+            kmAnterior: null,
+            km: null,
+            combustivel: 'Gasolina',
+            litros: l.litros,
+            precoLitro: 7.29,
+            valor: l.valor || (l.litros * 7.29),
+            lote: l.lote || 'LOTE 1',
+            environment: 'Frota Principal'
+        };
+    });
+
+    const customRequisicoesStrings = labState.pool.map(item => {
+        return `${item.id} - ${item.litros}L (${item.lote})`;
+    });
+
+    const mergedMotoristas = Array.from(new Set([
+        ...(labState.configRaw ? labState.configRaw.motoristas : []),
+        ...labState.motoristas
+    ])).sort();
+
+    const payload = {
+        environment: 'Frota Principal',
+        requisicoes: requisicoesPayload,
+        custom_bases: labState.configRaw ? labState.configRaw.bases : labState.bases,
+        custom_postos: labState.configRaw ? labState.configRaw.postos : ['PETROVAN'],
+        custom_motoristas: mergedMotoristas,
+        custom_veiculos: labState.configRaw ? labState.configRaw.veiculos : [],
+        custom_requisicoes: customRequisicoesStrings
+    };
+
+    fetch('./api/sync_data.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            console.log('Distribuição sincronizada com sucesso no banco remoto!');
+        } else {
+            console.error('Erro ao sincronizar com banco remoto:', res.message);
+        }
+    })
+    .catch(err => {
+        console.error('Erro de rede ao sincronizar:', err);
+    });
 }
 
 // 5. EVENTOS DO DISPENSADOR
