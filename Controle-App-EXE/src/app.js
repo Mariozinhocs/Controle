@@ -852,6 +852,22 @@ function initEventListeners() {
         });
     }
 
+    // Seletor de Lote da Barra Lateral
+    const selectLoteSidebar = document.getElementById('select-lote-sidebar');
+    if (selectLoteSidebar) {
+        selectLoteSidebar.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (val === 'TODOS') {
+                state.filters.lotes.clear();
+            } else {
+                state.filters.lotes.clear();
+                state.filters.lotes.add(val);
+            }
+            buildFilterButtons();
+            updateDashboard();
+        });
+    }
+
     // Abrir modal de Nova Requisição
     const btnOpenAddReq = document.getElementById('btn-open-add-requisicao');
     if (btnOpenAddReq) {
@@ -3416,6 +3432,44 @@ function buildFilterButtons() {
 
     // Popular o datalist de combustível do formulário de Nova Requisição
     populateDatalist('datalist-combustiveis', sortedComb);
+
+    // Sincronizar o seletor do lote da barra lateral
+    const selectLoteSidebar = document.getElementById('select-lote-sidebar');
+    if (selectLoteSidebar) {
+        const lotesUnicos = new Set();
+        if (state.customRequisicoes && state.customRequisicoes.length > 0) {
+            state.customRequisicoes.forEach(item => {
+                const match = item.match(/\((.*?)\)/);
+                if (match && match[1]) {
+                    lotesUnicos.add(match[1].trim());
+                } else {
+                    const loteMatch = item.match(/(LOTE\s*\d+)/i);
+                    if (loteMatch) lotesUnicos.add(loteMatch[1].toUpperCase());
+                }
+            });
+        }
+        if (state.rawData && state.rawData.length > 0) {
+            state.rawData.forEach(row => {
+                if (row.lote && row.lote !== 'Não Informado') lotesUnicos.add(row.lote);
+            });
+        }
+        const sortedLotes = Array.from(lotesUnicos).sort();
+        
+        selectLoteSidebar.innerHTML = '<option value="TODOS">Todos os Lotes</option>';
+        sortedLotes.forEach(lote => {
+            const opt = document.createElement('option');
+            opt.value = lote;
+            opt.textContent = lote;
+            selectLoteSidebar.appendChild(opt);
+        });
+        
+        if (state.filters.lotes && state.filters.lotes.size === 1) {
+            const activeLote = Array.from(state.filters.lotes)[0];
+            selectLoteSidebar.value = activeLote;
+        } else {
+            selectLoteSidebar.value = 'TODOS';
+        }
+    }
 }
 
 function updatePlacaDatalistOptions(selectedVeiculo = '') {
@@ -3838,9 +3892,43 @@ function calculateKPIs() {
         }
     }
 
+    // Calcular as requisições disponíveis em estoque
+    let totalDisponiveis = 0;
+    if (state.customRequisicoes) {
+        state.customRequisicoes.forEach(item => {
+            let lote = 'OUTROS';
+            const match = item.match(/\((.*?)\)/);
+            if (match && match[1]) {
+                lote = match[1].trim();
+            } else {
+                const loteMatch = item.match(/(LOTE\s*\d+)/i);
+                if (loteMatch) lote = loteMatch[1].toUpperCase();
+            }
+            if (state.filters.lotes.size === 0 || state.filters.lotes.has(lote)) {
+                totalDisponiveis++;
+            }
+        });
+    }
+    const totalCadastradas = totalReq + totalDisponiveis;
+
+    // Atualizar os KPIs na tela
     document.querySelector('#kpi-gasto .kpi-value').textContent = totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     document.querySelector('#kpi-litros .kpi-value').textContent = Math.round(totalLitros).toLocaleString('pt-BR') + ' L';
-    document.querySelector('#kpi-requisicoes .kpi-value').textContent = totalReq.toLocaleString('pt-BR');
+    
+    // Novas KPIs
+    const reqCadEl = document.getElementById('kpi-req-cadastradas');
+    if (reqCadEl) reqCadEl.querySelector('.kpi-value').textContent = totalCadastradas.toLocaleString('pt-BR');
+    
+    const reqDistEl = document.getElementById('kpi-req-distribuidas');
+    if (reqDistEl) reqDistEl.querySelector('.kpi-value').textContent = totalReq.toLocaleString('pt-BR');
+    
+    const reqDispEl = document.getElementById('kpi-req-disponiveis');
+    if (reqDispEl) reqDispEl.querySelector('.kpi-value').textContent = totalDisponiveis.toLocaleString('pt-BR');
+
+    // KPI legado caso exista na página
+    const reqEl = document.querySelector('#kpi-requisicoes .kpi-value');
+    if (reqEl) reqEl.textContent = totalReq.toLocaleString('pt-BR');
+    
     document.querySelector('#kpi-preco-medio .kpi-value').textContent = precoMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
     const maiorVeicEl = document.querySelector('#kpi-maior-gasto .kpi-value');

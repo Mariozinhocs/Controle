@@ -135,6 +135,29 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
 
 
             <div class="kpi-group">
+                <!-- Seletor de Lote -->
+                <div class="slicer-box-sidebar" style="margin-bottom: 1rem; width: 100%; padding: 0 0.5rem;">
+                    <label style="font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-mono); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 0.35rem;">Filtro por Lote</label>
+                    <select id="select-lote-sidebar" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; width: 100%; font-size: 0.85rem; font-weight: 600; cursor: pointer; outline: none; transition: border-color 0.2s;">
+                        <option value="TODOS">Todos os Lotes</option>
+                    </select>
+                </div>
+
+                <div class="kpi-card" id="kpi-req-cadastradas" draggable="true" title="Qtd de Requisições cadastradas">
+                    <span class="kpi-value">0</span>
+                    <span class="kpi-label">REQ. CADASTRADAS</span>
+                </div>
+
+                <div class="kpi-card" id="kpi-req-distribuidas" draggable="true" title="Qtd de Requisições Distribuídas">
+                    <span class="kpi-value">0</span>
+                    <span class="kpi-label">REQ. DISTRIBUÍDAS</span>
+                </div>
+
+                <div class="kpi-card" id="kpi-req-disponiveis" draggable="true" title="Qtd de Requisições Disponíveis">
+                    <span class="kpi-value">0</span>
+                    <span class="kpi-label">REQ. DISPONÍVEIS</span>
+                </div>
+
                 <div class="kpi-card" id="kpi-gasto" draggable="true" title="Total Gasto">
                     <span class="kpi-value">R$ 0,00</span>
                     <span class="kpi-label">TOTAL GASTO</span>
@@ -143,11 +166,6 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                 <div class="kpi-card" id="kpi-litros" draggable="true" title="Total Litros">
                     <span class="kpi-value">0 L</span>
                     <span class="kpi-label">TOTAL LITROS</span>
-                </div>
-
-                <div class="kpi-card" id="kpi-requisicoes" draggable="true" title="Qtd Requisições">
-                    <span class="kpi-value">0</span>
-                    <span class="kpi-label">QTD REQUISIÇÕES</span>
                 </div>
 
                 <div class="kpi-card" id="kpi-preco-medio" draggable="true" title="Preço Médio / L">
