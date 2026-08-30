@@ -1043,7 +1043,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                         <textarea id="textarea-custom-requisicoes" rows="4" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;"></textarea>
                     </div>
                     <div class="form-group">
-                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Motoristas (um por linha)</label>
+                        <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Motoristas (um por linha - opcional: <code>Motorista - Base</code>)</label>
                         <textarea id="textarea-custom-motoristas" rows="3" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;"></textarea>
                     </div>
                     <button type="submit" class="btn btn-primary" style="align-self: flex-end;">Salvar Todas as Listas de Texto</button>
@@ -1275,7 +1275,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <datalist id="datalist-combustiveis"></datalist>
 
     <!-- Script principal da aplicação -->
-    <script src="app.js?v=50" defer></script>
+    <script src="app.js?v=51" defer></script>
 </body>
 
 </html>

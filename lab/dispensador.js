@@ -142,8 +142,26 @@ function loadSystemEntities() {
         });
 
         const customMotoristas = JSON.parse(localStorage.getItem('custom_motoristas') || '[]');
-        customMotoristas.forEach(m => {
-            if (m && m.trim()) motSet.add(m.trim());
+        customMotoristas.forEach(line => {
+            if (line && line.trim()) {
+                if (line.includes(' - ')) {
+                    const parts = line.split(' - ');
+                    const m = parts[0].trim();
+                    const b = cleanBaseName(parts[1]);
+                    if (m) {
+                        motSet.add(m);
+                        if (b) {
+                            const lowerBase = b.toLowerCase();
+                            if (!labState.mappings.baseToMotoristas[lowerBase]) {
+                                labState.mappings.baseToMotoristas[lowerBase] = new Set();
+                            }
+                            labState.mappings.baseToMotoristas[lowerBase].add(m);
+                        }
+                    }
+                } else {
+                    motSet.add(line.trim());
+                }
+            }
         });
     } catch (e) {}
 
@@ -179,6 +197,37 @@ function loadSystemEntities() {
                             } else {
                                 const b = cleanBaseName(line);
                                 if (b) basesSet.add(b);
+                            }
+                        });
+                    } catch (e) {}
+                }
+
+                // Motoristas customizados salvos no banco
+                if (res.config.custom_motoristas) {
+                    try {
+                        const parsedMotoristas = JSON.parse(res.config.custom_motoristas);
+                        parsedMotoristas.forEach(line => {
+                            if (line && line.trim()) {
+                                if (line.includes(' - ')) {
+                                    const parts = line.split(' - ');
+                                    const m = parts[0].trim();
+                                    const b = cleanBaseName(parts[1]);
+                                    if (m) {
+                                        motSet.add(m);
+                                        if (b) {
+                                            const lowerBase = b.toLowerCase();
+                                            if (!labState.mappings.baseToMotoristas[lowerBase]) {
+                                                labState.mappings.baseToMotoristas[lowerBase] = new Set();
+                                            }
+                                            labState.mappings.baseToMotoristas[lowerBase].add(m);
+                                        }
+                                    }
+                                } else {
+                                    const m = line.trim();
+                                    if (m) {
+                                        motSet.add(m);
+                                    }
+                                }
                             }
                         });
                     } catch (e) {}
