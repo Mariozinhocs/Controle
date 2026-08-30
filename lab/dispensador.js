@@ -106,10 +106,7 @@ function loadLabData() {
         if (savedLancamentos) labState.lancamentos = JSON.parse(savedLancamentos);
     } catch (e) {}
 
-    // 2. Se a base estiver vazia, gera o pool simulado completo
-    if (!labState.pool || labState.pool.length === 0) {
-        generateInitialMockPool();
-    }
+    // Não auto-gerar pool simulado no carregamento para priorizar a base de dados do CONTROLE.
 
     // 3. Carregar bases e pessoas do localStorage e API do sistema
     loadSystemEntities();
@@ -178,12 +175,12 @@ function loadSystemEntities() {
                     } catch (e) {}
                 }
 
-                // Requisições disponíveis em estoque no pool real
+                // Requisições disponíveis em estoque no pool real (sincronizado com o CONTROLE)
+                let livePool = [];
                 if (res.config.custom_requisicoes) {
                     try {
                         const parsedReqs = JSON.parse(res.config.custom_requisicoes);
                         if (parsedReqs && parsedReqs.length > 0) {
-                            const livePool = [];
                             parsedReqs.forEach((line, idx) => {
                                 const parts = line.split(' - ');
                                 const id = parts[0].trim();
@@ -208,13 +205,11 @@ function loadSystemEntities() {
                                     valorEstimado: litros * 7.29
                                 });
                             });
-                            if (livePool.length > 0) {
-                                labState.pool = livePool;
-                                savePool();
-                            }
                         }
                     } catch(e) {}
                 }
+                labState.pool = livePool;
+                savePool();
             }
 
             // Da lista de lançamentos reais (hml_requisicoes)
@@ -251,6 +246,9 @@ function loadSystemEntities() {
         })
         .catch(err => {
             console.warn('Usando base local para entidades:', err);
+            if (!labState.pool || labState.pool.length === 0) {
+                generateInitialMockPool();
+            }
             applyEntitiesSets(basesSet, respSet, motSet);
         });
 
