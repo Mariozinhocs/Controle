@@ -169,19 +169,20 @@ function loadSystemEntities() {
     fetch('./api/get_data.php?env=Frota%20Principal')
         .then(res => res.json())
         .then(res => {
-            if (res.success && res.config) {
+            const config = res.configuracoes || res.config;
+            if (res.success && config) {
                 // Preservar as configurações brutas do CONTROLE para futuras sincronizações
                 labState.configRaw = {
-                    bases: res.config.custom_bases ? JSON.parse(res.config.custom_bases) : [],
-                    postos: res.config.custom_postos ? JSON.parse(res.config.custom_postos) : [],
-                    motoristas: res.config.custom_motoristas ? JSON.parse(res.config.custom_motoristas) : [],
-                    veiculos: res.config.custom_veiculos ? JSON.parse(res.config.custom_veiculos) : []
+                    bases: config.custom_bases ? JSON.parse(config.custom_bases) : [],
+                    postos: config.custom_postos ? JSON.parse(config.custom_postos) : [],
+                    motoristas: config.custom_motoristas ? JSON.parse(config.custom_motoristas) : [],
+                    veiculos: config.custom_veiculos ? JSON.parse(config.custom_veiculos) : []
                 };
 
                 // Bases customizadas salvas
-                if (res.config.custom_bases) {
+                if (config.custom_bases) {
                     try {
-                        const parsedBases = JSON.parse(res.config.custom_bases);
+                        const parsedBases = JSON.parse(config.custom_bases);
                         parsedBases.forEach(line => {
                             if (line.includes(' - ')) {
                                 const parts = line.split(' - ');
@@ -203,9 +204,9 @@ function loadSystemEntities() {
                 }
 
                 // Motoristas customizados salvos no banco
-                if (res.config.custom_motoristas) {
+                if (config.custom_motoristas) {
                     try {
-                        const parsedMotoristas = JSON.parse(res.config.custom_motoristas);
+                        const parsedMotoristas = JSON.parse(config.custom_motoristas);
                         parsedMotoristas.forEach(line => {
                             if (line && line.trim()) {
                                 if (line.includes(' - ')) {
@@ -235,9 +236,9 @@ function loadSystemEntities() {
 
                 // Requisições disponíveis em estoque no pool real (sincronizado com o CONTROLE)
                 let livePool = [];
-                if (res.config.custom_requisicoes) {
+                if (config.custom_requisicoes) {
                     try {
-                        const parsedReqs = JSON.parse(res.config.custom_requisicoes);
+                        const parsedReqs = JSON.parse(config.custom_requisicoes);
                         if (parsedReqs && parsedReqs.length > 0) {
                             parsedReqs.forEach((line, idx) => {
                                 const parts = line.split(' - ');

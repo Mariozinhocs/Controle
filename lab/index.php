@@ -314,6 +314,6 @@ if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/hml/') !
     <!-- SCRIPTS -->
     <script src="./libs/xlsx.mini.min.js"></script>
     <script src="./libs/papaparse.min.js"></script>
-    <script src="./dispensador.js?v=41"></script>
+    <script src="./dispensador.js?v=42"></script>
 </body>
 </html>
