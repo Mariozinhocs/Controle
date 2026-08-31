@@ -1448,6 +1448,6 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <datalist id="datalist-combustiveis"></datalist>
 
     <!-- Script principal da aplicação -->
-    <script src="app.js?v=55" defer></script>
+    <script src="app.js?v=56" defer></script>
 </body>
 </html>
