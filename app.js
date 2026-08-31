@@ -6733,18 +6733,22 @@ function initDispensadorModule() {
             const parts = splitByRelationalHyphen(line);
             if (parts.length >= 2) {
                 const id = parts[0].trim();
-                let litros = 15;
-                let lote = 'LOTE 1';
+                const restStr = parts[1].trim();
                 
-                if (parts.length >= 3) {
-                    litros = parseFloat(parts[1].trim()) || 15;
-                    lote = parts[2].trim();
+                let litros = 15;
+                const matchLitros = restStr.match(/(\d+(?:\.\d+)?)\s*(?:L|Litros)/i);
+                if (matchLitros && matchLitros[1]) {
+                    litros = parseFloat(matchLitros[1]);
+                }
+                
+                let lote = 'LOTE 1';
+                const matchLote = restStr.match(/\((LOTE[^)]*)\)/i) || restStr.match(/(LOTE\s*[^-\n,)]+)/i);
+                if (matchLote && matchLote[1]) {
+                    lote = matchLote[1].trim();
                 } else {
-                    const secondVal = parts[1].trim();
-                    if (!isNaN(parseFloat(secondVal))) {
-                        litros = parseFloat(secondVal);
-                    } else {
-                        lote = secondVal;
+                    const matchLoteWhole = line.match(/\((LOTE[^)]*)\)/i) || line.match(/(LOTE\s*[^-\n,)]+)/i);
+                    if (matchLoteWhole && matchLoteWhole[1]) {
+                        lote = matchLoteWhole[1].trim();
                     }
                 }
                 
