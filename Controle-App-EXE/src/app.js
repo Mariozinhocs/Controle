@@ -6766,6 +6766,12 @@ function initDispensadorModule() {
     function refreshDispensadorData() {
         const pool = getActivePool();
         const lotesSet = new Set(pool.map(p => p.lote));
+        
+        // Incluir lotes já distribuídos (históricos)
+        (state.rawData || []).forEach(row => {
+            if (row.lote) lotesSet.add(row.lote.trim());
+        });
+        
         const lotes = Array.from(lotesSet).sort();
         
         if (lotes.length > 0) {
@@ -6803,7 +6809,13 @@ function initDispensadorModule() {
         lotes.forEach(l => {
             const count = pool.filter(p => p.lote === l).length;
             const btn = document.createElement('button');
-            btn.className = `lote-pill ${dispState.selectedLote === l ? 'active' : ''}`;
+            
+            let statusClass = 'lote-pill-disponivel';
+            if (count === 0) {
+                statusClass = 'lote-pill-distribuido';
+            }
+            
+            btn.className = `lote-pill ${dispState.selectedLote === l ? 'active' : ''} ${statusClass}`;
             btn.innerHTML = `
                 <span>${l}</span>
                 <span class="lote-badge-count">${count} disp.</span>
@@ -6841,10 +6853,16 @@ function initDispensadorModule() {
                     break;
                 }
             }
+            if (!autoSelectLiters) {
+                const historicLaunch = (state.rawData || []).find(row => row.lote && row.lote.trim() === dispState.selectedLote);
+                if (historicLaunch && historicLaunch.litros) {
+                    autoSelectLiters = historicLaunch.litros;
+                }
+            }
             if (!autoSelectLiters && lotePool.length > 0) {
                 autoSelectLiters = lotePool[0].litros;
             }
-            dispState.selectedLiters = autoSelectLiters;
+            dispState.selectedLiters = autoSelectLiters || 15;
         }
         
         litragensValidas.forEach(lit => {
@@ -6860,15 +6878,13 @@ function initDispensadorModule() {
                 <div class="litro-count-info">${count} disponíveis</div>
             `;
             
-            if (count > 0) {
-                card.addEventListener('click', () => {
-                    dispState.selectedLiters = lit;
-                    dispState.selectedGroup = null;
-                    dispState.selectedTickets = [];
-                    refreshDispensadorData();
-                    closeDrawer();
-                });
-            }
+            card.addEventListener('click', () => {
+                dispState.selectedLiters = lit;
+                dispState.selectedGroup = null;
+                dispState.selectedTickets = [];
+                refreshDispensadorData();
+                closeDrawer();
+            });
             grid.appendChild(card);
         });
         
@@ -6889,6 +6905,8 @@ function initDispensadorModule() {
         
         if (filteredPool.length === 0) {
             container.style.display = 'none';
+            dispState.selectedGroup = null;
+            renderTickets([]);
             return;
         }
         
@@ -6924,6 +6942,15 @@ function initDispensadorModule() {
         const grid = document.getElementById('disp-tickets-grid');
         const title = document.getElementById('disp-current-group-title');
         if (!container || !grid) return;
+        
+        if (filteredPool.length === 0) {
+            container.style.display = 'block';
+            if (title) {
+                title.textContent = `Lote Sem Requisições Disponíveis`;
+            }
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0;">Todas as sequências deste lote já foram distribuídas.</div>`;
+            return;
+        }
         
         if (!dispState.selectedGroup) {
             container.style.display = 'none';

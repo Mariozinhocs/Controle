@@ -3411,6 +3411,64 @@ body.light-theme .relatorio-simplificado-table th {
     box-shadow: 0 0 15px var(--accent-yellow-glow);
 }
 
+/* Dispensador Visual: Lotes Disponíveis vs Distribuídos */
+.lote-pill.lote-pill-disponivel {
+    border-color: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+}
+
+.lote-pill.lote-pill-disponivel:hover {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.lote-pill.lote-pill-disponivel.active {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: #10b981;
+    color: #10b981;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
+}
+
+.lote-pill.lote-pill-disponivel .lote-badge-count {
+    color: #10b981;
+    background-color: rgba(16, 185, 129, 0.1);
+}
+
+.lote-pill.lote-pill-disponivel.active .lote-badge-count {
+    background-color: #10b981;
+    color: #000000;
+}
+
+.lote-pill.lote-pill-distribuido {
+    opacity: 0.5;
+    border-color: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.lote-pill.lote-pill-distribuido:hover {
+    opacity: 0.85;
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.lote-pill.lote-pill-distribuido.active {
+    opacity: 1;
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #ef4444;
+    color: #ef4444;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.25);
+}
+
+.lote-pill.lote-pill-distribuido .lote-badge-count {
+    color: #ef4444;
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.lote-pill.lote-pill-distribuido.active .lote-badge-count {
+    background-color: #ef4444;
+    color: #ffffff;
+}
+
 .lote-badge-count {
     background-color: rgba(0, 0, 0, 0.4);
     padding: 0.15rem 0.5rem;
