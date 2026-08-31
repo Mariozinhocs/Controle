@@ -50,7 +50,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <link rel="shortcut icon" href="favicon.ico">
     <link rel="apple-touch-icon" href="app_icon.png">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=61">
+    <link rel="stylesheet" href="styles.css?v=62">
 
     <!-- Bibliotecas Locais para funcionamento Offline -->
     <script src="libs/xlsx.mini.min.js"></script>
@@ -1449,6 +1449,6 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <datalist id="datalist-combustiveis"></datalist>
 
     <!-- Script principal da aplicação -->
-    <script src="app.js?v=62" defer></script>
+    <script src="app.js?v=63" defer></script>
 </body>
 </html>

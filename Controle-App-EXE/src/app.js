@@ -7131,6 +7131,9 @@ function initDispensadorModule() {
             return { name: line.trim(), resp: null };
         }).filter(b => b.name);
         
+        // Ordenar bases alfabeticamente (ordenação natural)
+        bases.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        
         if (bases.length === 0) {
             grid.innerHTML = `<span style="font-size: 0.8rem; color: var(--text-muted); grid-column: 1/-1;">Cadastre bases no painel para selecionar.</span>`;
             return;
@@ -7206,6 +7209,9 @@ function initDispensadorModule() {
                 }
             }
         });
+        
+        // Ordenar motoristas vinculados alfabeticamente (ordenação natural)
+        motoristasVinculados.sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }));
         
         if (inputCustom) {
             inputCustom.replaceWith(inputCustom.cloneNode(true));
