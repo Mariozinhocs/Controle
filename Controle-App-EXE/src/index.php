@@ -943,80 +943,82 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                 </div>
             </div>
 
-            <!-- DRAWER DESLIZANTE DE ATRIBUIÇÃO (DENTRO DO MODAL) -->
-            <div class="drawer-overlay" id="disp-drawer-overlay">
-                <div class="drawer-panel" id="disp-drawer-panel">
-                    <div class="drawer-header">
-                        <h3>⚡ Confirmar Entrega</h3>
-                        <button class="drawer-close-btn" id="disp-drawer-close-btn">&times;</button>
-                    </div>
-                    <div class="drawer-body">
-                        <div class="ticket-preview-box">
-                            <div class="ticket-preview-number" id="disp-drawer-ticket-number">-</div>
-                            <div class="ticket-preview-litros" id="disp-drawer-ticket-litros">-</div>
-                        </div>
+            
+        </div>
+    </div>
 
-                        <!-- 1. BASE -->
-                        <div>
-                            <div class="touch-section-title">1. Selecione a Base:</div>
-                            <div class="touch-buttons-grid" id="disp-drawer-bases-grid">
-                                <!-- Dinâmico -->
-                            </div>
-                        </div>
+    <!-- DRAWER DESLIZANTE DE ATRIBUIÇÃO -->
+    <div class="drawer-overlay" id="disp-drawer-overlay">
+        <div class="drawer-panel" id="disp-drawer-panel">
+            <div class="drawer-header">
+                <h3>⚡ Confirmar Entrega</h3>
+                <button class="drawer-close-btn" id="disp-drawer-close-btn">&times;</button>
+            </div>
+            <div class="drawer-body">
+                <div class="ticket-preview-box">
+                    <div class="ticket-preview-number" id="disp-drawer-ticket-number">-</div>
+                    <div class="ticket-preview-litros" id="disp-drawer-ticket-litros">-</div>
+                </div>
 
-                        <!-- 2. RESPONSÁVEL -->
-                        <div id="disp-drawer-container-responsavel" style="display: none;">
-                            <div class="touch-section-title">2. Selecione o Responsável:</div>
-                            <div class="touch-buttons-grid" id="disp-drawer-responsaveis-grid">
-                                <!-- Dinâmico -->
-                            </div>
-                        </div>
-
-                        <!-- 3. MOTORISTA -->
-                        <div id="disp-drawer-container-motorista" style="display: none;">
-                            <div class="touch-section-title">3. Selecione o Motorista / Destinatário:</div>
-                            <div class="touch-buttons-grid" id="disp-drawer-motoristas-grid">
-                                <!-- Dinâmico -->
-                            </div>
-                            <div style="margin-top: 0.5rem;">
-                                <input type="text" id="disp-drawer-custom-motorista" class="ticket-search-input" placeholder="Ou digite o nome do novo motorista..." style="width: 100%;">
-                            </div>
-                        </div>
-
-                        <!-- 4. VÍNCULOS E KILOMETRAGEM -->
-                        <div id="disp-drawer-container-km" style="display: none; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
-                            <div class="touch-section-title">4. Dados do Veículo & KM:</div>
-                            
-                            <div style="display: flex; gap: 0.5rem;">
-                                <div style="flex: 1;">
-                                    <label style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">Placa do Veículo</label>
-                                    <input type="text" id="disp-drawer-placa" class="ticket-search-input" placeholder="ABC1D23" style="text-transform: uppercase;">
-                                </div>
-                                <div style="flex: 1;">
-                                    <label style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">Tipo Veículo (Auto)</label>
-                                    <input type="text" id="disp-drawer-veiculo" class="ticket-search-input" readonly placeholder="Veículo" style="background-color: var(--bg-primary); border-color: transparent; opacity: 0.7;">
-                                </div>
-                            </div>
-
-                            <div style="display: flex; gap: 0.5rem;">
-                                <div style="flex: 1;">
-                                    <label style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">KM Anterior</label>
-                                    <input type="number" id="disp-drawer-km-anterior" class="ticket-search-input" placeholder="Ex: 10200">
-                                </div>
-                                <div style="flex: 1;">
-                                    <label style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">KM Atual</label>
-                                    <input type="number" id="disp-drawer-km-atual" class="ticket-search-input" placeholder="Ex: 10350">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="drawer-footer">
-                        <button class="btn btn-secondary" id="disp-drawer-btn-cancel">Cancelar</button>
-                        <button class="btn btn-primary" id="disp-drawer-btn-confirm" style="background: linear-gradient(135deg, #ffb703, #fb8500); border: none; color: #000; font-weight: 700;">
-                            ✅ Confirmar
-                        </button>
+                <!-- 1. BASE -->
+                <div>
+                    <div class="touch-section-title">1. Selecione a Base:</div>
+                    <div class="touch-buttons-grid" id="disp-drawer-bases-grid">
+                        <!-- Dinâmico -->
                     </div>
                 </div>
+
+                <!-- 2. RESPONSÁVEL -->
+                <div id="disp-drawer-container-responsavel" style="display: none;">
+                    <div class="touch-section-title">2. Selecione o Responsável:</div>
+                    <div class="touch-buttons-grid" id="disp-drawer-responsaveis-grid">
+                        <!-- Dinâmico -->
+                    </div>
+                </div>
+
+                <!-- 3. MOTORISTA -->
+                <div id="disp-drawer-container-motorista" style="display: none;">
+                    <div class="touch-section-title">3. Selecione o Motorista / Destinatário:</div>
+                    <div class="touch-buttons-grid" id="disp-drawer-motoristas-grid">
+                        <!-- Dinâmico -->
+                    </div>
+                    <div style="margin-top: 0.5rem;">
+                        <input type="text" id="disp-drawer-custom-motorista" class="ticket-search-input" placeholder="Ou digite o nome do novo motorista..." style="width: 100%;">
+                    </div>
+                </div>
+
+                <!-- 4. VÍNCULOS E KILOMETRAGEM -->
+                <div id="disp-drawer-container-km" style="display: none; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div class="touch-section-title">4. Dados do Veículo & KM:</div>
+                    
+                    <div style="display: flex; gap: 0.5rem;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">Placa do Veículo</label>
+                            <input type="text" id="disp-drawer-placa" class="ticket-search-input" placeholder="ABC1D23" style="text-transform: uppercase;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">Tipo Veículo (Auto)</label>
+                            <input type="text" id="disp-drawer-veiculo" class="ticket-search-input" readonly placeholder="Veículo" style="background-color: var(--bg-primary); border-color: transparent; opacity: 0.7;">
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">KM Anterior</label>
+                            <input type="number" id="disp-drawer-km-anterior" class="ticket-search-input" placeholder="Ex: 10200">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">KM Atual</label>
+                            <input type="number" id="disp-drawer-km-atual" class="ticket-search-input" placeholder="Ex: 10350">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button class="btn btn-secondary" id="disp-drawer-btn-cancel">Cancelar</button>
+                <button class="btn btn-primary" id="disp-drawer-btn-confirm" style="background: linear-gradient(135deg, #ffb703, #fb8500); border: none; color: #000; font-weight: 700;">
+                    ✅ Confirmar
+                </button>
             </div>
         </div>
     </div>
