@@ -291,17 +291,20 @@ body {
 }
 
 .kpi-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-size: 2.15rem;
+    font-weight: 850;
+    color: var(--text-primary);
+    letter-spacing: -0.03em;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
 }
 
 .kpi-label {
-    font-size: 0.7rem;
-    font-weight: 600;
+    font-size: 0.65rem;
+    font-weight: 700;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    margin-top: 2px;
 }
 
 /* Destaque para KPI de Maior Consumo */
@@ -311,8 +314,10 @@ body {
 
 .highlight-card .kpi-value {
     color: var(--accent-yellow);
-    font-size: 1.25rem;
+    font-size: 1.6rem;
+    font-weight: 850;
     word-break: break-all;
+    text-shadow: 0 0 10px rgba(255, 183, 3, 0.15);
 }
 
 /* CONTEÚDO PRINCIPAL */
@@ -1238,18 +1243,20 @@ body {
         gap: 0.5rem !important;
     }
 
+    #kpi-req-cadastradas {
+        display: none !important;
+    }
+
     .kpi-group,
     .app-container.sidebar-collapsed .kpi-group {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: wrap !important;
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
         gap: 0.5rem !important;
         width: 100% !important;
     }
 
     .kpi-card {
-        flex: 1 1 calc(16% - 0.5rem) !important;
-        min-width: 90px !important;
+        width: 100% !important;
         background-color: #f8fafc !important;
         border: 1px solid #e2e8f0 !important;
         color: #0f172a !important;
