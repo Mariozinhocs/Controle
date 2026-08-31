@@ -6987,6 +6987,9 @@ function initDispensadorModule() {
         grid.innerHTML = '';
         if (inputCustom) inputCustom.value = '';
         
+        // Exibir sempre os campos de KM/Veículo de forma imediata (tornando opcionais a qualquer momento)
+        showKmFields(dispState.selectedMotorista || '');
+        
         const motoristasVinculados = [];
         const lowerBase = dispState.selectedBase.toLowerCase();
         
