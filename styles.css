@@ -298,6 +298,21 @@ body {
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
 }
 
+#kpi-req-cadastradas .kpi-value {
+    color: #7dd3fc; /* Pastel Blue */
+    text-shadow: 0 0 12px rgba(125, 211, 252, 0.15);
+}
+
+#kpi-req-distribuidas .kpi-value {
+    color: #fca5a5; /* Pastel Red */
+    text-shadow: 0 0 12px rgba(252, 165, 165, 0.15);
+}
+
+#kpi-req-disponiveis .kpi-value {
+    color: #86efac; /* Pastel Green */
+    text-shadow: 0 0 12px rgba(134, 239, 172, 0.15);
+}
+
 .kpi-label {
     font-size: 0.65rem;
     font-weight: 700;
@@ -1269,6 +1284,18 @@ body {
     .kpi-value {
         font-size: 11pt !important;
         color: #0f172a !important;
+    }
+
+    #kpi-req-cadastradas .kpi-value {
+        color: #0284c7 !important;
+    }
+
+    #kpi-req-distribuidas .kpi-value {
+        color: #dc2626 !important;
+    }
+
+    #kpi-req-disponiveis .kpi-value {
+        color: #16a34a !important;
     }
 
     .kpi-label {
