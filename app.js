@@ -2784,13 +2784,31 @@ function renderStructuredCadastrosUI() {
 
     // Agrupar requisições por Lote + Código de Controle + Litragem
     const groupsMap = new Map();
+    
+    // Identificar TODOS os lotes cadastrados ou distribuídos
+    const allKnownLotes = new Set();
+    
+    // Do pool disponível
+    allReqs.forEach(item => {
+        const meta = parseReqMeta(item);
+        if (meta.lote) allKnownLotes.add(meta.lote);
+    });
+    
+    // Do histórico de distribuídos
+    (state.rawData || []).forEach(row => {
+        if (row.lote) allKnownLotes.add(row.lote.trim());
+    });
+    
+    // Inicializar contadores de disponíveis
     const loteCounts = { 'TODOS': allReqs.length };
-    const discoveredLots = new Set();
-
+    allKnownLotes.forEach(l => {
+        loteCounts[l] = 0;
+    });
+    
+    // Agrupar e contar itens disponíveis
     allReqs.forEach((item, originalIdx) => {
         const meta = parseReqMeta(item);
         if (meta.lote) {
-            discoveredLots.add(meta.lote);
             loteCounts[meta.lote] = (loteCounts[meta.lote] || 0) + 1;
         }
 
@@ -2801,6 +2819,7 @@ function renderStructuredCadastrosUI() {
                 lote: meta.lote,
                 control: meta.control,
                 litros: meta.litros,
+                isDistributed: false,
                 items: []
             });
         }
@@ -2810,11 +2829,59 @@ function renderStructuredCadastrosUI() {
             fullStr: item
         });
     });
+    
+    // Criar grupos fictícios para os lotes 100% distribuídos (disponíveis = 0)
+    allKnownLotes.forEach(lote => {
+        if (loteCounts[lote] === 0) {
+            let control = 'N/A';
+            let litros = '30L';
+            let seqNums = [];
+            
+            const launches = (state.rawData || []).filter(row => row.lote && row.lote.trim() === lote);
+            if (launches.length > 0) {
+                const first = launches[0];
+                if (first.inicioSeq && first.inicioSeq.includes('-')) {
+                    control = first.inicioSeq.split('-')[0].trim();
+                } else if (first.inicioSeq) {
+                    control = first.inicioSeq.trim();
+                }
+                if (first.litros) {
+                    litros = `${first.litros}L`;
+                }
+                launches.forEach(row => {
+                    if (row.inicioSeq && row.inicioSeq.includes('-')) {
+                        const s = parseInt(row.inicioSeq.split('-')[1], 10);
+                        if (!isNaN(s)) seqNums.push(s);
+                    }
+                    if (row.fimSeq && row.fimSeq.includes('-')) {
+                        const s = parseInt(row.fimSeq.split('-')[1], 10);
+                        if (!isNaN(s)) seqNums.push(s);
+                    }
+                });
+            }
+            
+            seqNums.sort((a, b) => a - b);
+            const minSeq = seqNums.length > 0 ? String(seqNums[0]).padStart(3, '0') : '001';
+            const maxSeq = seqNums.length > 0 ? String(seqNums[seqNums.length - 1]).padStart(3, '0') : '001';
+            
+            const groupKey = `${lote}___${control}___${litros}`;
+            groupsMap.set(groupKey, {
+                key: groupKey,
+                lote: lote,
+                control: control,
+                litros: litros,
+                minSeq: minSeq,
+                maxSeq: maxSeq,
+                isDistributed: true,
+                items: []
+            });
+        }
+    });
 
-    const lotTabsList = ['TODOS', ...Array.from(discoveredLots).filter(l => l !== 'TODOS')];
+    const lotTabsList = ['TODOS', ...Array.from(allKnownLotes).filter(l => l !== 'TODOS').sort()];
 
-    // Se a aba ativa não existe mais entre os lotes, voltar para TODOS
-    if (state.activeLoteCadTab !== 'TODOS' && !discoveredLots.has(state.activeLoteCadTab)) {
+    // Se a aba ativa não existe mais entre os conhecidos, voltar para TODOS
+    if (state.activeLoteCadTab !== 'TODOS' && !allKnownLotes.has(state.activeLoteCadTab)) {
         state.activeLoteCadTab = 'TODOS';
     }
 
@@ -2823,8 +2890,14 @@ function renderStructuredCadastrosUI() {
         subtabsContainer.innerHTML = lotTabsList.map(loteName => {
             const count = loteCounts[loteName] || 0;
             const isActive = state.activeLoteCadTab === loteName;
+            
+            let statusClass = 'lote-disponivel';
+            if (loteName !== 'TODOS' && count === 0) {
+                statusClass = 'lote-distribuido';
+            }
+            
             return `
-                <button type="button" class="lote-subtab-btn ${isActive ? 'active' : ''}" onclick="setCadLoteSubTab('${escapeHtml(loteName)}')">
+                <button type="button" class="lote-subtab-btn ${isActive ? 'active' : ''} ${statusClass}" onclick="setCadLoteSubTab('${escapeHtml(loteName)}')">
                     ${loteName === 'TODOS' ? '🌐' : '📦'} ${escapeHtml(loteName)}
                     <span class="lote-subtab-badge">${count}</span>
                 </button>
@@ -2851,12 +2924,31 @@ function renderStructuredCadastrosUI() {
         } else {
             listReqs.innerHTML = groups.map((g, gIdx) => {
                 const seqNums = g.items.map(i => parseInt(i.seq, 10)).filter(n => !isNaN(n)).sort((a, b) => a - b);
-                const minSeq = seqNums.length > 0 ? String(seqNums[0]).padStart(3, '0') : (g.items[0]?.seq || '001');
-                const maxSeq = seqNums.length > 0 ? String(seqNums[seqNums.length - 1]).padStart(3, '0') : (g.items[g.items.length - 1]?.seq || '001');
+                const minSeq = g.minSeq || (seqNums.length > 0 ? String(seqNums[0]).padStart(3, '0') : '001');
+                const maxSeq = g.maxSeq || (seqNums.length > 0 ? String(seqNums[seqNums.length - 1]).padStart(3, '0') : '001');
                 const cardId = `lote-card-${gIdx}`;
+                
+                const cardClass = g.isDistributed ? 'lote-group-card lote-distribuido' : 'lote-group-card open';
+                
+                const deleteAction = g.isDistributed 
+                    ? '' 
+                    : `<button type="button" class="entity-delete-btn" onclick="removeLoteGroup('${escapeHtml(g.key)}')" title="Excluir Faixa Completa">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                       </button>`;
+
+                const dropletContent = g.isDistributed 
+                    ? `<div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 0.85rem;">Todas as sequências deste lote já foram distribuídas.</div>`
+                    : `<div class="seq-chips-grid">
+                            ${g.items.map(it => `
+                                <div class="seq-chip" title="${escapeHtml(it.fullStr)}">
+                                    <span>${escapeHtml(it.seq)}</span>
+                                    <button type="button" class="seq-chip-del" onclick="removeCadEntity('requisicoes', ${it.originalIdx})" title="Remover nº ${escapeHtml(it.seq)}">&times;</button>
+                                </div>
+                            `).join('')}
+                       </div>`;
 
                 return `
-                    <div class="lote-group-card open" id="${cardId}">
+                    <div class="${cardClass}" id="${cardId}">
                         <div class="lote-group-header" onclick="toggleLoteGroupCard('${cardId}')">
                             <div class="lote-group-meta">
                                 <span class="lote-group-title">📦 ${escapeHtml(g.lote)}</span>
@@ -2866,9 +2958,7 @@ function renderStructuredCadastrosUI() {
                                 <span class="lote-badge-count">🏷️ ${g.items.length} reqs</span>
                             </div>
                             <div class="lote-group-actions" onclick="event.stopPropagation();">
-                                <button type="button" class="entity-delete-btn" onclick="removeLoteGroup('${escapeHtml(g.key)}')" title="Excluir Faixa Completa">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                </button>
+                                ${deleteAction}
                                 <button type="button" class="btn-lote-toggle-droplet" onclick="toggleLoteGroupCard('${cardId}')" title="Expandir/Recolher Sequências">
                                     <span>Sequências</span>
                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -2876,14 +2966,7 @@ function renderStructuredCadastrosUI() {
                             </div>
                         </div>
                         <div class="lote-group-droplet">
-                            <div class="seq-chips-grid">
-                                ${g.items.map(it => `
-                                    <div class="seq-chip" title="${escapeHtml(it.fullStr)}">
-                                        <span>${escapeHtml(it.seq)}</span>
-                                        <button type="button" class="seq-chip-del" onclick="removeCadEntity('requisicoes', ${it.originalIdx})" title="Remover nº ${escapeHtml(it.seq)}">&times;</button>
-                                    </div>
-                                `).join('')}
-                            </div>
+                            ${dropletContent}
                         </div>
                     </div>
                 `;

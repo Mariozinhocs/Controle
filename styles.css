@@ -2440,6 +2440,64 @@ body {
     color: #000000;
 }
 
+/* Lotes Disponíveis vs Distribuídos */
+.lote-subtab-btn.lote-disponivel .lote-subtab-badge {
+    background-color: rgba(16, 185, 129, 0.12) !important;
+    color: #10b981 !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+
+.lote-subtab-btn.lote-distribuido {
+    opacity: 0.55;
+}
+
+.lote-subtab-btn.lote-distribuido:hover {
+    opacity: 0.85;
+}
+
+.lote-subtab-btn.lote-distribuido .lote-subtab-badge {
+    background-color: rgba(239, 68, 68, 0.12) !important;
+    color: #ef4444 !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+/* Quando ativa, mantém a legibilidade das cores no fundo escuro/claro */
+.lote-subtab-btn.active.lote-disponivel .lote-subtab-badge {
+    background-color: rgba(0, 0, 0, 0.15) !important;
+    color: #000000 !important;
+}
+
+.lote-subtab-btn.active.lote-distribuido {
+    opacity: 1;
+}
+
+.lote-subtab-btn.active.lote-distribuido .lote-subtab-badge {
+    background-color: rgba(0, 0, 0, 0.15) !important;
+    color: #000000 !important;
+}
+
+/* Card de Lote 100% Distribuído */
+.lote-group-card.lote-distribuido {
+    opacity: 0.6;
+    border-color: rgba(239, 68, 68, 0.2);
+    box-shadow: none;
+}
+
+.lote-group-card.lote-distribuido:hover {
+    opacity: 0.85;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.lote-group-card.lote-distribuido .lote-group-title {
+    color: var(--text-secondary);
+}
+
+.lote-group-card.lote-distribuido .lote-badge-count {
+    color: #ef4444;
+    background-color: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
 .lote-subtab-del {
     display: inline-flex;
     align-items: center;
