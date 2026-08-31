@@ -1624,15 +1624,16 @@ function initEventListeners() {
 
             localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
             syncWithServerSilent();
-
+ 
             alert(`✅ ${addedCount} requisições geradas com sucesso para o ${loteNome}!`);
             updateRelationsMappings();
             populateDatalist('datalist-requisicoes', state.customRequisicoes);
             buildFilterButtons();
+            updateDashboard();
             renderStructuredCadastrosUI();
         });
     }
-
+ 
     // 5. Salvar Importação em Massa (Texto)
     const formCadastros = document.getElementById('form-cadastros');
     if (formCadastros) {
@@ -1661,6 +1662,7 @@ function initEventListeners() {
             populateDatalist('datalist-requisicoes', state.customRequisicoes);
             updateRelationsMappings();
             buildFilterButtons();
+            updateDashboard();
             renderStructuredCadastrosUI();
             alert('Cadastros salvos com sucesso!');
         });
@@ -2263,14 +2265,12 @@ function normalizeDate(d) {
 
 // 6. PROCESSAMENTO DOS DADOS DA PLANILHA
 function processData(rows, shouldCache = false) {
-    if (!rows || rows.length === 0) {
-        hideLoading();
-        return;
-    }
+    if (!rows) rows = [];
 
     const processed = [];
 
-    rows.forEach((row, idx) => {
+    if (rows.length > 0) {
+        rows.forEach((row, idx) => {
         // Se a linha já foi processada anteriormente (veio do localStorage)
         if (row.date && (row.zona !== undefined || row.combustivel !== undefined)) {
             let parsedDate = safeParseDate(row.date);
@@ -2404,9 +2404,9 @@ function processData(rows, shouldCache = false) {
             precoLitro: precoLitro,
             valor: valor
         });
-    });
+    }
 
-    if (processed.length === 0) {
+    if (rows.length > 0 && processed.length === 0) {
         hideLoading();
         alert('Nenhum dado válido encontrado na planilha.');
         return;
