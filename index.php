@@ -50,7 +50,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <link rel="shortcut icon" href="favicon.ico">
     <link rel="apple-touch-icon" href="app_icon.png">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=52">
+    <link rel="stylesheet" href="styles.css?v=53">
 
     <!-- Bibliotecas Locais para funcionamento Offline -->
     <script src="libs/xlsx.mini.min.js"></script>

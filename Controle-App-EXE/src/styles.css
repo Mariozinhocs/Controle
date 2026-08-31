@@ -3449,6 +3449,7 @@ body.light-theme .relatorio-simplificado-table th {
     overflow-y: auto;
     padding: 0.25rem;
     padding-right: 0.5rem;
+    margin-top: 1.25rem;
 }
 
 @media (max-width: 768px) {
