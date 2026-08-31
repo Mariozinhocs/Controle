@@ -125,7 +125,6 @@ Upload-File "$localDir\api\logger.php" "hml/lab/api/logger.php"
 Upload-File "$localDir\api\db.php" "hml/lab/api/db.php"
 Upload-File "$localDir\api\get_data.php" "hml/lab/api/get_data.php"
 Upload-File "$localDir\api\sync_data.php" "hml/lab/api/sync_data.php"
-
 Write-Host "`n=================================================" -ForegroundColor Green
 Write-Host " Deploy HML finalizado com sucesso!" -ForegroundColor Green
 Write-Host " Painel do Controle HML:     https://controle.hubdigital360.com/hml/" -ForegroundColor Cyan

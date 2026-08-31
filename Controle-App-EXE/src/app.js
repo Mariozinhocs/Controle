@@ -1156,8 +1156,9 @@ function initEventListeners() {
         if (isFileProtocol) {
             // Se for offline (local), salva apenas no localStorage e atualiza a UI
             if (editId) {
+                const oldRecord = state.rawData.find(row => row.id === editId);
                 if (state.oldEditSeqs && (state.oldEditSeqs.inicioSeq !== inicioSeq || state.oldEditSeqs.fimSeq !== fimSeq)) {
-                    restoreSeqsToPool(state.oldEditSeqs.inicioSeq, state.oldEditSeqs.fimSeq);
+                    restoreSeqsToPool(state.oldEditSeqs.inicioSeq, state.oldEditSeqs.fimSeq, oldRecord?.litros, oldRecord?.lote);
                     if (inicioSeq) {
                         removeUsedRequisitions();
                     }
@@ -1194,8 +1195,9 @@ function initEventListeners() {
             let tempCustomRequisicoes = state.customRequisicoes || [];
             
             if (editId) {
+                const oldRecord = state.rawData.find(row => row.id === editId);
                 if (state.oldEditSeqs && (state.oldEditSeqs.inicioSeq !== inicioSeq || state.oldEditSeqs.fimSeq !== fimSeq)) {
-                    tempCustomRequisicoes = restoreSeqsToPoolTemp(tempCustomRequisicoes, state.oldEditSeqs.inicioSeq, state.oldEditSeqs.fimSeq);
+                    tempCustomRequisicoes = restoreSeqsToPoolTemp(tempCustomRequisicoes, state.oldEditSeqs.inicioSeq, state.oldEditSeqs.fimSeq, oldRecord?.litros, oldRecord?.lote);
                     if (inicioSeq) {
                         tempCustomRequisicoes = removeUsedRequisitionsTemp(tempCustomRequisicoes, inicioSeq, fimSeq);
                     }
@@ -1231,8 +1233,9 @@ function initEventListeners() {
                 if (result.success) {
                     // Confirma a inserção/edição no estado da aplicação
                     if (editId) {
+                        const oldRecord = state.rawData.find(row => row.id === editId);
                         if (state.oldEditSeqs && (state.oldEditSeqs.inicioSeq !== inicioSeq || state.oldEditSeqs.fimSeq !== fimSeq)) {
-                            restoreSeqsToPool(state.oldEditSeqs.inicioSeq, state.oldEditSeqs.fimSeq);
+                            restoreSeqsToPool(state.oldEditSeqs.inicioSeq, state.oldEditSeqs.fimSeq, oldRecord?.litros, oldRecord?.lote);
                             if (inicioSeq) {
                                 removeUsedRequisitions();
                             }
@@ -1292,11 +1295,12 @@ function initEventListeners() {
             populateRequisicoesDatalist('datalist-requisicoes', state.customRequisicoes);
         }
 
-        function restoreSeqsToPool(inicio, fim) {
+        function restoreSeqsToPool(inicio, fim, litros, lote) {
             if (!inicio) return;
             const startObj = parseSeqString(inicio);
             const endObj = parseSeqString(fim || inicio);
             const restoredNumbers = [];
+            const suffix = (litros && lote) ? ` - ${parseFloat(litros)}L (${lote})` : ' - 30L (LOTE 1)';
             if (!isNaN(startObj.num)) {
                 const startNum = startObj.num;
                 const endNum = isNaN(endObj.num) ? startNum : endObj.num;
@@ -1304,13 +1308,13 @@ function initEventListeners() {
                     if (startObj.prefix) {
                         const match = inicio.toString().trim().match(/^(.*)-(\d+)$/);
                         const padLength = match ? match[2].length : 3;
-                        restoredNumbers.push(`${startObj.prefix}-${n.toString().padStart(padLength, '0')}`);
+                        restoredNumbers.push(`${startObj.prefix}-${n.toString().padStart(padLength, '0')}${suffix}`);
                     } else {
-                        restoredNumbers.push(n.toString());
+                        restoredNumbers.push(n.toString() + suffix);
                     }
                 }
             } else {
-                restoredNumbers.push(inicio.toString().trim());
+                restoredNumbers.push(inicio.toString().trim() + suffix);
             }
             
             const currentPool = state.customRequisicoes || [];
@@ -1354,11 +1358,12 @@ function initEventListeners() {
             });
         }
 
-        function restoreSeqsToPoolTemp(pool, inicio, fim) {
+        function restoreSeqsToPoolTemp(pool, inicio, fim, litros, lote) {
             if (!inicio) return pool;
             const startObj = parseSeqString(inicio);
             const endObj = parseSeqString(fim || inicio);
             const restoredNumbers = [];
+            const suffix = (litros && lote) ? ` - ${parseFloat(litros)}L (${lote})` : ' - 30L (LOTE 1)';
             if (!isNaN(startObj.num)) {
                 const startNum = startObj.num;
                 const endNum = isNaN(endObj.num) ? startNum : endObj.num;
@@ -1366,13 +1371,13 @@ function initEventListeners() {
                     if (startObj.prefix) {
                         const match = inicio.toString().trim().match(/^(.*)-(\d+)$/);
                         const padLength = match ? match[2].length : 3;
-                        restoredNumbers.push(`${startObj.prefix}-${n.toString().padStart(padLength, '0')}`);
+                        restoredNumbers.push(`${startObj.prefix}-${n.toString().padStart(padLength, '0')}${suffix}`);
                     } else {
-                        restoredNumbers.push(n.toString());
+                        restoredNumbers.push(n.toString() + suffix);
                     }
                 }
             } else {
-                restoredNumbers.push(inicio.toString().trim());
+                restoredNumbers.push(inicio.toString().trim() + suffix);
             }
 
             return Array.from(new Set([...pool, ...restoredNumbers])).sort((a, b) => {
