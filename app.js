@@ -7118,7 +7118,6 @@ function initDispensadorModule() {
             
             if (!base) { alert('Selecione a Base.'); return; }
             if (!responsavel) { alert('Selecione o Responsável.'); return; }
-            if (!motorista) { alert('Selecione ou digite o Motorista.'); return; }
             if (!tickets || tickets.length === 0) { alert('Nenhum ticket selecionado.'); return; }
             if (kmAtual > 0 && kmAnterior > 0 && kmAtual < kmAnterior) {
                 alert('O KM atual não pode ser menor que o KM anterior.');
@@ -7157,7 +7156,7 @@ function initDispensadorModule() {
                     zona: base,
                     responsavel: responsavel,
                     posto: postoName,
-                    motorista: motorista,
+                    motorista: motorista || 'NÃO INFORMADO',
                     veiculo: veiculo || 'NÃO INFORMADO',
                     placa: placa || 'NÃO INFORMADO',
                     kmAnterior: kmAnterior || 0,
