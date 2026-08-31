@@ -5489,6 +5489,13 @@ function populateRelatorioSimplificado() {
     const periodText = document.getElementById('rel-period-text');
     if (periodText) periodText.textContent = `Período: ${startFmt} até ${endFmt}`;
 
+    // 1.1 Lote
+    const loteText = document.getElementById('rel-lote-text');
+    if (loteText) {
+        const activeLote = state.filters.lotes.size > 0 ? Array.from(state.filters.lotes)[0] : 'TODOS OS LOTES';
+        loteText.textContent = `Lote: ${activeLote}`;
+    }
+
     // 2. Timestamp de geração
     const timestampEl = document.getElementById('rel-generation-timestamp');
     if (timestampEl) {

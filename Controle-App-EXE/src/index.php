@@ -50,7 +50,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <link rel="shortcut icon" href="favicon.ico">
     <link rel="apple-touch-icon" href="app_icon.png">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=57">
+    <link rel="stylesheet" href="styles.css?v=58">
 
     <!-- Bibliotecas Locais para funcionamento Offline -->
     <script src="libs/xlsx.mini.min.js"></script>
@@ -1348,6 +1348,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                     <h2>Controle de Requisições - MGP</h2>
                     <p>Relatório Simplificado de Consumo</p>
                     <div class="info-period" id="rel-period-text">Período: -</div>
+                    <div class="info-lote" id="rel-lote-text">Lote: -</div>
                 </div>
                 
                 <div class="info-grid-kpis" style="grid-template-columns: repeat(4, 1fr);">
@@ -1448,6 +1449,6 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <datalist id="datalist-combustiveis"></datalist>
 
     <!-- Script principal da aplicação -->
-    <script src="app.js?v=58" defer></script>
+    <script src="app.js?v=59" defer></script>
 </body>
 </html>

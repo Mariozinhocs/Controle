@@ -1657,6 +1657,21 @@ body {
     display: inline-block;
 }
 
+.info-lote {
+    font-size: 0.75rem;
+    color: var(--accent-cyan);
+    margin-top: 0.5rem;
+    background-color: rgba(56, 189, 248, 0.08);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    display: inline-block;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid rgba(56, 189, 248, 0.15);
+    margin-left: 0.5rem;
+}
+
 /* Grid de KPIs */
 .info-grid-kpis {
     display: grid;
@@ -3186,6 +3201,13 @@ body.light-theme .relatorio-simplificado-table th {
     body.printing-relatorio-simplificado .info-period {
         color: #444444 !important;
         background-color: #f1f5f9 !important;
+        font-size: 0.8rem !important;
+    }
+
+    body.printing-relatorio-simplificado .info-lote {
+        color: #0284c7 !important;
+        background-color: #f0f9ff !important;
+        border: 1px solid #bae6fd !important;
         font-size: 0.8rem !important;
     }
 
