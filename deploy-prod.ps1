@@ -84,6 +84,8 @@ Upload-File "$localDir\styles_repo.css" "controle/styles_repo.css"
 # 3. Upload das APIs PHP
 Upload-File "$localDir\api\logger.php" "controle/api/logger.php"
 Upload-File "$localDir\api\db.php" "controle/api/db.php"
+Upload-File "$localDir\api\get_data.php" "controle/api/get_data.php"
+Upload-File "$localDir\api\sync_data.php" "controle/api/sync_data.php"
 Upload-File "$localDir\api\save_backup.php" "controle/api/save_backup.php"
 Upload-File "$localDir\api\login.php" "controle/api/login.php"
 Upload-File "$localDir\api\check_auth.php" "controle/api/check_auth.php"
@@ -91,6 +93,37 @@ Upload-File "$localDir\api\logout.php" "controle/api/logout.php"
 Upload-File "$localDir\api\list_backups.php" "controle/api/list_backups.php"
 Upload-File "$localDir\api\delete_backup.php" "controle/api/delete_backup.php"
 Upload-File "$localDir\api\download_backup.php" "controle/api/download_backup.php"
+
+# 4. Cria e envia arquivos do subsistema de veículos contratados para PROD
+Create-FtpDirectory "controle/veiculos"
+Create-FtpDirectory "controle/veiculos/api"
+
+Upload-File "$localDir\veiculos\index.php" "controle/veiculos/index.php"
+Upload-File "$localDir\veiculos\styles.css" "controle/veiculos/styles.css"
+Upload-File "$localDir\veiculos\veiculos.js" "controle/veiculos/veiculos.js"
+Upload-File "$localDir\veiculos\api\get_veiculos.php" "controle/veiculos/api/get_veiculos.php"
+Upload-File "$localDir\veiculos\api\save_veiculo.php" "controle/veiculos/api/save_veiculo.php"
+Upload-File "$localDir\veiculos\api\delete_veiculo.php" "controle/veiculos/api/delete_veiculo.php"
+
+# 5. Cria e envia arquivos do ambiente de laboratório para PROD (controle/lab)
+Create-FtpDirectory "controle/lab"
+Create-FtpDirectory "controle/lab/libs"
+Create-FtpDirectory "controle/lab/api"
+
+Upload-File "$localDir\lab\index.php" "controle/lab/index.php"
+Upload-File "$localDir\lab\styles.css" "controle/lab/styles.css"
+Upload-File "$localDir\lab\dispensador.js" "controle/lab/dispensador.js"
+Upload-File "$localDir\app_icon.png" "controle/lab/app_icon.png"
+
+# Bibliotecas auxiliares para o lab
+Upload-File "$localDir\libs\xlsx.mini.min.js" "controle/lab/libs/xlsx.mini.min.js"
+Upload-File "$localDir\libs\papaparse.min.js" "controle/lab/libs/papaparse.min.js"
+
+# APIs para o lab em PROD
+Upload-File "$localDir\api\logger.php" "controle/lab/api/logger.php"
+Upload-File "$localDir\api\db.php" "controle/lab/api/db.php"
+Upload-File "$localDir\api\get_data.php" "controle/lab/api/get_data.php"
+Upload-File "$localDir\api\sync_data.php" "controle/lab/api/sync_data.php"
 
 Write-Host "`n=================================================" -ForegroundColor Green
 Write-Host " Deploy PROD finalizado com sucesso!" -ForegroundColor Green
