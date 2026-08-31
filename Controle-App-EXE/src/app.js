@@ -2404,7 +2404,8 @@ function processData(rows, shouldCache = false) {
             precoLitro: precoLitro,
             valor: valor
         });
-    }
+    });
+}
 
     if (rows.length > 0 && processed.length === 0) {
         hideLoading();
