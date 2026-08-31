@@ -41,6 +41,73 @@ function getEnvKey(key) {
     return isHmlEnvironment() ? `hml_${key}` : key;
 }
 
+// SISTEMA PREMIUM DE TOAST NOTIFICATION (Substitui o alert nativo do navegador)
+function createToastContainer() {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+    return container;
+}
+
+function showToast(message, type = 'info') {
+    const container = createToastContainer();
+    const toast = document.createElement('div');
+    toast.className = `toast-item ${type}`;
+    
+    let icon = 'ℹ️';
+    if (type === 'success') icon = '✅';
+    else if (type === 'error') icon = '❌';
+    else if (type === 'warning') icon = '⚠️';
+    
+    toast.innerHTML = `
+        <span class="toast-icon">${icon}</span>
+        <span class="toast-message">${message}</span>
+        <button class="toast-close">&times;</button>
+    `;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('visible');
+    }, 10);
+    
+    const removeTimer = setTimeout(() => {
+        removeToast(toast);
+    }, 4500);
+    
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        clearTimeout(removeTimer);
+        removeToast(toast);
+    });
+}
+
+function removeToast(toast) {
+    toast.classList.remove('visible');
+    toast.classList.add('leaving');
+    toast.addEventListener('transitionend', () => {
+        toast.remove();
+    });
+}
+
+// Sobrescrever o window.alert nativo para usar Toast premium
+window.alert = function(msg) {
+    if (!msg) return;
+    const msgStr = String(msg);
+    let type = 'info';
+    if (msgStr.toLowerCase().includes('sucesso') || msgStr.includes('✅') || msgStr.toLowerCase().includes('concluída')) {
+        type = 'success';
+    } else if (msgStr.toLowerCase().includes('erro') || msgStr.toLowerCase().includes('falha') || msgStr.includes('❌') || msgStr.toLowerCase().includes('inválido') || msgStr.toLowerCase().includes('não') || msgStr.toLowerCase().includes('informe') || msgStr.toLowerCase().includes('selecione') || msgStr.toLowerCase().includes('digite')) {
+        type = 'error';
+    } else if (msgStr.toLowerCase().includes('atenção') || msgStr.toLowerCase().includes('aviso') || msgStr.includes('⚠️')) {
+        type = 'warning';
+    }
+    const cleanMsg = msgStr.replace(/^[✅❌⚠️ℹ️]\s*/, '');
+    showToast(cleanMsg, type);
+};
+
 // ESTADO DA APLICAÇÃO
 const state = {
     rawData: [],      // Dados originais limpos
@@ -6621,6 +6688,16 @@ function initDispensadorModule() {
         
         renderLotes(lotes, pool);
         renderLitragens(pool);
+        
+        const deliverBtn = document.getElementById('disp-btn-deliver-selected');
+        if (deliverBtn) {
+            if (dispState.selectedTickets.length > 0) {
+                deliverBtn.style.display = 'inline-flex';
+                deliverBtn.textContent = `✅ Entregar Selecionados (${dispState.selectedTickets.length})`;
+            } else {
+                deliverBtn.style.display = 'none';
+            }
+        }
     }
     
     function renderLotes(lotes, pool) {
@@ -7218,6 +7295,7 @@ function initDispensadorModule() {
                     }
                 });
 
+                dispState.selectedTickets = [];
                 dispState.deliveredSessionCount += tickets.length;
                 updateSessionCountUI();
                 closeDrawer();
@@ -7256,6 +7334,7 @@ function initDispensadorModule() {
                             }
                         });
 
+                        dispState.selectedTickets = [];
                         dispState.deliveredSessionCount += tickets.length;
                         updateSessionCountUI();
                         closeDrawer();

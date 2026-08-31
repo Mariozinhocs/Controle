@@ -3713,4 +3713,115 @@ body.light-theme .relatorio-simplificado-table th {
     justify-content: center;
 }
 
+/* TOAST NOTIFICATION SYSTEM */
+#toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 340px;
+    max-width: 90vw;
+    pointer-events: none;
+}
+
+.toast-item {
+    background-color: rgba(15, 23, 42, 0.95);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    color: var(--text-primary);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    pointer-events: auto;
+    transform: translateX(120%);
+    opacity: 0;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(8px);
+}
+
+.toast-item.visible {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-item.leaving {
+    transform: translateX(120%);
+    opacity: 0;
+}
+
+.toast-item.success {
+    border-left: 4px solid #10b981;
+}
+
+.toast-item.error {
+    border-left: 4px solid #ef4444;
+}
+
+.toast-item.warning {
+    border-left: 4px solid #ffb703;
+}
+
+.toast-item.info {
+    border-left: 4px solid #38bdf8;
+}
+
+.toast-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.toast-message {
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #ffffff;
+    flex-grow: 1;
+}
+
+.toast-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.15rem;
+    cursor: pointer;
+    padding: 0 4px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    line-height: 1;
+}
+
+.toast-close:hover {
+    opacity: 1;
+    color: var(--text-primary);
+}
+
+/* Ajustes para telas móveis */
+@media (max-width: 480px) {
+    #toast-container {
+        top: auto;
+        bottom: 30px;
+        right: 50% !important;
+        transform: translateX(50%) !important;
+        width: calc(100% - 40px);
+        max-width: 100%;
+    }
+    
+    .toast-item {
+        transform: translateY(120%);
+    }
+    
+    .toast-item.visible {
+        transform: translateY(0);
+    }
+    
+    .toast-item.leaving {
+        transform: translateY(120%);
+    }
+}
+
 
