@@ -7194,16 +7194,30 @@ function initDispensadorModule() {
             
             const isFileProtocol = window.location.protocol === 'file:';
             if (isFileProtocol) {
-                state.rawData = [...state.rawData, ...newRecords];
+                const parsedNewRecords = newRecords.map(r => ({
+                    ...r,
+                    date: new Date(r.date)
+                }));
+                state.rawData = [...state.rawData, ...parsedNewRecords];
                 state.customRequisicoes = tempCustomRequisicoes;
                 localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
                 localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
                 
+                parsedNewRecords.forEach(rec => {
+                    const recDate = rec.date;
+                    if (!state.fullDateRange.end || recDate > state.fullDateRange.end) {
+                        state.fullDateRange.end = recDate;
+                    }
+                    if (!state.dateRange.end || recDate > state.dateRange.end) {
+                        state.dateRange.end = recDate;
+                    }
+                });
+
                 dispState.deliveredSessionCount += tickets.length;
                 updateSessionCountUI();
                 closeDrawer();
                 refreshDispensadorData();
-                if (typeof loadData === 'function') loadData();
+                updateDashboard();
             } else {
                 showLoading('Processando distribuição de requisições...');
                 fetch('./api/sync_data.php', {
@@ -7218,16 +7232,31 @@ function initDispensadorModule() {
                 .then(result => {
                     hideLoading();
                     if (result.success) {
-                        state.rawData = [...state.rawData, ...newRecords];
+                        const parsedNewRecords = newRecords.map(r => ({
+                            ...r,
+                            date: new Date(r.date)
+                        }));
+                        state.rawData = [...state.rawData, ...parsedNewRecords];
                         state.customRequisicoes = tempCustomRequisicoes;
                         localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
                         localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
                         
+                        parsedNewRecords.forEach(rec => {
+                            const recDate = rec.date;
+                            if (!state.fullDateRange.end || recDate > state.fullDateRange.end) {
+                                state.fullDateRange.end = recDate;
+                            }
+                            if (!state.dateRange.end || recDate > state.dateRange.end) {
+                                state.dateRange.end = recDate;
+                            }
+                        });
+
                         dispState.deliveredSessionCount += tickets.length;
                         updateSessionCountUI();
                         closeDrawer();
                         refreshDispensadorData();
-                        if (typeof loadData === 'function') loadData();
+                        updateDashboard();
+                        alert('Entrega realizada com sucesso!');
                     } else {
                         alert('Erro ao sincronizar: ' + result.message);
                     }
