@@ -298,19 +298,22 @@ body {
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
 }
 
-#kpi-req-cadastradas .kpi-value {
+#kpi-req-cadastradas .kpi-value,
+#kpi-litros-cadastrados .kpi-value {
     color: #7dd3fc; /* Pastel Blue */
     text-shadow: 0 0 12px rgba(125, 211, 252, 0.15);
 }
 
-#kpi-req-distribuidas .kpi-value {
-    color: #fca5a5; /* Pastel Red */
-    text-shadow: 0 0 12px rgba(252, 165, 165, 0.15);
-}
-
-#kpi-req-disponiveis .kpi-value {
+#kpi-req-disponiveis .kpi-value,
+#kpi-litros-disponiveis .kpi-value {
     color: #86efac; /* Pastel Green */
     text-shadow: 0 0 12px rgba(134, 239, 172, 0.15);
+}
+
+#kpi-req-distribuidas .kpi-value,
+#kpi-litros .kpi-value {
+    color: #fca5a5; /* Pastel Red */
+    text-shadow: 0 0 12px rgba(252, 165, 165, 0.15);
 }
 
 .kpi-label {
@@ -1286,16 +1289,19 @@ body {
         color: #0f172a !important;
     }
 
-    #kpi-req-cadastradas .kpi-value {
+    #kpi-req-cadastradas .kpi-value,
+    #kpi-litros-cadastrados .kpi-value {
         color: #0284c7 !important;
     }
 
-    #kpi-req-distribuidas .kpi-value {
-        color: #dc2626 !important;
+    #kpi-req-disponiveis .kpi-value,
+    #kpi-litros-disponiveis .kpi-value {
+        color: #16a34a !important;
     }
 
-    #kpi-req-disponiveis .kpi-value {
-        color: #16a34a !important;
+    #kpi-req-distribuidas .kpi-value,
+    #kpi-litros .kpi-value {
+        color: #dc2626 !important;
     }
 
     .kpi-label {
@@ -2538,6 +2544,24 @@ body {
 .btn-delete-active-lote:hover {
     background-color: #ef4444;
     color: #ffffff;
+}
+
+.entity-reset-btn {
+    background: transparent;
+    border: none;
+    color: #10b981;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-smooth);
+}
+
+.entity-reset-btn:hover {
+    background-color: rgba(16, 185, 129, 0.15);
+    transform: scale(1.1);
 }
 
 /* CARDS DE LOTES AGRUPADOS & DROPLET DE SEQUÊNCIAS */

@@ -132,6 +132,14 @@ Caso a exportação Excel pare de responder:
 
 Use esta seção para documentar novas alterações manuais à medida que elas forem sendo introduzidas.
 
+*   **Funcionalidade: Camada Estrita de Proteção Anti-Duplicidade (Anti-Duplication Layer) & Sanificação de Dados**
+    *   *Data:* 09/09/2026
+    *   *Implementações:*
+        1. **Filtro de Unicidade no Backend (`api/sync_data.php`):** Conjuntos de controle estritos (`$seenSeqs` e `$seenIds`) adicionados antes da inserção em loop na tabela MySQL, descartando qualquer tentativa de sincronização com sequências ou IDs duplicados.
+        2. **Motor de Sanitização no Frontend (`app.js` & `Controle-App-EXE`):** Implementada a função utilitária `deduplicateRecords(records)` que expurga duplicatas por `inicioSeq` e `id` durante o boot, leitura de `localStorage`, respostas da API remota, formulário de cadastro e cargas incrementais.
+        3. **Prevenção no Laboratório Dispensador (`lab/dispensador.js`):** Validação de unicidade ao alocar requisições em `labState.lancamentos` e na preparação do payload em `syncLabWithServer`.
+        4. **Limpeza Retroativa:** Purgagem automática executada na primeira renderização para garantir que duplicatas preexistentes não contaminem os KPIs do dashboard, a tabela de lançamentos e os relatórios de distribuição.
+
 *   **Funcionalidade: Armazenamento MySQL Híbrido, Frotas Multiambiente e Acesso Anônimo**
     *   *Data:* 20/08/2026
     *   *Implementações:*

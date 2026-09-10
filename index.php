@@ -50,7 +50,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <link rel="shortcut icon" href="favicon.ico">
     <link rel="apple-touch-icon" href="app_icon.png">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=62">
+    <link rel="stylesheet" href="styles.css?v=66">
 
     <!-- Bibliotecas Locais para funcionamento Offline -->
     <script src="libs/xlsx.mini.min.js"></script>
@@ -156,6 +156,11 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                 <div class="kpi-card" id="kpi-req-distribuidas" draggable="true" title="Qtd de Requisições Distribuídas">
                     <span class="kpi-value">0</span>
                     <span class="kpi-label">REQ. DISTRIBUÍDAS</span>
+                </div>
+
+                <div class="kpi-card" id="kpi-litros-cadastrados" draggable="true" title="Total de Litros Cadastrados">
+                    <span class="kpi-value">0 L</span>
+                    <span class="kpi-label">LITROS CADASTRADOS</span>
                 </div>
 
                 <div class="kpi-card" id="kpi-litros-disponiveis" draggable="true" title="Litros Disponíveis">
@@ -1449,6 +1454,6 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <datalist id="datalist-combustiveis"></datalist>
 
     <!-- Script principal da aplicação -->
-    <script src="app.js?v=63" defer></script>
+    <script src="app.js?v=70" defer></script>
 </body>
 </html>

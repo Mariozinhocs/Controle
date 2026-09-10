@@ -810,18 +810,20 @@ function confirmDelivery() {
     const ticketIdsToRemove = new Set(tickets.map(t => t.id));
 
     tickets.forEach(t => {
-        labState.lancamentos.push({
-            id: t.id,
-            lote: t.lote,
-            litros: t.litros,
-            codigoControle: t.codigoControle,
-            seq: t.seq,
-            base: labState.drawerSelection.base,
-            responsavel: labState.drawerSelection.responsavel,
-            motorista: finalMotorista,
-            valor: t.valorEstimado,
-            data: dataStr
-        });
+        if (!labState.lancamentos.some(existing => existing.id === t.id)) {
+            labState.lancamentos.push({
+                id: t.id,
+                lote: t.lote,
+                litros: t.litros,
+                codigoControle: t.codigoControle,
+                seq: t.seq,
+                base: labState.drawerSelection.base,
+                responsavel: labState.drawerSelection.responsavel,
+                motorista: finalMotorista,
+                valor: t.valorEstimado,
+                data: dataStr
+            });
+        }
     });
 
     // Remove do pool de estoque
@@ -845,14 +847,23 @@ function confirmDelivery() {
 }
 
 function syncLabWithServer() {
-    const requisicoesPayload = labState.lancamentos.map(l => {
+    const seenSeqs = new Set();
+    const requisicoesPayload = [];
+
+    labState.lancamentos.forEach(l => {
         const idParts = l.id.split('-');
         const grupo = idParts[0] || '1787595670733';
         const seq = idParts[1] || '001';
-        return {
+        const inicioSeq = `${grupo}-${seq}`;
+
+        if (seenSeqs.has(inicioSeq) || seenSeqs.has(l.id)) return;
+        seenSeqs.add(inicioSeq);
+        seenSeqs.add(l.id);
+
+        requisicoesPayload.push({
             id: l.id,
             date: l.data || new Date().toISOString().split('T')[0],
-            inicioSeq: `${grupo}-${seq}`,
+            inicioSeq: inicioSeq,
             fimSeq: '',
             qtdRequisicoes: 1,
             zona: l.base || 'NÃO INFORMADO',

@@ -93,6 +93,9 @@ Upload-File "$localDir\api\logout.php" "hml/api/logout.php"
 Upload-File "$localDir\api\list_backups.php" "hml/api/list_backups.php"
 Upload-File "$localDir\api\delete_backup.php" "hml/api/delete_backup.php"
 Upload-File "$localDir\api\download_backup.php" "hml/api/download_backup.php"
+Upload-File "$localDir\api\get_backup_file.php" "hml/api/get_backup_file.php"
+Upload-File "$localDir\api\parse_backup.php" "hml/api/parse_backup.php"
+Upload-File "$localDir\api\restore_backup_exact.php" "hml/api/restore_backup_exact.php"
 Upload-File "$localDir\api\reset_hml_db.php" "hml/api/reset_hml_db.php"
 
 # 4. Cria e envia arquivos do subsistema de veículos contratados para HML

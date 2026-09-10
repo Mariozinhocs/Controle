@@ -20,6 +20,7 @@ Para sistemas com persistência local (Offline-First) e banco de dados centraliz
 - Sincronização LWW (Last-Write-Wins): Conflitos entre dados locais e dados remotos são resolvidos comparando a data exata de modificação (`updatedAt`) gerada no cliente. A versão com o timestamp mais recente sempre prevalecerá.
 - Fila de Ações Pendentes: Operações de escrita ou exclusão realizadas localmente sem conexão de internet (ou sob falha de requisição) devem ser enfileiradas e persistidas localmente em estado "não-sincronizado". A replicação deve ser tentada na inicialização do app e após o restabelecimento da conectividade.
 - Cascateamento Seguro: A leitura inicial de dados do servidor não deve sobrescrever modificações locais não-sincronizadas. O merge deve ser feito item por item, respeitando o timestamp e o estado de pendência.
+- Proteção Estrita Anti-Duplicidade (Zero Duplicates): Lançamentos e requisições devem ter unicidade estrita por código de sequência (`inicioSeq`) e ID único. Filtros de desduplicação ativos devem filtrar dados no momento do carregamento, submissão e sincronização MySQL.
 
 5. Regras para Migrações de Banco de Dados (Expand & Contract)
 Para evitar interrupção de serviços e garantir a viabilidade de rollbacks sem perda de dados:
@@ -52,6 +53,7 @@ Versão  Data        Alteração
 1.0     15/08/2026  Criação do Playbook operacional de homologação.
 2.0     15/08/2026  Revisão integral para governança proporcional e ciclo CVCC.
 3.0     19/08/2026  Customização para o Squad A-Team. Adição das regras Expand & Contract, sincronização reativa LWW, testes pré-deploy e cache/fallback de IA.
+3.1     09/09/2026  Inclusão das diretrizes de Proteção Estrita Anti-Duplicidade (Zero Duplicates) em todas as camadas de dados.
 
 Desenvolvido por Mario Henrique (mariozinhocs) - mariozinhocs@gmail.com
 "si vis pacem para bellum"

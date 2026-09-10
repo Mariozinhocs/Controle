@@ -41,6 +41,47 @@ function getEnvKey(key) {
     return isHmlEnvironment() ? `hml_${key}` : key;
 }
 
+// DEDUPLICAÇÃO E PURGAÇÃO ESTRITA DE DADOS DUPLICADOS (ANTI-DUPLICIDADE LAYER)
+function normalizeLoteName(lote) {
+    if (!lote) return 'LOTE 1 (7K)';
+    let str = String(lote).trim().toUpperCase();
+    if (str.includes('LOTE 1') || str.includes('7K')) return 'LOTE 1 (7K)';
+    if (str.includes('LOTE 2') || str.includes('2K')) return 'LOTE 2 (2K)';
+    if (str.includes('LOTE 3') || str.includes('15K')) return 'LOTE 3 (15K)';
+    if (str.includes('LOTE 4') || str.includes('10K')) return 'LOTE 4 (10K)';
+    return str;
+}
+
+function deduplicateRecords(records) {
+    if (!Array.isArray(records)) return [];
+    const seenSeqs = new Set();
+    const seenIds = new Set();
+    const cleanList = [];
+
+    records.forEach(row => {
+        if (!row) return;
+        const rowId = row.id ? String(row.id).trim() : '';
+        const seq = row.inicioSeq ? String(row.inicioSeq).trim() : '';
+
+        if (row.lote) {
+            row.lote = normalizeLoteName(row.lote);
+        }
+
+        if (seq !== '') {
+            if (seenSeqs.has(seq)) return; // Descarte estrito de sequências duplicadas
+            seenSeqs.add(seq);
+        }
+        if (rowId !== '') {
+            if (seenIds.has(rowId)) return; // Descarte estrito de IDs duplicados
+            seenIds.add(rowId);
+        }
+
+        cleanList.push(row);
+    });
+
+    return cleanList;
+}
+
 // SISTEMA PREMIUM DE TOAST NOTIFICATION (Substitui o alert nativo do navegador)
 function createToastContainer() {
     let container = document.getElementById('toast-container');
@@ -169,15 +210,24 @@ function splitByRelationalHyphen(str) {
     return parts.map(p => p.trim());
 }
 
-// FUNÇÃO AUXILIAR PARA ANALISAR NÚMEROS DE SEQUÊNCIA (TRATANDO FORMATOS COM HÍFEN COMO 1786981045866-001)
+// FUNÇÃO AUXILIAR PARA ANALISAR NÚMEROS DE SEQUÊNCIA (TRATANDO FORMATOS COM HÍFEN E METADADOS COMO 1787595670733-001 - 30L (LOTE 4 (10K)))
 function parseSeqString(str) {
     if (!str) return { prefix: "", num: NaN };
     const s = str.toString().trim();
-    const match = s.match(/^(.*)-(\d+)$/);
-    if (match) {
+    // 1. Formato com prefixo e hífen (ex: 1787595670733-001 ou 1787595670733-001 - 30L (LOTE 4))
+    const matchHyphen = s.match(/^([^\s-]+)-(\d+)/);
+    if (matchHyphen) {
         return {
-            prefix: match[1].trim(),
-            num: parseInt(match[2], 10)
+            prefix: matchHyphen[1].trim(),
+            num: parseInt(matchHyphen[2], 10)
+        };
+    }
+    // 2. Formato número simples no início (ex: 001 - 30L (LOTE 1) ou 001)
+    const matchNum = s.match(/^(\d+)/);
+    if (matchNum) {
+        return {
+            prefix: "",
+            num: parseInt(matchNum[1], 10)
         };
     }
     return {
@@ -477,8 +527,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initEventListeners();
     checkUrlParams();
     buildFilterButtons(); // Carrega os botões de filtros imediatamente
-    initDragAndDrop();    // Inicializa o drag & drop de KPIs e Gráficos
     initCalendarWidget(); // Inicializa o calendário
+    initDragAndDrop();    // Inicializa o drag & drop de KPIs e Gráficos
     initDispensadorModule(); // Inicializa o dispensador visual integrado
 });
 
@@ -997,6 +1047,25 @@ function initEventListeners() {
         inputInicioSeq.addEventListener('input', function() {
             const val = this.value.trim();
 
+            // Auto-detectar lote de origem da requisição
+            const reqMatch = (state.customRequisicoes || []).find(r => r.startsWith(val) || r.includes(val));
+            const strToParse = reqMatch || val;
+            const matchLote = strToParse.match(/\((LOTE[^)]*)\)/i) || strToParse.match(/(LOTE\s*[^-\n,)]+)/i);
+            if (matchLote && matchLote[1]) {
+                const detectedLote = matchLote[1].trim();
+                const selectLote = document.getElementById('input-add-lote');
+                if (selectLote) {
+                    let hasOpt = Array.from(selectLote.options).some(o => o.value === detectedLote);
+                    if (!hasOpt) {
+                        const opt = document.createElement('option');
+                        opt.value = detectedLote;
+                        opt.textContent = detectedLote;
+                        selectLote.appendChild(opt);
+                    }
+                    selectLote.value = detectedLote;
+                }
+            }
+
             // Auto-preencher tipo de combustível e litros a partir do vínculo da requisição
             if (state.mappings.reqToFuelAndLiters && state.mappings.reqToFuelAndLiters[val]) {
                 const info = state.mappings.reqToFuelAndLiters[val];
@@ -1241,6 +1310,7 @@ function initEventListeners() {
                 }
                 state.rawData.push(newRecord);
             }
+            state.rawData = deduplicateRecords(state.rawData);
             localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
             finalizeAddRequisition();
         } else {
@@ -1258,6 +1328,7 @@ function initEventListeners() {
             } else {
                 tempRawData.push(newRecord);
             }
+            tempRawData = deduplicateRecords(tempRawData);
 
             let tempCustomRequisicoes = state.customRequisicoes || [];
             
@@ -1938,7 +2009,7 @@ function loadInitialData(forceFetch = false) {
             .then(result => {
                 if (result.success) {
                     // Mapear lançamentos vindos do banco
-                    state.rawData = (result.requisicoes || []).map(row => {
+                    state.rawData = deduplicateRecords((result.requisicoes || []).map(row => {
                         return {
                             ...row,
                             date: new Date(row.date),
@@ -1949,7 +2020,7 @@ function loadInitialData(forceFetch = false) {
                             precoLitro: parseFloat(row.precoLitro) || 0,
                             valor: parseFloat(row.valor) || 0
                         };
-                    });
+                    }));
                     
                     state.filename = `Nuvem MySQL: ${state.activeEnv}`;
                     localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
@@ -2002,7 +2073,7 @@ function loadInitialData(forceFetch = false) {
                 console.warn('Banco online inacessível ou falhou. Recaindo para cache local.', err);
                 try {
                     if (savedData) {
-                        state.rawData = JSON.parse(savedData);
+                        state.rawData = deduplicateRecords(JSON.parse(savedData));
                         state.filename = savedFilename || 'Cache Local (Offline)';
                         updateFilenameDisplay();
                         processData(state.rawData, false);
@@ -2025,7 +2096,7 @@ function loadInitialData(forceFetch = false) {
     if (!forceFetch && savedData) {
         try {
             showLoading('Carregando dados do cache local...');
-            state.rawData = JSON.parse(savedData);
+            state.rawData = deduplicateRecords(JSON.parse(savedData));
             state.filename = savedFilename || 'Arquivo salvo no cache';
             updateFilenameDisplay();
             processData(state.rawData, false);
@@ -2495,13 +2566,13 @@ function processData(rows, shouldCache = false) {
         const newRecords = processed.filter(r => !existingSet.has(getFingerprint(r)));
         const dupesCount = processed.length - newRecords.length;
 
-        state.rawData = state.rawData.concat(newRecords);
+        state.rawData = deduplicateRecords(state.rawData.concat(newRecords));
 
         setTimeout(() => {
             alert(`➕ Carga Incremental Concluída!\n\n• ${newRecords.length} novos registros adicionados à base.\n• ${dupesCount} registros duplicados ignorados.`);
         }, 600);
     } else {
-        state.rawData = processed;
+        state.rawData = deduplicateRecords(processed);
     }
 
     // Compilar conjunto de datas com consumo
@@ -2631,7 +2702,7 @@ function renderStructuredCadastrosUI() {
             listBases.innerHTML = baseGroups.map((g, gIdx) => {
                 const cardId = `base-card-${gIdx}`;
                 return `
-                    <div class="lote-group-card open" id="${cardId}">
+                    <div class="lote-group-card" id="${cardId}">
                         <div class="lote-group-header" onclick="toggleLoteGroupCard('${cardId}')">
                             <div class="lote-group-meta">
                                 <span class="lote-group-title">🏢 ${escapeHtml(g.baseName)}</span>
@@ -2750,13 +2821,42 @@ function renderStructuredCadastrosUI() {
 
     if (!state.activeLoteCadTab) state.activeLoteCadTab = 'TODOS';
 
+    // Mapeador auxiliar de códigos de controle para Lotes
+    const controlToLoteMap = new Map();
+
+    // Scan em state.customRequisicoes para associar control -> lote
+    allReqs.forEach(item => {
+        if (!item) return;
+        const matchLote = item.match(/\((LOTE[^)]*)\)/i) || item.match(/(LOTE\s*[^-\n,)]+)/i);
+        const matchControl = item.match(/^([^\s-]+)-(\d+)/);
+        if (matchLote && matchLote[1] && matchControl && matchControl[1]) {
+            controlToLoteMap.set(matchControl[1].trim().toUpperCase(), normalizeLoteName(matchLote[1]));
+        }
+    });
+
+    // Scan em state.rawData para associar control -> lote (caso haja lançamentos com lote atribuído)
+    (state.rawData || []).forEach(row => {
+        if (!row || !row.inicioSeq) return;
+        const seqStr = String(row.inicioSeq).trim();
+        const parts = seqStr.split('-');
+        const ctrl = parts[0].trim().toUpperCase();
+        if (ctrl && row.lote && row.lote.toUpperCase().includes('LOTE')) {
+            const mLote = row.lote.match(/(LOTE\s*\d+)/i);
+            if (mLote && !controlToLoteMap.has(ctrl)) {
+                controlToLoteMap.set(ctrl, normalizeLoteName(mLote[1]));
+            }
+        }
+    });
+
     // Helper para extrair metadados da requisição
     function parseReqMeta(str) {
         if (!str) return { control: 'AVULSO', seq: '000', litros: '30L', lote: 'OUTROS' };
         
         let lote = 'OUTROS';
         const matchLote = str.match(/\((LOTE[^)]*)\)/i) || str.match(/(LOTE\s*[^-\n,)]+)/i);
-        if (matchLote && matchLote[1]) lote = matchLote[1].trim();
+        if (matchLote && matchLote[1]) {
+            lote = normalizeLoteName(matchLote[1]);
+        }
 
         let litros = '30L';
         const matchLitros = str.match(/(\d+(?:\.\d+)?)\s*(?:L|Litros)/i);
@@ -2779,24 +2879,43 @@ function renderStructuredCadastrosUI() {
             }
         }
 
-        return { control, seq, litros, lote };
+        if ((!lote || lote === 'OUTROS') && control && control !== 'AVULSO' && control !== 'SEQUENCIAL') {
+            if (controlToLoteMap.has(control.toUpperCase())) {
+                lote = controlToLoteMap.get(control.toUpperCase());
+            }
+        }
+
+        return { control, seq, litros, lote: normalizeLoteName(lote) };
     }
 
     // Agrupar requisições por Lote + Código de Controle + Litragem
     const groupsMap = new Map();
     
     // Identificar TODOS os lotes cadastrados ou distribuídos
-    const allKnownLotes = new Set();
+    const allKnownLotes = new Set(['LOTE 1 (7K)', 'LOTE 2 (2K)', 'LOTE 3 (15K)', 'LOTE 4 (10K)']);
     
     // Do pool disponível
     allReqs.forEach(item => {
         const meta = parseReqMeta(item);
-        if (meta.lote) allKnownLotes.add(meta.lote);
+        if (meta.lote) allKnownLotes.add(normalizeLoteName(meta.lote));
     });
     
     // Do histórico de distribuídos
     (state.rawData || []).forEach(row => {
-        if (row.lote) allKnownLotes.add(row.lote.trim());
+        if (!row) return;
+        let lote = (row.lote || '').trim();
+        const seqStr = String(row.inicioSeq || '').trim();
+        const mLote = seqStr.match(/\((LOTE[^)]*)\)/i) || seqStr.match(/(LOTE\s*[^-\n,)]+)/i);
+        if (mLote && mLote[1]) lote = mLote[1].trim();
+        if (!lote || lote === 'OUTROS') {
+            const mBase = seqStr.match(/(LOTE\s*\d+)/i);
+            if (mBase && mBase[1]) lote = mBase[1].trim().toUpperCase();
+        }
+        if ((!lote || lote === 'OUTROS') && seqStr.includes('-')) {
+            const ctrl = seqStr.split('-')[0].trim().toUpperCase();
+            if (controlToLoteMap.has(ctrl)) lote = controlToLoteMap.get(ctrl);
+        }
+        if (lote) allKnownLotes.add(normalizeLoteName(lote));
     });
     
     // Inicializar contadores de disponíveis
@@ -2808,88 +2927,111 @@ function renderStructuredCadastrosUI() {
     // Agrupar e contar itens disponíveis
     allReqs.forEach((item, originalIdx) => {
         const meta = parseReqMeta(item);
-        if (meta.lote) {
-            loteCounts[meta.lote] = (loteCounts[meta.lote] || 0) + 1;
+        const normL = normalizeLoteName(meta.lote);
+        if (normL) {
+            loteCounts[normL] = (loteCounts[normL] || 0) + 1;
         }
 
-        const groupKey = `${meta.lote}___${meta.control}___${meta.litros}`;
+        const groupKey = `${normL}___${meta.control}___${meta.litros}`;
         if (!groupsMap.has(groupKey)) {
             groupsMap.set(groupKey, {
                 key: groupKey,
-                lote: meta.lote,
+                lote: normL,
                 control: meta.control,
                 litros: meta.litros,
-                isDistributed: false,
-                items: []
+                availableCount: 0,
+                distributedCount: 0,
+                items: [],
+                seqNums: []
             });
         }
-        groupsMap.get(groupKey).items.push({
+        const grp = groupsMap.get(groupKey);
+        grp.availableCount++;
+        grp.items.push({
             seq: meta.seq,
             originalIdx,
             fullStr: item
         });
+        const num = parseInt(meta.seq, 10);
+        if (!isNaN(num)) grp.seqNums.push(num);
     });
     
-    // Criar grupos fictícios para os lotes 100% distribuídos (disponíveis = 0)
-    allKnownLotes.forEach(lote => {
-        if (loteCounts[lote] === 0) {
-            let control = 'N/A';
-            let litros = '30L';
-            let seqNums = [];
-            
-            const launches = (state.rawData || []).filter(row => row.lote && row.lote.trim() === lote);
-            if (launches.length > 0) {
-                const first = launches[0];
-                if (first.inicioSeq && first.inicioSeq.includes('-')) {
-                    control = first.inicioSeq.split('-')[0].trim();
-                } else if (first.inicioSeq) {
-                    control = first.inicioSeq.trim();
-                }
-                if (first.litros) {
-                    litros = `${first.litros}L`;
-                }
-                launches.forEach(row => {
-                    if (row.inicioSeq && row.inicioSeq.includes('-')) {
-                        const s = parseInt(row.inicioSeq.split('-')[1], 10);
-                        if (!isNaN(s)) seqNums.push(s);
-                    }
-                    if (row.fimSeq && row.fimSeq.includes('-')) {
-                        const s = parseInt(row.fimSeq.split('-')[1], 10);
-                        if (!isNaN(s)) seqNums.push(s);
-                    }
-                });
-            }
-            
-            seqNums.sort((a, b) => a - b);
-            const minSeq = seqNums.length > 0 ? String(seqNums[0]).padStart(3, '0') : '001';
-            const maxSeq = seqNums.length > 0 ? String(seqNums[seqNums.length - 1]).padStart(3, '0') : '001';
-            
-            const groupKey = `${lote}___${control}___${litros}`;
+    // Mapear lançamentos distribuídos em state.rawData para contabilizar em faixas distribuídas
+    (state.rawData || []).forEach(row => {
+        if (!row) return;
+        
+        let control = 'N/A';
+        let seq = '001';
+        const seqStr = String(row.inicioSeq || '').trim();
+        if (seqStr.includes('-')) {
+            const parts = seqStr.split('-');
+            control = parts[0].trim();
+            seq = parts[1].trim();
+        } else if (seqStr) {
+            control = /^\d+$/.test(seqStr) ? 'SEQUENCIAL' : seqStr;
+            seq = seqStr;
+        }
+
+        let lote = (row.lote || '').trim();
+        const mLote = seqStr.match(/\((LOTE[^)]*)\)/i) || seqStr.match(/(LOTE\s*[^-\n,)]+)/i);
+        if (mLote && mLote[1]) lote = mLote[1].trim();
+        if (!lote || lote === 'OUTROS') {
+            const mBase = seqStr.match(/(LOTE\s*\d+)/i);
+            if (mBase && mBase[1]) lote = mBase[1].trim().toUpperCase();
+        }
+        if ((!lote || lote === 'OUTROS') && control && controlToLoteMap.has(control.toUpperCase())) {
+            lote = controlToLoteMap.get(control.toUpperCase());
+        }
+        if (!lote) lote = 'OUTROS';
+        lote = normalizeLoteName(lote);
+
+        let litros = row.litros ? `${parseFloat(row.litros)}L` : '30L';
+
+        const groupKey = `${lote}___${control}___${litros}`;
+
+        if (!groupsMap.has(groupKey)) {
             groupsMap.set(groupKey, {
                 key: groupKey,
                 lote: lote,
                 control: control,
                 litros: litros,
-                minSeq: minSeq,
-                maxSeq: maxSeq,
-                isDistributed: true,
-                items: []
+                availableCount: 0,
+                distributedCount: 0,
+                items: [],
+                seqNums: []
             });
+        }
+        const grp = groupsMap.get(groupKey);
+        grp.distributedCount++;
+        const num = parseInt(seq, 10);
+        if (!isNaN(num)) grp.seqNums.push(num);
+        if (row.fimSeq && row.fimSeq.includes('-')) {
+            const sEnd = parseInt(row.fimSeq.split('-')[1], 10);
+            if (!isNaN(sEnd)) grp.seqNums.push(sEnd);
         }
     });
 
-    const lotTabsList = ['TODOS', ...Array.from(allKnownLotes).filter(l => l !== 'TODOS').sort()];
+    // Calcular minSeq e maxSeq para cada grupo
+    groupsMap.forEach(g => {
+        g.seqNums.sort((a, b) => a - b);
+        g.minSeq = g.seqNums.length > 0 ? String(g.seqNums[0]).padStart(3, '0') : '001';
+        g.maxSeq = g.seqNums.length > 0 ? String(g.seqNums[g.seqNums.length - 1]).padStart(3, '0') : '001';
+    });
+
+    const lotTabsList = ['TODOS', ...Array.from(allKnownLotes).filter(l => l !== 'TODOS').sort((a, b) => {
+        return a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' });
+    })];
 
     // Se a aba ativa não existe mais entre os conhecidos, voltar para TODOS
-    if (state.activeLoteCadTab !== 'TODOS' && !allKnownLotes.has(state.activeLoteCadTab)) {
+    if (state.activeLoteCadTab !== 'TODOS' && !allKnownLotes.has(state.activeLoteCadTab) && !lotTabsList.includes(state.activeLoteCadTab)) {
         state.activeLoteCadTab = 'TODOS';
     }
 
-    // Renderizar barra de Sub-abas por Lote (sem botão de excluir para evitar exclusão acidental)
+    // Renderizar barra de Sub-abas por Lote com botão de Reset Completo do Lote
     if (subtabsContainer) {
-        subtabsContainer.innerHTML = lotTabsList.map(loteName => {
+        let subtabsHtml = lotTabsList.map(loteName => {
             const count = loteCounts[loteName] || 0;
-            const isActive = state.activeLoteCadTab === loteName;
+            const isActive = normalizeLoteName(state.activeLoteCadTab) === normalizeLoteName(loteName) || state.activeLoteCadTab === loteName;
             
             let statusClass = 'lote-disponivel';
             if (loteName !== 'TODOS' && count === 0) {
@@ -2903,12 +3045,24 @@ function renderStructuredCadastrosUI() {
                 </button>
             `;
         }).join('');
+
+        if (state.activeLoteCadTab && state.activeLoteCadTab !== 'TODOS') {
+            subtabsHtml += `
+                <button type="button" class="btn btn-danger btn-sm" onclick="resetLote('${escapeHtml(state.activeLoteCadTab)}')" title="Resetar TODOS os lançamentos deste lote e devolver requisições ao estoque" style="background: linear-gradient(135deg, #e63946, #d62828); color: #fff; border: none; font-weight: 700; border-radius: 8px; padding: 0.4rem 0.85rem; margin-left: auto; display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    Resetar Todo o ${escapeHtml(state.activeLoteCadTab)}
+                </button>
+            `;
+        }
+
+        subtabsContainer.innerHTML = subtabsHtml;
     }
 
     // Filtrar grupos pelo lote ativo
     let groups = Array.from(groupsMap.values());
     if (state.activeLoteCadTab !== 'TODOS') {
-        groups = groups.filter(g => g.lote === state.activeLoteCadTab);
+        const activeNorm = normalizeLoteName(state.activeLoteCadTab);
+        groups = groups.filter(g => normalizeLoteName(g.lote) === activeNorm);
     }
 
     const currentTabCount = groups.reduce((acc, g) => acc + g.items.length, 0);
@@ -2920,32 +3074,60 @@ function renderStructuredCadastrosUI() {
 
     if (listReqs) {
         if (groups.length === 0) {
-            listReqs.innerHTML = `<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1.5rem;">Nenhum grupo de requisições no estoque para o <strong>${escapeHtml(state.activeLoteCadTab)}</strong>. Gere uma nova faixa acima.</div>`;
+            listReqs.innerHTML = `<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 1.5rem;">Nenhum grupo de requisições cadastrado para o <strong>${escapeHtml(state.activeLoteCadTab)}</strong>. Gere uma nova faixa acima.</div>`;
         } else {
             listReqs.innerHTML = groups.map((g, gIdx) => {
-                const seqNums = g.items.map(i => parseInt(i.seq, 10)).filter(n => !isNaN(n)).sort((a, b) => a - b);
-                const minSeq = g.minSeq || (seqNums.length > 0 ? String(seqNums[0]).padStart(3, '0') : '001');
-                const maxSeq = g.maxSeq || (seqNums.length > 0 ? String(seqNums[seqNums.length - 1]).padStart(3, '0') : '001');
                 const cardId = `lote-card-${gIdx}`;
+                const isFullyDistributed = (g.availableCount === 0);
+                const cardClass = isFullyDistributed ? 'lote-group-card lote-distribuido' : 'lote-group-card';
                 
-                const cardClass = g.isDistributed ? 'lote-group-card lote-distribuido' : 'lote-group-card open';
-                
-                const deleteAction = g.isDistributed 
+                const deleteAction = (isFullyDistributed || g.distributedCount > 0)
                     ? '' 
                     : `<button type="button" class="entity-delete-btn" onclick="removeLoteGroup('${escapeHtml(g.key)}')" title="Excluir Faixa Completa">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                        </button>`;
 
-                const dropletContent = g.isDistributed 
-                    ? `<div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 0.85rem;">Todas as sequências deste lote já foram distribuídas.</div>`
-                    : `<div class="seq-chips-grid">
-                            ${g.items.map(it => `
-                                <div class="seq-chip" title="${escapeHtml(it.fullStr)}">
-                                    <span>${escapeHtml(it.seq)}</span>
-                                    <button type="button" class="seq-chip-del" onclick="removeCadEntity('requisicoes', ${it.originalIdx})" title="Remover nº ${escapeHtml(it.seq)}">&times;</button>
-                                </div>
-                            `).join('')}
-                       </div>`;
+                const resetAction = (g.distributedCount > 0 || isFullyDistributed)
+                    ? `<button type="button" class="entity-reset-btn" onclick="resetLoteGroup('${escapeHtml(g.key)}')" title="Resetar esta Faixa de Requisições (Devolver ao Estoque)">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                       </button>`
+                    : '';
+
+                const sortedItems = [...g.items].sort((a, b) => (parseInt(a.seq, 10) || 0) - (parseInt(b.seq, 10) || 0));
+
+                let badgeCountHtml = `<span class="lote-badge-count">🏷️ ${g.availableCount} reqs</span>`;
+                if (isFullyDistributed) {
+                    badgeCountHtml = `<span class="lote-badge-count" style="background: rgba(230,57,70,0.2); color: #ff6b6b; font-weight: 700;">🚫 0 reqs (100% Distribuído)</span>`;
+                } else if (g.distributedCount > 0) {
+                    badgeCountHtml += ` <span class="lote-badge-distributed" style="background: rgba(230,57,70,0.18); color: #ff4d4d; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">⚠️ ${g.distributedCount} em uso</span>`;
+                }
+
+                let dropletContent = '';
+                if (sortedItems.length > 0) {
+                    dropletContent += `<div class="seq-chips-grid">
+                        ${sortedItems.map(it => `
+                            <div class="seq-chip" title="${escapeHtml(it.fullStr)}">
+                                <span>${escapeHtml(it.seq)}</span>
+                                <button type="button" class="seq-chip-del" onclick="removeCadEntity('requisicoes', ${it.originalIdx})" title="Remover nº ${escapeHtml(it.seq)}">&times;</button>
+                            </div>
+                        `).join('')}
+                    </div>`;
+                }
+                if (g.distributedCount > 0) {
+                    dropletContent += `
+                        <div style="padding: 0.75rem; background: rgba(230, 57, 70, 0.08); border-left: 3px solid #e63946; border-radius: 6px; margin-top: 0.5rem;">
+                            <div style="font-weight: 600; color: #ff6b6b; font-size: 0.82rem; display: flex; align-items: center; justify-content: space-between;">
+                                <span>⚠️ Requisições Consumidas em Lançamentos (${g.distributedCount} reqs)</span>
+                                <button type="button" onclick="resetLoteGroup('${escapeHtml(g.key)}')" style="background: #e63946; color: #fff; border: none; padding: 0.25rem 0.65rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; cursor: pointer;">
+                                    ↺ Resetar esta Faixa
+                                </button>
+                            </div>
+                            <div style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.25rem;">
+                                Faixa: <strong>${g.minSeq} → ${g.maxSeq}</strong>. Para devolver estas requisições ao Estoque e cancelar os lançamentos, clique no botão Resetar.
+                            </div>
+                        </div>
+                    `;
+                }
 
                 return `
                     <div class="${cardClass}" id="${cardId}">
@@ -2954,10 +3136,11 @@ function renderStructuredCadastrosUI() {
                                 <span class="lote-group-title">📦 ${escapeHtml(g.lote)}</span>
                                 <span class="lote-badge-control">Controle: ${escapeHtml(g.control)}</span>
                                 <span class="lote-badge-litros">⛽ ${escapeHtml(g.litros)}</span>
-                                <span class="lote-badge-range">🔢 Faixa: ${minSeq} → ${maxSeq}</span>
-                                <span class="lote-badge-count">🏷️ ${g.items.length} reqs</span>
+                                <span class="lote-badge-range">🔢 Faixa: ${g.minSeq} → ${g.maxSeq}</span>
+                                ${badgeCountHtml}
                             </div>
                             <div class="lote-group-actions" onclick="event.stopPropagation();">
+                                ${resetAction}
                                 ${deleteAction}
                                 <button type="button" class="btn-lote-toggle-droplet" onclick="toggleLoteGroupCard('${cardId}')" title="Expandir/Recolher Sequências">
                                     <span>Sequências</span>
@@ -3266,6 +3449,25 @@ function updateRelationsMappings() {
 
     // Requisições
     populateDatalist('datalist-requisicoes', state.customRequisicoes || []);
+
+    // Lotes no formulário de inserção
+    const allKnownLotes = new Set(['LOTE 1 (7K)', 'LOTE 2 (2K)', 'LOTE 3 (15K)']);
+    (state.customRequisicoes || []).forEach(str => {
+        const m = str.match(/\((LOTE[^)]*)\)/i) || str.match(/(LOTE\s*[^-\n,)]+)/i);
+        if (m && m[1]) allKnownLotes.add(m[1].trim());
+    });
+    (state.rawData || []).forEach(row => {
+        if (row.lote) allKnownLotes.add(row.lote.trim());
+    });
+    const selectLote = document.getElementById('input-add-lote');
+    if (selectLote) {
+        const currentVal = selectLote.value;
+        const sortedLotes = Array.from(allKnownLotes).sort();
+        selectLote.innerHTML = sortedLotes.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
+        if (currentVal && sortedLotes.includes(currentVal)) {
+            selectLote.value = currentVal;
+        }
+    }
 }
 
 function populateDatalist(datalistId, items) {
@@ -3465,19 +3667,21 @@ function buildFilterButtons() {
             state.customRequisicoes.forEach(item => {
                 const match = item.match(/\((.*?)\)/);
                 if (match && match[1]) {
-                    lotesUnicos.add(match[1].trim());
+                    lotesUnicos.add(normalizeLoteName(match[1]));
                 } else {
                     const loteMatch = item.match(/(LOTE\s*\d+)/i);
-                    if (loteMatch) lotesUnicos.add(loteMatch[1].toUpperCase());
+                    if (loteMatch) lotesUnicos.add(normalizeLoteName(loteMatch[1]));
                 }
             });
         }
         if (state.rawData && state.rawData.length > 0) {
             state.rawData.forEach(row => {
-                if (row.lote && row.lote !== 'Não Informado') lotesUnicos.add(row.lote);
+                if (row.lote && row.lote !== 'Não Informado') lotesUnicos.add(normalizeLoteName(row.lote));
             });
         }
-        const sortedLotes = Array.from(lotesUnicos).sort();
+        const sortedLotes = Array.from(lotesUnicos).sort((a, b) => {
+            return a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' });
+        });
 
         // Botão "Todos os Lotes"
         const btnTodosLotes = document.createElement('button');
@@ -3944,13 +4148,54 @@ function matchesSearchTerm(row, search) {
         clean(row.combustivel).includes(search);
 }
 
+function cleanupOrphanLoteLaunches() {
+    if (!state.rawData || state.rawData.length === 0 || !state.customRequisicoes) return;
+
+    const stockItems = new Set(state.customRequisicoes.map(item => {
+        const parts = splitByRelationalHyphen(item);
+        return parts.length > 0 ? parts[0].trim() : item.trim();
+    }));
+
+    let removedCount = 0;
+    state.rawData = state.rawData.filter(row => {
+        if (!row.inicioSeq) return true;
+        const seq = row.inicioSeq.trim();
+        if (stockItems.has(seq)) {
+            removedCount++;
+            return false;
+        }
+        return true;
+    });
+
+    if (removedCount > 0) {
+        console.log(`Auto-cleaned ${removedCount} ghost launches from state.rawData.`);
+        localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
+        syncWithServerSilent();
+    }
+}
+
 // 10. ATUALIZAÇÃO DO PAINEL GERAL (REATIVIDADE GLOBAL)
 function updateDashboard() {
+    cleanupOrphanLoteLaunches();
     state.filteredData = state.rawData.filter(row => {
         const matchZona = state.filters.zonas.size === 0 || state.filters.zonas.has(row.zona);
         const matchPosto = state.filters.postos.size === 0 || state.filters.postos.has(row.posto);
         const matchComb = state.filters.combustiveis.size === 0 || state.filters.combustiveis.has(row.combustivel);
-        const matchLote = !state.filters.lotes || state.filters.lotes.size === 0 || state.filters.lotes.has(row.lote);
+        
+        const extractBaseLote = (s) => {
+            if (!s) return '';
+            const m = String(s).match(/(LOTE\s*\d+)/i);
+            return m ? m[1].toUpperCase() : String(s).trim().toUpperCase();
+        };
+
+        const matchLote = !state.filters.lotes || state.filters.lotes.size === 0 || Array.from(state.filters.lotes).some(selectedLote => {
+            const targetBase = extractBaseLote(selectedLote);
+            const rowBase = extractBaseLote(row.lote);
+            if (rowBase === targetBase) return true;
+            if (row.lote && row.lote.toUpperCase().includes(targetBase)) return true;
+            if (row.inicioSeq && row.inicioSeq.toUpperCase().includes(targetBase)) return true;
+            return false;
+        });
 
         const rowDate = normalizeDate(row.date);
         const matchStart = !state.dateRange.start || rowDate >= normalizeDate(state.dateRange.start);
@@ -4084,10 +4329,15 @@ function calculateKPIs() {
     }
     const totalCadastradas = totalReq + totalDisponiveis;
 
+    const totalLitrosCadastrados = totalLitros + totalLitrosDisponiveis;
+
     // Atualizar os KPIs na tela
-    document.querySelector('#kpi-gasto .kpi-value').textContent = totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    document.querySelector('#kpi-litros .kpi-value').textContent = Math.round(totalLitros).toLocaleString('pt-BR') + ' L';
+    const gastoEl = document.getElementById('kpi-gasto');
+    if (gastoEl) gastoEl.querySelector('.kpi-value').textContent = totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     
+    const litrosUtilEl = document.getElementById('kpi-litros');
+    if (litrosUtilEl) litrosUtilEl.querySelector('.kpi-value').textContent = Math.round(totalLitros).toLocaleString('pt-BR') + ' L';
+
     // Novas KPIs
     const reqCadEl = document.getElementById('kpi-req-cadastradas');
     if (reqCadEl) reqCadEl.querySelector('.kpi-value').textContent = totalCadastradas.toLocaleString('pt-BR');
@@ -4097,6 +4347,9 @@ function calculateKPIs() {
     
     const reqDispEl = document.getElementById('kpi-req-disponiveis');
     if (reqDispEl) reqDispEl.querySelector('.kpi-value').textContent = totalDisponiveis.toLocaleString('pt-BR');
+
+    const litrosCadEl = document.getElementById('kpi-litros-cadastrados');
+    if (litrosCadEl) litrosCadEl.querySelector('.kpi-value').textContent = Math.round(totalLitrosCadastrados).toLocaleString('pt-BR') + ' L';
 
     const litrosDispEl = document.getElementById('kpi-litros-disponiveis');
     if (litrosDispEl) litrosDispEl.querySelector('.kpi-value').textContent = Math.round(totalLitrosDisponiveis).toLocaleString('pt-BR') + ' L';
@@ -5100,6 +5353,294 @@ window.deleteRecord = function (id) {
     }
 };
 
+// RESETAR FAIXA / GRUPO DE CONTROLE ESPECÍFICO E DEVOLVER REQUISIÇÕES AO POOL DISPONÍVEL
+window.resetLoteGroup = function (groupKey) {
+    if (!groupKey) return;
+    
+    const parts = groupKey.split('___');
+    const lote = parts[0] || 'LOTE';
+    const control = parts[1] || 'AVULSO';
+    const litros = parts[2] || '30L';
+
+    const extractBaseLote = (s) => {
+        if (!s) return '';
+        const m = String(s).match(/(LOTE\s*\d+)/i);
+        return m ? m[1].toUpperCase() : String(s).trim().toUpperCase();
+    };
+
+    const targetBaseLote = extractBaseLote(lote);
+
+    const groupControlCodes = new Set();
+    if (control && control !== 'N/A' && control !== 'AVULSO' && control !== 'SEQUENCIAL') {
+        groupControlCodes.add(control.toUpperCase());
+    }
+
+    (state.customRequisicoes || []).forEach(line => {
+        const lineBase = extractBaseLote(line);
+        if (lineBase === targetBaseLote || line.toUpperCase().includes(targetBaseLote)) {
+            const parsed = parseSeqString(line);
+            if (parsed && parsed.prefix) {
+                groupControlCodes.add(parsed.prefix.toUpperCase());
+            }
+        }
+    });
+
+    (state.rawData || []).forEach(row => {
+        const rowBase = extractBaseLote(row.lote);
+        if (rowBase === targetBaseLote || (row.lote && row.lote.toUpperCase().includes(targetBaseLote))) {
+            const parsed = parseSeqString(row.inicioSeq);
+            if (parsed && parsed.prefix) {
+                groupControlCodes.add(parsed.prefix.toUpperCase());
+            }
+        }
+    });
+
+    function isRowInGroup(row) {
+        if (!row) return false;
+        
+        const rowBaseLote = extractBaseLote(row.lote);
+        const seqStart = String(row.inicioSeq || '').trim().toUpperCase();
+        const seqEnd = String(row.fimSeq || '').trim().toUpperCase();
+        const seqCombined = (seqStart + ' ' + seqEnd + ' ' + (row.lote || '')).toUpperCase();
+
+        if (control && control !== 'N/A' && control !== 'AVULSO' && control !== 'SEQUENCIAL') {
+            if (seqStart.includes(control) || seqEnd.includes(control)) {
+                return true;
+            }
+        }
+
+        if (targetBaseLote && targetBaseLote !== 'OUTROS') {
+            if (rowBaseLote === targetBaseLote || seqCombined.includes(targetBaseLote)) {
+                return true;
+            }
+        }
+
+        if (lote && row.lote && row.lote.trim().toUpperCase() === lote.trim().toUpperCase()) {
+            return true;
+        }
+
+        const parsedStart = parseSeqString(seqStart);
+        if (parsedStart && parsedStart.prefix && groupControlCodes.has(parsedStart.prefix.toUpperCase())) {
+            return true;
+        }
+
+        return false;
+    }
+
+    // Identificar lançamentos de abastecimento efetuados especificamente para esta faixa
+    const launchesToReset = (state.rawData || []).filter(isRowInGroup);
+    const countLaunches = launchesToReset.length;
+
+    const faixaDesc = (control !== 'N/A' && control !== 'AVULSO') 
+        ? `Controle ${control} (${lote})` 
+        : `${lote} - ${litros}`;
+
+    const msg = countLaunches > 0
+        ? `⚠️ ATENÇÃO: Deseja RESETAR a faixa "${faixaDesc}"?\n\n` +
+          `• ${countLaunches} lançamento(s) de abastecimento deste grupo serão REMOVIDOS do histórico.\n` +
+          `• As folhas/sequências consumidas serão devolvidas de volta ao Estoque Disponível (Pool).\n` +
+          `• Os relatórios e gráficos serão recalculados.`
+        : `Deseja restaurar e disponibilizar todas as requisições da faixa "${faixaDesc}" no Estoque Disponível?`;
+
+    if (confirm(msg)) {
+        showLoading(`Resetando faixa ${faixaDesc}...`);
+
+        let currentPool = state.customRequisicoes || [];
+
+        // 1. Devolver sequências dos lançamentos efetuados para o pool
+        launchesToReset.forEach(record => {
+            if (record.inicioSeq) {
+                const startObj = parseSeqString(record.inicioSeq);
+                const endObj = parseSeqString(record.fimSeq || record.inicioSeq);
+                const restoredNumbers = [];
+                const loteLabel = record.lote || lote;
+                const litrosLabel = record.litros ? `${parseFloat(record.litros)}L` : litros;
+                const suffix = ` - ${litrosLabel} (${loteLabel})`;
+
+                if (!isNaN(startObj.num)) {
+                    const startNum = startObj.num;
+                    const endNum = isNaN(endObj.num) ? startNum : endObj.num;
+                    for (let n = startNum; n <= endNum; n++) {
+                        if (startObj.prefix) {
+                            const match = record.inicioSeq.toString().trim().match(/^(.*)-(\d+)$/);
+                            const padLength = match ? match[2].length : 3;
+                            restoredNumbers.push(`${startObj.prefix}-${n.toString().padStart(padLength, '0')}${suffix}`);
+                        } else {
+                            restoredNumbers.push(n.toString() + suffix);
+                        }
+                    }
+                } else {
+                    restoredNumbers.push(record.inicioSeq.toString().trim() + suffix);
+                }
+
+                currentPool = Array.from(new Set([...currentPool, ...restoredNumbers]));
+            }
+        });
+
+        // 2. Remover apenas os lançamentos desta faixa do state.rawData
+        const launchIdsToRemove = new Set(launchesToReset.map(r => r.id));
+        state.rawData = (state.rawData || []).filter(row => !launchIdsToRemove.has(row.id));
+
+        // 3. Atualizar e ordenar o pool de requisições
+        state.customRequisicoes = currentPool.sort((a, b) => {
+            const aObj = parseSeqString(a);
+            const bObj = parseSeqString(b);
+            if (aObj.prefix !== bObj.prefix) {
+                return aObj.prefix.localeCompare(bObj.prefix);
+            }
+            return aObj.num - bObj.num;
+        });
+
+        // 4. Salvar localmente
+        localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
+        localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+
+        // 5. Atualizar interface e autocompletes
+        updateRelationsMappings();
+        populateDatalist('datalist-requisicoes', state.customRequisicoes);
+        buildFilterButtons();
+        updateDashboard();
+        if (typeof renderStructuredCadastrosUI === 'function') {
+            renderStructuredCadastrosUI();
+        }
+
+        // 6. Sincronizar com MySQL remoto
+        syncWithServerSilent();
+
+        hideLoading();
+        alert(`✅ Faixa ${faixaDesc} resetada com sucesso!\n${countLaunches} lançamento(s) removido(s) e sequências disponibilizadas no Estoque.`);
+    }
+};
+
+window.resetLote = function (loteNome) {
+    if (!loteNome) return;
+    
+    const extractBaseLote = (s) => {
+        if (!s) return '';
+        const m = String(s).match(/(LOTE\s*\d+)/i);
+        return m ? m[1].toUpperCase() : String(s).trim().toUpperCase();
+    };
+
+    const targetBaseLote = extractBaseLote(loteNome);
+
+    const loteControlCodes = new Set();
+    (state.customRequisicoes || []).forEach(line => {
+        const lineBase = extractBaseLote(line);
+        if (lineBase === targetBaseLote || line.toUpperCase().includes(targetBaseLote)) {
+            const parsed = parseSeqString(line);
+            if (parsed && parsed.prefix) {
+                loteControlCodes.add(parsed.prefix.toUpperCase());
+            }
+        }
+    });
+
+    (state.rawData || []).forEach(row => {
+        const rowBase = extractBaseLote(row.lote);
+        if (rowBase === targetBaseLote || (row.lote && row.lote.toUpperCase().includes(targetBaseLote))) {
+            const parsed = parseSeqString(row.inicioSeq);
+            if (parsed && parsed.prefix) {
+                loteControlCodes.add(parsed.prefix.toUpperCase());
+            }
+        }
+    });
+
+    function isRowInLote(row) {
+        if (!row) return false;
+        
+        const rowBaseLote = extractBaseLote(row.lote);
+        if (rowBaseLote === targetBaseLote) return true;
+        if (row.lote && row.lote.toUpperCase().includes(targetBaseLote)) return true;
+
+        const seqStart = String(row.inicioSeq || '').toUpperCase();
+        const seqEnd = String(row.fimSeq || '').toUpperCase();
+        if (seqStart.includes(targetBaseLote) || seqEnd.includes(targetBaseLote)) return true;
+
+        const parsedStart = parseSeqString(seqStart);
+        if (parsedStart && parsedStart.prefix && loteControlCodes.has(parsedStart.prefix.toUpperCase())) {
+            return true;
+        }
+        const parsedEnd = parseSeqString(seqEnd);
+        if (parsedEnd && parsedEnd.prefix && loteControlCodes.has(parsedEnd.prefix.toUpperCase())) {
+            return true;
+        }
+
+        return false;
+    }
+
+    const launchesToReset = (state.rawData || []).filter(isRowInLote);
+    const countLaunches = launchesToReset.length;
+
+    const msg = countLaunches > 0
+        ? `⚠️ ATENÇÃO: Deseja RESETAR completamente o ${targetBaseLote}?\n\n` +
+          `• ${countLaunches} lançamento(s) de abastecimento deste lote serão REMOVIDOS do histórico.\n` +
+          `• As requisições serão restauradas no Estoque Disponível (Pool).\n` +
+          `• O lote passará a ter 0 distribuídas e o dashboard será recalculado.`
+        : `Deseja restaurar e disponibilizar todas as requisições do ${targetBaseLote} no Estoque Disponível?`;
+
+    if (confirm(msg)) {
+        showLoading(`Resetando ${targetBaseLote}...`);
+
+        let currentPool = state.customRequisicoes || [];
+
+        launchesToReset.forEach(record => {
+            if (record.inicioSeq) {
+                const startObj = parseSeqString(record.inicioSeq);
+                const endObj = parseSeqString(record.fimSeq || record.inicioSeq);
+                const restoredNumbers = [];
+                const loteLabel = record.lote || targetBaseLote;
+                const litrosLabel = record.litros ? `${parseFloat(record.litros)}L` : '30L';
+                const suffix = ` - ${litrosLabel} (${loteLabel})`;
+
+                if (!isNaN(startObj.num)) {
+                    const startNum = startObj.num;
+                    const endNum = isNaN(endObj.num) ? startNum : endObj.num;
+                    for (let n = startNum; n <= endNum; n++) {
+                        if (startObj.prefix) {
+                            const match = record.inicioSeq.toString().trim().match(/^(.*)-(\d+)$/);
+                            const padLength = match ? match[2].length : 3;
+                            restoredNumbers.push(`${startObj.prefix}-${n.toString().padStart(padLength, '0')}${suffix}`);
+                        } else {
+                            restoredNumbers.push(n.toString() + suffix);
+                        }
+                    }
+                } else {
+                    restoredNumbers.push(record.inicioSeq.toString().trim() + suffix);
+                }
+
+                currentPool = Array.from(new Set([...currentPool, ...restoredNumbers]));
+            }
+        });
+
+        const launchIdsToRemove = new Set(launchesToReset.map(r => r.id));
+        state.rawData = (state.rawData || []).filter(row => !launchIdsToRemove.has(row.id));
+
+        state.customRequisicoes = currentPool.sort((a, b) => {
+            const aObj = parseSeqString(a);
+            const bObj = parseSeqString(b);
+            if (aObj.prefix !== bObj.prefix) {
+                return aObj.prefix.localeCompare(bObj.prefix);
+            }
+            return aObj.num - bObj.num;
+        });
+
+        localStorage.setItem(getEnvKey('combustivel_dashboard_data'), JSON.stringify(state.rawData));
+        localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+
+        updateRelationsMappings();
+        populateDatalist('datalist-requisicoes', state.customRequisicoes);
+        buildFilterButtons();
+        updateDashboard();
+        if (typeof renderStructuredCadastrosUI === 'function') {
+            renderStructuredCadastrosUI();
+        }
+
+        syncWithServerSilent();
+
+        hideLoading();
+        alert(`✅ ${targetBaseLote} resetado com sucesso!\n${countLaunches} lançamento(s) removido(s) e requisições disponibilizadas no Estoque.`);
+    }
+};
+
 // EXPORTAR DADOS ATUALIZADOS PARA PLANILHA EXCEL (.XLSX)
 function generateExcelWorkbook() {
     function padZero(num, size) {
@@ -5369,6 +5910,8 @@ async function saveBackup() {
 function syncWithServerSilent() {
     const isFileProtocol = window.location.protocol === 'file:';
     if (isFileProtocol) return;
+
+    state.rawData = deduplicateRecords(state.rawData);
 
     const syncPayload = {
         environment: state.activeEnv,
@@ -7488,4 +8031,5 @@ function initDispensadorModule() {
         }
     }
 }
+
 

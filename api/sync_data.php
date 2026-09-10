@@ -32,20 +32,37 @@ try {
     $stmtDel = $pdo->prepare("DELETE FROM $table_requisicoes WHERE environment = :env");
     $stmtDel->execute(['env' => $env]);
 
-    // 2. Inserir os novos lançamentos
+    // 2. Inserir os novos lançamentos com trava estrita anti-duplicidade
     if (isset($input['requisicoes']) && is_array($input['requisicoes'])) {
         $stmtInsert = $pdo->prepare("INSERT INTO $table_requisicoes 
             (id, date, inicioSeq, fimSeq, qtdRequisicoes, zona, responsavel, posto, motorista, veiculo, placa, kmAnterior, km, combustivel, litros, precoLitro, valor, lote, environment)
             VALUES 
             (:id, :date, :inicioSeq, :fimSeq, :qtdRequisicoes, :zona, :responsavel, :posto, :motorista, :veiculo, :placa, :kmAnterior, :km, :combustivel, :litros, :precoLitro, :valor, :lote, :env)");
 
+        $seenSeqs = [];
+        $seenIds = [];
+
         foreach ($input['requisicoes'] as $row) {
+            $rowId = isset($row['id']) ? trim($row['id']) : '';
+            $inicioSeq = isset($row['inicioSeq']) ? trim($row['inicioSeq']) : '';
+
+            // Trava anti-duplicidade estrita
+            if ($rowId !== '' && isset($seenIds[$rowId])) {
+                continue;
+            }
+            if ($inicioSeq !== '' && isset($seenSeqs[$inicioSeq])) {
+                continue;
+            }
+
+            if ($rowId !== '') $seenIds[$rowId] = true;
+            if ($inicioSeq !== '') $seenSeqs[$inicioSeq] = true;
+
             $formattedDate = date('Y-m-d', strtotime($row['date']));
 
             $stmtInsert->execute([
                 'id' => $row['id'],
                 'date' => $formattedDate,
-                'inicioSeq' => isset($row['inicioSeq']) ? $row['inicioSeq'] : '',
+                'inicioSeq' => $inicioSeq,
                 'fimSeq' => isset($row['fimSeq']) ? $row['fimSeq'] : '',
                 'qtdRequisicoes' => isset($row['qtdRequisicoes']) ? intval($row['qtdRequisicoes']) : 1,
                 'zona' => (isset($row['zona']) && $row['zona'] !== '') ? $row['zona'] : 'NÃO INFORMADO',
