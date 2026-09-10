@@ -3505,7 +3505,17 @@ function registerNewMotorista(base, motorista) {
     if (!alreadyExists) {
         state.customMotoristas.push(entryToSave);
         localStorage.setItem(getEnvKey('custom_motoristas'), JSON.stringify(state.customMotoristas));
+        
+        const taMots = document.getElementById('textarea-custom-motoristas');
+        if (taMots) taMots.value = state.customMotoristas.join('\n');
+
         updateRelationsMappings();
+
+        if (typeof renderStructuredCadastrosUI === 'function') {
+            renderStructuredCadastrosUI();
+        }
+
+        syncWithServerSilent();
     }
 }
 
@@ -7808,6 +7818,12 @@ function initDispensadorModule() {
                     showKmFields();
                 }
             });
+            newInputCustom.addEventListener('change', (e) => {
+                const val = e.target.value.trim().toUpperCase();
+                if (dispState.selectedBase && val && val !== 'NÃO INFORMADO' && val !== 'NAO INFORMADO') {
+                    registerNewMotorista(dispState.selectedBase, val);
+                }
+            });
         }
         
         if (motoristasVinculados.length === 0) {
@@ -7906,7 +7922,8 @@ function initDispensadorModule() {
             const base = dispState.selectedBase;
             const responsavel = dispState.selectedResponsavel;
             const inputCustomMot = document.getElementById('disp-drawer-custom-motorista');
-            let motorista = (dispState.selectedMotorista || (inputCustomMot ? inputCustomMot.value.trim() : '') || '').trim().toUpperCase();
+            const typedMot = inputCustomMot ? inputCustomMot.value.trim().toUpperCase() : '';
+            let motorista = (typedMot || dispState.selectedMotorista || '').trim().toUpperCase();
             const tickets = dispState.selectedTickets;
             
             if (base && motorista && motorista !== 'NÃO INFORMADO' && motorista !== 'NAO INFORMADO') {
