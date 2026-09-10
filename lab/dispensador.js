@@ -793,10 +793,18 @@ function confirmDelivery() {
     let finalMotorista = labState.drawerSelection.motorista;
     const customMotInput = document.getElementById('drawer-custom-motorista');
     if (customMotInput && customMotInput.value.trim()) {
-        finalMotorista = customMotInput.value.trim();
+        finalMotorista = customMotInput.value.trim().toUpperCase();
         if (!labState.motoristas.includes(finalMotorista)) {
             labState.motoristas.push(finalMotorista);
         }
+    }
+    if (labState.drawerSelection.base && finalMotorista && finalMotorista !== 'Não Informado') {
+        const lowerBase = labState.drawerSelection.base.toLowerCase();
+        if (!labState.mappings.baseToMotoristas) labState.mappings.baseToMotoristas = {};
+        if (!labState.mappings.baseToMotoristas[lowerBase]) {
+            labState.mappings.baseToMotoristas[lowerBase] = new Set();
+        }
+        labState.mappings.baseToMotoristas[lowerBase].add(finalMotorista);
     }
 
     if (!finalMotorista) {

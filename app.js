@@ -1240,6 +1240,9 @@ function initEventListeners() {
         const responsavel = document.getElementById('input-responsavel').value.trim();
         const posto = document.getElementById('input-posto').value.trim();
         const motorista = document.getElementById('input-motorista').value.trim();
+        if (zona && motorista) {
+            registerNewMotorista(zona, motorista);
+        }
         const veiculo = document.getElementById('input-veiculo').value.trim();
         const placa = document.getElementById('input-placa').value.trim().toUpperCase();
         const combustivel = document.getElementById('input-combustivel').value.trim();
@@ -3467,6 +3470,41 @@ function updateRelationsMappings() {
         if (currentVal && sortedLotes.includes(currentVal)) {
             selectLote.value = currentVal;
         }
+}
+
+function registerNewMotorista(base, motorista) {
+    if (!motorista) return;
+    const cleanMot = motorista.trim().toUpperCase();
+    if (!cleanMot || cleanMot === 'NÃO INFORMADO' || cleanMot === 'NAO INFORMADO') return;
+    
+    const cleanBase = (base || '').trim().toUpperCase();
+    
+    if (!Array.isArray(state.customMotoristas)) {
+        state.customMotoristas = [];
+    }
+
+    const entryToSave = cleanBase ? `${cleanBase} - ${cleanMot}` : cleanMot;
+
+    const alreadyExists = state.customMotoristas.some(line => {
+        if (!line) return false;
+        const normLine = line.trim().toUpperCase();
+        if (normLine === entryToSave) return true;
+        if (line.includes(' - ')) {
+            const parts = line.split(' - ');
+            const b = parts[0].trim().toUpperCase();
+            const m = parts[1].trim().toUpperCase();
+            if (cleanBase) {
+                return b === cleanBase && m === cleanMot;
+            }
+            return m === cleanMot;
+        }
+        return normLine === cleanMot;
+    });
+
+    if (!alreadyExists) {
+        state.customMotoristas.push(entryToSave);
+        localStorage.setItem(getEnvKey('custom_motoristas'), JSON.stringify(state.customMotoristas));
+        updateRelationsMappings();
     }
 }
 
@@ -7866,8 +7904,13 @@ function initDispensadorModule() {
         newBtnConfirm.addEventListener('click', () => {
             const base = dispState.selectedBase;
             const responsavel = dispState.selectedResponsavel;
-            const motorista = dispState.selectedMotorista;
+            const inputCustomMot = document.getElementById('disp-drawer-custom-motorista');
+            let motorista = (dispState.selectedMotorista || (inputCustomMot ? inputCustomMot.value.trim() : '') || '').trim().toUpperCase();
             const tickets = dispState.selectedTickets;
+            
+            if (base && motorista && motorista !== 'NÃO INFORMADO' && motorista !== 'NAO INFORMADO') {
+                registerNewMotorista(base, motorista);
+            }
             
             const placa = (document.getElementById('disp-drawer-placa')?.value || '').trim().toUpperCase();
             const veiculo = (document.getElementById('disp-drawer-veiculo')?.value || '').trim();
