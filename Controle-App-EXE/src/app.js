@@ -3470,6 +3470,7 @@ function updateRelationsMappings() {
         if (currentVal && sortedLotes.includes(currentVal)) {
             selectLote.value = currentVal;
         }
+    }
 }
 
 function registerNewMotorista(base, motorista) {
