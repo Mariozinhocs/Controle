@@ -2665,6 +2665,22 @@ function processData(rows, shouldCache = false) {
 
             const finalDate = (parsedDate && !isNaN(parsedDate.getTime())) ? parsedDate : new Date();
 
+            let rLitros = parseBrazilianNumber(row.litros) || 15;
+            let rQtd = parseBrazilianNumber(row.qtdRequisicoes) || 1;
+            let rPreco = parseBrazilianNumber(row.precoLitro);
+            let rValor = parseBrazilianNumber(row.valor);
+
+            if (!rPreco || rPreco === 0) {
+                const combLower = (row.combustivel || '').toLowerCase();
+                if (combLower.includes('diesel')) rPreco = 5.89;
+                else if (combLower.includes('etanol')) rPreco = 4.25;
+                else rPreco = 6.15;
+            }
+
+            if (!rValor || rValor === 0) {
+                rValor = rQtd * rLitros * rPreco;
+            }
+
             processed.push({
                 ...row,
                 id: row.id || (Date.now() + '-' + Math.random() + '-' + idx),
@@ -2677,7 +2693,9 @@ function processData(rows, shouldCache = false) {
                 placa: placaUpper,
                 lote: row.lote || (row.inicioSeq && row.inicioSeq.startsWith('1787') ? 'LOTE 3 (15K)' : 'LOTE 1 (7K)'),
                 kmAnterior: (row.kmAnterior !== undefined && row.kmAnterior !== null && row.kmAnterior !== '' && row.kmAnterior !== 0) ? row.kmAnterior : 'NÃO INFORMADO',
-                km: (row.km !== null && row.km !== undefined && row.km !== '' && row.km !== 0) ? row.km : 'NÃO INFORMADO'
+                km: (row.km !== null && row.km !== undefined && row.km !== '' && row.km !== 0) ? row.km : 'NÃO INFORMADO',
+                precoLitro: rPreco,
+                valor: rValor
             });
             return;
         }
@@ -2692,12 +2710,8 @@ function processData(rows, shouldCache = false) {
 
         const qtdRequisicoes = parseBrazilianNumber(cleanedRow['qtd requisicoes']) || 1;
         const litros = parseBrazilianNumber(cleanedRow['litros']);
-        const precoLitro = parseBrazilianNumber(cleanedRow['preco litro']);
-
+        let precoLitro = parseBrazilianNumber(cleanedRow['preco litro']);
         let valor = parseBrazilianNumber(cleanedRow['valor']);
-        if (valor === 0 && litros > 0 && precoLitro > 0) {
-            valor = qtdRequisicoes * litros * precoLitro;
-        }
 
         let zona = cleanedRow['base'] || cleanedRow['bases'] || cleanedRow['zona'] || cleanedRow['zonas de manaus'] || 'NÃO INFORMADO';
         let responsavel = cleanedRow['responsavel'] || 'NÃO INFORMADO';
@@ -2788,6 +2802,31 @@ function processData(rows, shouldCache = false) {
             }
         }
 
+        if (!precoLitro || precoLitro === 0) {
+            if (posto && posto !== 'NÃO INFORMADO' && state.customPostos && state.customPostos.length > 0) {
+                const postoLower = posto.toLowerCase().trim();
+                const foundPosto = state.customPostos.find(p => {
+                    const parts = splitByRelationalHyphen(p);
+                    return parts.length >= 2 && parts[0].toLowerCase().trim() === postoLower;
+                });
+                if (foundPosto) {
+                    const parts = splitByRelationalHyphen(foundPosto);
+                    precoLitro = parseBrazilianNumber(parts[1]);
+                }
+            }
+        }
+
+        if (!precoLitro || precoLitro === 0) {
+            const combLower = (combustivel || '').toLowerCase();
+            if (combLower.includes('diesel')) precoLitro = 5.89;
+            else if (combLower.includes('etanol')) precoLitro = 4.25;
+            else precoLitro = 6.15;
+        }
+
+        if (!valor || valor === 0) {
+            valor = (qtdRequisicoes || 1) * (finalLitros || 15) * precoLitro;
+        }
+
         processed.push({
             id: Date.now() + '-' + Math.random() + '-' + idx,
             date: dateVal,
@@ -2808,6 +2847,7 @@ function processData(rows, shouldCache = false) {
             combustivel: combustivel || 'Não Informado',
             litros: finalLitros,
             precoLitro: precoLitro,
+            valor: valor
         });
     });
 }
