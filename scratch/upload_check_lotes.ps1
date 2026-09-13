@@ -1,0 +1,5 @@
+$wc = New-Object System.Net.WebClient
+$wc.Credentials = New-Object System.Net.NetworkCredential('u576215103.controle', '+KVs|jC5')
+$wc.UploadFile('ftp://ftp.controle.hubdigital360.com/hml/api/check_lotes.php', 'STOR', 'api/check_lotes.php')
+$wc.Dispose()
+Write-Host "Uploaded check_lotes.php successfully"
