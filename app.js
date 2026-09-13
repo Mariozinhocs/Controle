@@ -64,6 +64,16 @@ function deduplicateRecords(records) {
             row.lote = normalizeLoteName(row.lote);
         }
 
+        if (row.zona && String(row.zona).trim().toUpperCase() === 'CENTRAL') {
+            const currentResp = row.responsavel ? String(row.responsavel).trim().toUpperCase() : '';
+            if (currentResp !== 'MARCELO CAMPBELL') {
+                if (!row.motorista || row.motorista === 'NÃO INFORMADO' || row.motorista === 'NAO INFORMADO') {
+                    row.motorista = row.responsavel;
+                }
+                row.responsavel = 'MARCELO CAMPBELL';
+            }
+        }
+
         if (seq !== '') {
             if (seenSeqs.has(seq)) return; // Descarte estrito de sequências duplicadas
             seenSeqs.add(seq);
