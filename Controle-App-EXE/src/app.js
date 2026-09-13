@@ -224,9 +224,33 @@ function syncWithServerSilent() {
 // FUNÇÃO AUXILIAR PARA DIVIDIR STRINGS DE RELACIONAMENTO TRATANDO ESPAÇAMENTOS AO REDOR DO HÍFEN
 function splitByRelationalHyphen(str) {
     if (!str) return [];
-    // Divide por hífen que possua ao menos um espaço de um dos lados (para não quebrar Centro-Sul ou placas ABC-1234)
-    const parts = str.toString().split(/\s+-\s*|\s*-\s+/);
-    return parts.map(p => p.trim());
+    const s = str.toString().trim();
+    if (s.includes(' - ')) {
+        return s.split(/\s+-\s+/).map(p => p.trim());
+    }
+    const knownBasePrefixes = [
+        'CENTRO-SUL 1', 'CENTRO-SUL 2', 'CENTRO-SUL', 'CENTRO-OESTE',
+        'LESTE 1', 'LESTE 2', 'LESTE 3',
+        'NORTE 1', 'NORTE 2', 'NORTE 3', 'NORTE 4',
+        'CENTRAL', 'INTERIOR', 'OESTE', 'RURAL', 'SUL'
+    ];
+    for (const kb of knownBasePrefixes) {
+        if (s.toUpperCase().startsWith(kb + '-')) {
+            const basePart = s.substring(0, kb.length).trim();
+            const restPart = s.substring(kb.length + 1).trim();
+            return [basePart, restPart];
+        }
+    }
+    const parts = s.split(/\s*-\s*/);
+    if (parts.length >= 2) {
+        if (parts[0].toUpperCase() === 'CENTRO' && (parts[1].toUpperCase().startsWith('SUL') || parts[1].toUpperCase().startsWith('OESTE'))) {
+            const baseName = `CENTRO-${parts[1].split(' ')[0]}`;
+            const rest = parts.slice(2).join(' ') || parts[1].split(' ').slice(1).join(' ');
+            return rest ? [baseName, rest] : [baseName];
+        }
+        return [parts[0].trim(), parts.slice(1).join('-').trim()];
+    }
+    return [s];
 }
 
 // PARSER INTELIGENTE DE REQUISIÇÕES EM MASSA (SUPORTA FORMATO EXPANDIDO E FORMATO SIMPLIFICADO POR FAIXA POR LINHA: LOTE, CONTROLE, FAIXA, COMBUSTIVEL, LITROS)
@@ -336,13 +360,16 @@ function formatRequisicaoSeqPadded(seqStr) {
     return s;
 }
 
-// Auxiliar para preencher datalist
+// Auxiliar para preencher datalist com deduplicação rigorosa e ordenação
 function populateDatalist(id, list) {
     const dl = document.getElementById(id);
     if (dl) {
         dl.innerHTML = '';
         if (list && list.length > 0) {
-            list.forEach(val => {
+            const uniqueSorted = Array.from(new Set(list))
+                .filter(Boolean)
+                .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }));
+            uniqueSorted.forEach(val => {
                 const opt = document.createElement('option');
                 opt.value = val;
                 dl.appendChild(opt);
@@ -2067,6 +2094,77 @@ function checkUrlParams() {
     }
 }
 
+// FUNÇÃO DE SANITIZAÇÃO, UNIFICAÇÃO E MIGRAÇÃO DE CADASTROS (CONFORME PO MARIO HENRIQUE)
+function sanitizeAndUnifyCadastros() {
+    // 1. Lista Unificada Oficial de Bases & Responsáveis
+    const officialBases = [
+        'CENTRAL - MARCELO CAMPBELL',
+        'CENTRO-OESTE - SANDRO MAIA',
+        'CENTRO-SUL 1 - EMERSON CASTRO',
+        'CENTRO-SUL 2 - JULIANO',
+        'INTERIOR - ALGEMIRO',
+        'LESTE 1 - ELANIO',
+        'LESTE 2 - PAULO HENRIQUE',
+        'LESTE 3 - RENATO QUEIROZ',
+        'NORTE 1 - CLEUSON LIMA',
+        'NORTE 2 - AURILEX',
+        'NORTE 3 - JÚNIOR NUNES',
+        'NORTE 4 - MARCELO BOTELHO',
+        'OESTE - NILDO',
+        'RURAL - ROSA DENISE',
+        'SUL - DERICK ALMEIDA'
+    ];
+
+    if (!Array.isArray(state.customMotoristas)) state.customMotoristas = [];
+
+    const motoristasSet = new Set(state.customMotoristas.map(m => m ? m.trim() : '').filter(Boolean));
+
+    // Migrar quaisquer nomes extras que estavam em customBases (ex: CENTRAL - ALEXANDRE GALD, etc.) para customMotoristas
+    (state.customBases || []).forEach(line => {
+        if (!line) return;
+        const parts = splitByRelationalHyphen(line);
+        if (parts.length >= 2) {
+            const base = parts[0].trim().toUpperCase();
+            const respOrMot = parts[1].trim().toUpperCase();
+            if (base === 'CENTRAL' && respOrMot !== 'MARCELO CAMPBELL') {
+                motoristasSet.add(`CENTRAL - ${respOrMot}`);
+            } else if (base === 'NORTE 1' && (respOrMot === 'CLEUSON' || respOrMot === 'CLEUSON LIMA')) {
+                // Responsável unificado
+            } else if (base === 'NORTE 3' && (respOrMot === 'JR. NUNES' || respOrMot === 'JUNIOR NUNES' || respOrMot === 'JÚNIOR NUNES')) {
+                // Responsável unificado
+            } else if (base === 'SUL' && (respOrMot === 'DERICK' || respOrMot === 'DERICK ALMEIDA')) {
+                // Responsável unificado
+            } else if (base === 'NORTE 4' && (respOrMot === 'MARCELO' || respOrMot === 'MARCELO BOTELHO')) {
+                // Responsável unificado
+            } else if (base === 'CENTRO-SUL 1' && (respOrMot === 'EMERSON' || respOrMot === 'EMERSON CASTRO')) {
+                // Responsável unificado
+            } else if (base === 'INTERIOR' && (respOrMot === 'ALGEMIR' || respOrMot === 'ALGEMIRO')) {
+                // Responsável unificado
+            } else if (!officialBases.includes(`${base} - ${respOrMot}`)) {
+                motoristasSet.add(`${base} - ${respOrMot}`);
+            }
+        }
+    });
+
+    state.customBases = officialBases;
+    state.customMotoristas = Array.from(motoristasSet).sort((a, b) => 
+        a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' })
+    );
+
+    // Deduplicar outros cadastros
+    state.customPostos = Array.from(new Set(state.customPostos || [])).filter(Boolean);
+    state.customVeiculos = Array.from(new Set(state.customVeiculos || [])).filter(Boolean);
+
+    // Salvar no localStorage
+    localStorage.setItem(getEnvKey('custom_bases'), JSON.stringify(state.customBases));
+    localStorage.setItem(getEnvKey('custom_motoristas'), JSON.stringify(state.customMotoristas));
+    localStorage.setItem(getEnvKey('custom_postos'), JSON.stringify(state.customPostos));
+    localStorage.setItem(getEnvKey('custom_veiculos'), JSON.stringify(state.customVeiculos));
+
+    updateRelationsMappings();
+    syncWithServerSilent();
+}
+
 // 3. CARREGAR DADOS INICIAIS (AUTO-LINK E LOCALSTORAGE FALLBACK)
 function loadInitialData(forceFetch = false) {
     // Carregar configurações de ambiente
@@ -2100,7 +2198,7 @@ function loadInitialData(forceFetch = false) {
         state.customMotoristas = JSON.parse(localStorage.getItem(getEnvKey('custom_motoristas')) || '[]');
         state.customVeiculos = JSON.parse(localStorage.getItem(getEnvKey('custom_veiculos')) || '[]');
         state.customRequisicoes = JSON.parse(localStorage.getItem(getEnvKey('custom_requisicoes')) || '[]');
-        updateRelationsMappings();
+        sanitizeAndUnifyCadastros();
     } catch (e) {}
 
     const isFileProtocol = window.location.protocol === 'file:';
@@ -2158,7 +2256,7 @@ function loadInitialData(forceFetch = false) {
                             localStorage.setItem(getEnvKey('custom_veiculos'), conf.custom_veiculos || '[]');
                             localStorage.setItem(getEnvKey('custom_requisicoes'), conf.custom_requisicoes || '[]');
                             
-                            updateRelationsMappings();
+                            sanitizeAndUnifyCadastros();
                         } catch (e) {
                             console.error('Erro ao fundir configurações remotas:', e);
                         }
@@ -2954,10 +3052,26 @@ function renderStructuredCadastrosUI() {
     const baseGroupsMap = new Map();
     const baseCounts = { 'TODAS': allBases.length };
 
+    function extractCanonicalBaseNameLocal(str) {
+        if (!str) return '';
+        const upper = str.toString().trim().toUpperCase();
+        const knownBases = [
+            'CENTRO-SUL 1', 'CENTRO-SUL 2', 'CENTRO-SUL', 'CENTRO-OESTE',
+            'LESTE 1', 'LESTE 2', 'LESTE 3',
+            'NORTE 1', 'NORTE 2', 'NORTE 3', 'NORTE 4',
+            'CENTRAL', 'INTERIOR', 'OESTE', 'RURAL', 'SUL'
+        ];
+        for (const kb of knownBases) {
+            if (upper.startsWith(kb)) return kb;
+        }
+        const parts = splitByRelationalHyphen(str);
+        return parts[0] ? parts[0].trim().toUpperCase() : upper;
+    }
+
     allBases.forEach((item, originalIdx) => {
-        const parts = item.includes(' - ') ? item.split(' - ') : [item];
-        const baseName = parts[0] || item;
-        const respName = parts[1] || '';
+        const baseName = extractCanonicalBaseNameLocal(item);
+        const parts = splitByRelationalHyphen(item);
+        const respName = parts.length > 1 ? parts[1].trim() : '';
 
         baseCounts[baseName] = (baseCounts[baseName] || 0) + 1;
 
@@ -3895,26 +4009,24 @@ function initDateFilterRange() {
     state.fullDateRange.start = minD;
     state.fullDateRange.end = maxD;
 
-    // Inicializar por padrão com o período da última semana (últimos 7 dias de dados disponíveis)
-    const end = new Date(maxD);
-    const start = new Date(maxD);
-    start.setDate(end.getDate() - 7);
-
-    state.dateRange.start = start;
-    state.dateRange.end = end;
+    // Inicializar por padrão exibindo TODO o período completo de dados
+    state.dateRange.start = new Date(minD);
+    state.dateRange.end = new Date(maxD);
 
     const startInput = document.getElementById('date-start');
     const endInput = document.getElementById('date-end');
 
-    startInput.min = formatDateIso(minD);
-    startInput.max = formatDateIso(maxD);
-    endInput.min = formatDateIso(minD);
-    endInput.max = formatDateIso(maxD);
+    if (startInput && endInput) {
+        startInput.min = formatDateIso(minD);
+        startInput.max = formatDateIso(maxD);
+        endInput.min = formatDateIso(minD);
+        endInput.max = formatDateIso(maxD);
 
-    startInput.value = formatDateIso(state.dateRange.start);
-    endInput.value = formatDateIso(state.dateRange.end);
+        startInput.value = formatDateIso(state.dateRange.start);
+        endInput.value = formatDateIso(state.dateRange.end);
+    }
 
-    setActivePreset('7d');
+    setActivePreset('all');
 }
 
 // Preset logic helper
@@ -8077,47 +8189,80 @@ function initDispensadorModule() {
         if (!grid) return;
         grid.innerHTML = '';
         
-        const bases = (state.customBases || []).map(line => {
-            if (line.includes(' - ')) {
-                const parts = line.split(' - ');
-                return { name: parts[0].trim(), resp: parts[1].trim() };
+        // Mapear Base Única Canônica -> Set de Responsáveis
+        const baseMap = new Map();
+        
+        function extractCanonicalBaseName(str) {
+            if (!str) return '';
+            const upper = str.toString().trim().toUpperCase();
+            const knownBases = [
+                'CENTRO-SUL 1', 'CENTRO-SUL 2', 'CENTRO-SUL', 'CENTRO-OESTE',
+                'LESTE 1', 'LESTE 2', 'LESTE 3',
+                'NORTE 1', 'NORTE 2', 'NORTE 3', 'NORTE 4',
+                'CENTRAL', 'INTERIOR', 'OESTE', 'RURAL', 'SUL'
+            ];
+            for (const kb of knownBases) {
+                if (upper.startsWith(kb)) {
+                    return kb;
+                }
             }
-            return { name: line.trim(), resp: null };
-        }).filter(b => b.name);
+            const parts = splitByRelationalHyphen(str);
+            return parts[0] ? parts[0].trim().toUpperCase() : upper;
+        }
+
+        (state.customBases || []).forEach(line => {
+            if (!line) return;
+            const canonBase = extractCanonicalBaseName(line);
+            const parts = splitByRelationalHyphen(line);
+            const resp = parts.length > 1 ? parts[1].trim() : '';
+            if (canonBase) {
+                if (!baseMap.has(canonBase)) baseMap.set(canonBase, new Set());
+                if (resp) baseMap.get(canonBase).add(resp);
+            }
+        });
+
+        // Garantir inclusão das 15 bases oficiais
+        const officialBaseNames = [
+            'CENTRAL', 'CENTRO-OESTE', 'CENTRO-SUL 1', 'CENTRO-SUL 2',
+            'INTERIOR', 'LESTE 1', 'LESTE 2', 'LESTE 3',
+            'NORTE 1', 'NORTE 2', 'NORTE 3', 'NORTE 4',
+            'OESTE', 'RURAL', 'SUL'
+        ];
         
-        // Ordenar bases alfabeticamente (ordenação natural)
-        bases.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        officialBaseNames.forEach(bName => {
+            if (!baseMap.has(bName)) {
+                baseMap.set(bName, new Set());
+            }
+        });
+
+        const sortedBases = Array.from(baseMap.keys()).sort((a, b) => 
+            a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' })
+        );
         
-        if (bases.length === 0) {
+        if (sortedBases.length === 0) {
             grid.innerHTML = `<span style="font-size: 0.8rem; color: var(--text-muted); grid-column: 1/-1;">Cadastre bases no painel para selecionar.</span>`;
             return;
         }
         
-        bases.forEach(b => {
+        sortedBases.forEach(bName => {
             const btn = document.createElement('button');
             btn.className = `touch-btn`;
-            btn.textContent = b.name;
+            btn.textContent = bName;
             btn.addEventListener('click', () => {
-                grid.querySelectorAll('.touch-btn').forEach(btn => btn.classList.remove('active'));
+                grid.querySelectorAll('.touch-btn').forEach(btnEl => btnEl.classList.remove('active'));
                 btn.classList.add('active');
                 
-                dispState.selectedBase = b.name;
-                dispState.selectedResponsavel = b.resp;
-                
-                if (b.resp) {
-                    dispState.selectedResponsavel = b.resp;
-                    renderDrawerResponsaveis(b.resp);
-                } else {
-                    dispState.selectedResponsavel = 'NÃO INFORMADO';
-                    document.getElementById('disp-drawer-container-responsavel').style.display = 'none';
-                    renderDrawerMotoristas();
-                }
+                dispState.selectedBase = bName;
+                const respSet = baseMap.get(bName);
+                const respList = Array.from(respSet || []);
+
+                renderDrawerResponsaveis(respList);
             });
             grid.appendChild(btn);
         });
     }
     
-    function renderDrawerResponsaveis(respName) {
+    function renderDrawerResponsaveis(respList = []) {
         const container = document.getElementById('disp-drawer-container-responsavel');
         const grid = document.getElementById('disp-drawer-responsaveis-grid');
         if (!container || !grid) return;
@@ -8125,14 +8270,27 @@ function initDispensadorModule() {
         container.style.display = 'block';
         grid.innerHTML = '';
         
-        const btn = document.createElement('button');
-        btn.className = `touch-btn active`;
-        btn.textContent = respName;
-        btn.addEventListener('click', () => {
-            dispState.selectedResponsavel = respName;
+        if (respList.length === 0) {
+            dispState.selectedResponsavel = 'NÃO INFORMADO';
+            container.style.display = 'none';
             renderDrawerMotoristas();
+            return;
+        }
+
+        dispState.selectedResponsavel = respList[0];
+
+        respList.forEach((respName, idx) => {
+            const btn = document.createElement('button');
+            btn.className = `touch-btn ${idx === 0 ? 'active' : ''}`;
+            btn.textContent = respName;
+            btn.addEventListener('click', () => {
+                grid.querySelectorAll('.touch-btn').forEach(btnEl => btnEl.classList.remove('active'));
+                btn.classList.add('active');
+                dispState.selectedResponsavel = respName;
+                renderDrawerMotoristas();
+            });
+            grid.appendChild(btn);
         });
-        grid.appendChild(btn);
         
         renderDrawerMotoristas();
     }
@@ -8150,22 +8308,27 @@ function initDispensadorModule() {
         // Exibir sempre os campos de KM/Veículo de forma imediata (tornando opcionais a qualquer momento)
         showKmFields(dispState.selectedMotorista || '');
         
-        const motoristasVinculados = [];
-        const lowerBase = dispState.selectedBase.toLowerCase();
+        const motoristasSet = new Set();
+        const lowerBase = (dispState.selectedBase || '').toLowerCase().trim();
         
         (state.customMotoristas || []).forEach(line => {
+            if (!line) return;
             if (line.includes(' - ')) {
                 const parts = line.split(' - ');
                 const b = parts[0].trim();
                 const m = parts[1].trim();
-                if (b.toLowerCase() === lowerBase) {
-                    motoristasVinculados.push(m);
+                if (b.toLowerCase() === lowerBase && m) {
+                    motoristasSet.add(m);
                 }
+            } else if (line.trim()) {
+                motoristasSet.add(line.trim());
             }
         });
         
         // Ordenar motoristas vinculados alfabeticamente (ordenação natural)
-        motoristasVinculados.sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }));
+        const motoristasVinculados = Array.from(motoristasSet).sort((a, b) => 
+            a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' })
+        );
         
         if (inputCustom) {
             inputCustom.replaceWith(inputCustom.cloneNode(true));
