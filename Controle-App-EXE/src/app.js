@@ -2125,39 +2125,76 @@ function sanitizeAndUnifyCadastros() {
         'SUL - DERICK ALMEIDA'
     ];
 
+    const aliases = {
+        'CLEUSON': 'CLEUSON LIMA',
+        'DERICK': 'DERICK ALMEIDA',
+        'EMERSON': 'EMERSON CASTRO',
+        'ALGEMIR': 'ALGEMIRO',
+        'JUNIOR NUNES': 'JÚNIOR NUNES',
+        'JR. NUNES': 'JÚNIOR NUNES',
+        'MARCELO': 'MARCELO CAMPBELL',
+        'SANDRO DIS/ÉDER': 'SANDRO DIZÉDER',
+        'SANDRO DIZ/ÉDER': 'SANDRO DIZÉDER',
+        'RAY/RICARDO': 'RAY RICARDO',
+        'MARIO BARROS': 'MÁRIO BARROS',
+        'MONICA': 'MÔNICA',
+        'EDSON': 'ÉDSON',
+        'CEZÃO': 'CÉZÃO',
+        'DANIEL  LABORDA': 'DANIEL LABORDA',
+        'KASSIO': 'KÁSSIO',
+        'ELISANGELA': 'ELIZANGELA',
+        'VIVINE': 'VIVIANE'
+    };
+
+    const officialBaseRespMap = {
+        'SANDRO MAIA': 'CENTRO-OESTE',
+        'EMERSON CASTRO': 'CENTRO-SUL 1',
+        'JULIANO': 'CENTRO-SUL 2',
+        'ALGEMIRO': 'INTERIOR',
+        'ELANIO': 'LESTE 1',
+        'PAULO HENRIQUE': 'LESTE 2',
+        'RENATO QUEIROZ': 'LESTE 3',
+        'CLEUSON LIMA': 'NORTE 1',
+        'AURILEX': 'NORTE 2',
+        'JÚNIOR NUNES': 'NORTE 3',
+        'MARCELO BOTELHO': 'NORTE 4',
+        'NILDO': 'OESTE',
+        'ROSA DENISE': 'RURAL',
+        'DERICK ALMEIDA': 'SUL',
+        'MARCELO CAMPBELL': 'CENTRAL'
+    };
+
     if (!Array.isArray(state.customMotoristas)) state.customMotoristas = [];
 
-    const motoristasSet = new Set(state.customMotoristas.map(m => m ? m.trim() : '').filter(Boolean));
+    const cleanedSet = new Set();
+    const inputEntries = (state.customMotoristas || []).concat(state.customBases || []);
 
-    // Migrar quaisquer nomes extras que estavam em customBases (ex: CENTRAL - ALEXANDRE GALD, etc.) para customMotoristas
-    (state.customBases || []).forEach(line => {
-        if (!line) return;
-        const parts = splitByRelationalHyphen(line);
-        if (parts.length >= 2) {
-            const base = parts[0].trim().toUpperCase();
-            const respOrMot = parts[1].trim().toUpperCase();
-            if (base === 'CENTRAL' && respOrMot !== 'MARCELO CAMPBELL') {
-                motoristasSet.add(`CENTRAL - ${respOrMot}`);
-            } else if (base === 'NORTE 1' && (respOrMot === 'CLEUSON' || respOrMot === 'CLEUSON LIMA')) {
-                // Responsável unificado
-            } else if (base === 'NORTE 3' && (respOrMot === 'JR. NUNES' || respOrMot === 'JUNIOR NUNES' || respOrMot === 'JÚNIOR NUNES')) {
-                // Responsável unificado
-            } else if (base === 'SUL' && (respOrMot === 'DERICK' || respOrMot === 'DERICK ALMEIDA')) {
-                // Responsável unificado
-            } else if (base === 'NORTE 4' && (respOrMot === 'MARCELO' || respOrMot === 'MARCELO BOTELHO')) {
-                // Responsável unificado
-            } else if (base === 'CENTRO-SUL 1' && (respOrMot === 'EMERSON' || respOrMot === 'EMERSON CASTRO')) {
-                // Responsável unificado
-            } else if (base === 'INTERIOR' && (respOrMot === 'ALGEMIR' || respOrMot === 'ALGEMIRO')) {
-                // Responsável unificado
-            } else if (!officialBases.includes(`${base} - ${respOrMot}`)) {
-                motoristasSet.add(`${base} - ${respOrMot}`);
-            }
+    inputEntries.forEach(entry => {
+        if (!entry || !entry.trim()) return;
+        let base = '';
+        let name = entry.trim();
+        if (name.includes(' - ')) {
+            const parts = name.split(' - ');
+            base = parts[0].trim();
+            name = parts.slice(1).join(' - ').trim();
         }
+
+        let nameUpper = name.toUpperCase();
+        if (aliases[nameUpper]) {
+            nameUpper = aliases[nameUpper];
+        }
+
+        if (officialBaseRespMap[nameUpper]) {
+            base = officialBaseRespMap[nameUpper];
+        } else {
+            base = 'CENTRAL';
+        }
+
+        cleanedSet.add(`${base} - ${nameUpper}`);
     });
 
     state.customBases = officialBases;
-    state.customMotoristas = Array.from(motoristasSet).sort((a, b) => 
+    state.customMotoristas = Array.from(cleanedSet).sort((a, b) => 
         a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' })
     );
 
@@ -8319,21 +8356,33 @@ function initDispensadorModule() {
         showKmFields(dispState.selectedMotorista || '');
         
         const motoristasSet = new Set();
-        const lowerBase = (dispState.selectedBase || '').toLowerCase().trim();
+        const selBaseCanonical = extractCanonicalBaseName(dispState.selectedBase || '');
         
         (state.customMotoristas || []).forEach(line => {
-            if (!line) return;
+            if (!line || !line.trim()) return;
+            let lineBase = '';
+            let lineMot = '';
             if (line.includes(' - ')) {
                 const parts = line.split(' - ');
-                const b = parts[0].trim();
-                const m = parts[1].trim();
-                if (b.toLowerCase() === lowerBase && m) {
-                    motoristasSet.add(m);
-                }
-            } else if (line.trim()) {
-                motoristasSet.add(line.trim());
+                lineBase = extractCanonicalBaseName(parts[0]);
+                lineMot = parts.slice(1).join(' - ').trim();
+            } else {
+                lineBase = 'CENTRAL';
+                lineMot = line.trim();
+            }
+            
+            if (lineBase === selBaseCanonical && lineMot) {
+                motoristasSet.add(lineMot);
             }
         });
+
+        if (motoristasSet.size === 0 && selBaseCanonical) {
+            const matchedOfficial = (state.customBases || []).find(b => extractCanonicalBaseName(b) === selBaseCanonical);
+            if (matchedOfficial && matchedOfficial.includes(' - ')) {
+                const resp = matchedOfficial.split(' - ')[1].trim();
+                if (resp) motoristasSet.add(resp);
+            }
+        }
         
         // Ordenar motoristas vinculados alfabeticamente (ordenação natural)
         const motoristasVinculados = Array.from(motoristasSet).sort((a, b) => 
