@@ -132,6 +132,15 @@ Caso a exportação Excel pare de responder:
 
 Use esta seção para documentar novas alterações manuais à medida que elas forem sendo introduzidas.
 
+*   **Funcionalidade: Unificação Oficial de 15 Bases & Sanitização Estrita de Responsáveis/Motoristas**
+    *   *Data:* 13/09/2026
+    *   *Implementações:*
+        1. **Unificação Estruturada de Bases (`customBases`):** Redução da lista de bases para exatamente 15 Bases Oficiais unificadas (`CENTRAL - MARCELO CAMPBELL`, `CENTRO-OESTE - SANDRO MAIA`, `CENTRO-SUL 1 - EMERSON CASTRO`, `CENTRO-SUL 2 - JULIANO`, `INTERIOR - ALGEMIRO`, `LESTE 1 - ELANIO`, `LESTE 2 - PAULO HENRIQUE`, `LESTE 3 - RENATO QUEIROZ`, `NORTE 1 - CLEUSON LIMA`, `NORTE 2 - AURILEX`, `NORTE 3 - JÚNIOR NUNES`, `NORTE 4 - MARCELO BOTELHO`, `OESTE - NILDO`, `RURAL - ROSA DENISE`, `SUL - DERICK ALMEIDA`).
+        2. **Isolamento de Motoristas (`customMotoristas`):** Migrados ~64 destinatários que estavam salvos como bases da CENTRAL para `customMotoristas` (`CENTRAL - [Nome]`), garantindo que Marcelo Campbell permaneça como o único responsável oficial da Base CENTRAL.
+        3. **Parser Canônico de Hífen (`splitByRelationalHyphen` & `extractCanonicalBaseName`):** Atualizado o motor de parsing para tratar espaçamentos variáveis e hífens grudados sem fragmentar nomes compostos (`CENTRO-SUL 1`, `CENTRO-OESTE`), garantindo que o modal de entrega (`renderDrawerBases`) e as sub-abas de cadastros renderizem impreterivelmente **apenas 15 botões únicos**.
+        4. **Ajuste de Exibição Inicial por Período Completo (`initDateFilterRange`):** Ajustado o filtro inicial de datas para selecionar por padrão todo o período completo dos dados em vez de recortar nos últimos 7 dias.
+        5. **Sincronização em MySQL (PROD & HML) e Git Checkpoint:** Atualizadas as tabelas `configuracoes` e `hml_configuracoes` no MySQL Hostinger remoto com o conjunto limpo e efetuados os commits no repositório Git.
+
 *   **Funcionalidade: Camada Estrita de Proteção Anti-Duplicidade (Anti-Duplication Layer) & Sanificação de Dados**
     *   *Data:* 09/09/2026
     *   *Implementações:*
