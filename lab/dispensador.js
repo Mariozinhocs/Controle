@@ -245,6 +245,11 @@ function loadSystemEntities() {
                                 const id = parts[0].trim();
                                 let litros = 15;
                                 let lote = 'LOTE 3 (15K)';
+                                let combustivel = 'Gasolina';
+                                if (/diesel/i.test(line)) combustivel = 'Diesel';
+                                else if (/etanol/i.test(line)) combustivel = 'Etanol';
+                                else if (/gasolina/i.test(line)) combustivel = 'Gasolina';
+
                                 if (parts.length > 1) {
                                     const lMatch = parts[1].match(/(\d+)L/);
                                     if (lMatch) litros = parseInt(lMatch[1], 10);
@@ -260,6 +265,7 @@ function loadSystemEntities() {
                                     seq: seq,
                                     numero: parseInt(seq, 10) || (idx + 1),
                                     litros: litros,
+                                    combustivel: combustivel,
                                     lote: lote,
                                     valorEstimado: litros * 7.29
                                 });

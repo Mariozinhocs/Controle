@@ -97,6 +97,10 @@ Upload-File "$localDir\api\get_backup_file.php" "hml/api/get_backup_file.php"
 Upload-File "$localDir\api\parse_backup.php" "hml/api/parse_backup.php"
 Upload-File "$localDir\api\restore_backup_exact.php" "hml/api/restore_backup_exact.php"
 Upload-File "$localDir\api\reset_hml_db.php" "hml/api/reset_hml_db.php"
+Upload-File "$localDir\api\dump_db_envs.php" "hml/api/dump_db_envs.php"
+Upload-File "$localDir\api\verify_hml_summary.php" "hml/api/verify_hml_summary.php"
+Upload-File "$localDir\api\load_lotes_into_hml.php" "hml/api/load_lotes_into_hml.php"
+Upload-File "$localDir\api\lotes_payload.json" "hml/api/lotes_payload.json"
 
 # 4. Cria e envia arquivos do subsistema de veículos contratados para HML
 Create-FtpDirectory "hml/veiculos"

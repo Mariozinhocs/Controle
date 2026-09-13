@@ -202,12 +202,103 @@ function getEnvKey(key) {
     return `${key}_env_${active.replace(/\s+/g, '_')}`;
 }
 
+// FUNÇÃO AUXILIAR PARA SINCRONIZAÇÃO SILENCIOSA DAS CONFIGURAÇÕES COM O BANCO MYSQL
+function syncWithServerSilent() {
+    const isFileProtocol = window.location.protocol === 'file:';
+    if (isFileProtocol) return;
+
+    const syncPayload = {
+        environment: state.activeEnv || 'Frota Principal',
+        requisicoes: state.rawData || [],
+        custom_bases: state.customBases || [],
+        custom_postos: state.customPostos || [],
+        custom_motoristas: state.customMotoristas || [],
+        custom_veiculos: state.customVeiculos || [],
+        custom_requisicoes: state.customRequisicoes || []
+    };
+
+    fetch('./api/sync_data.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(syncPayload)
+    }).catch(err => console.warn('Erro na sincronização silenciosa com o servidor:', err));
+}
+
 // FUNÇÃO AUXILIAR PARA DIVIDIR STRINGS DE RELACIONAMENTO TRATANDO ESPAÇAMENTOS AO REDOR DO HÍFEN
 function splitByRelationalHyphen(str) {
     if (!str) return [];
     // Divide por hífen que possua ao menos um espaço de um dos lados (para não quebrar Centro-Sul ou placas ABC-1234)
     const parts = str.toString().split(/\s+-\s*|\s*-\s+/);
     return parts.map(p => p.trim());
+}
+
+// PARSER INTELIGENTE DE REQUISIÇÕES EM MASSA (SUPORTA FORMATO EXPANDIDO E FORMATO SIMPLIFICADO POR FAIXA POR LINHA: LOTE, CONTROLE, FAIXA, COMBUSTIVEL, LITROS)
+function parseCustomRequisicoesInput(rawText) {
+    if (!rawText) return [];
+    const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+    const resultPool = [];
+
+    lines.forEach(line => {
+        // Tentar separar por vírgula, ponto e vírgula, tabulação ou pipe
+        const parts = line.split(/[,;\t|]+/).map(p => p.trim()).filter(Boolean);
+
+        if (parts.length >= 3) {
+            let rangeMatch = null;
+            let rangeIdx = -1;
+            for (let i = 0; i < parts.length; i++) {
+                const m = parts[i].match(/^(\d+)\s*[-–]\s*(\d+)$/);
+                if (m) {
+                    rangeMatch = m;
+                    rangeIdx = i;
+                    break;
+                }
+            }
+
+            if (rangeMatch) {
+                const startSeq = parseInt(rangeMatch[1], 10);
+                const endSeq = parseInt(rangeMatch[2], 10);
+                const padLength = Math.max(3, rangeMatch[1].length);
+
+                let lote = 'LOTE';
+                let controlCode = '';
+                let combustivel = 'Gasolina';
+                let litros = '30';
+
+                parts.forEach((p, idx) => {
+                    if (idx === rangeIdx) return;
+
+                    if (/^\d{6,}$/.test(p)) {
+                        controlCode = p;
+                    } else if (/^\d+(\.\d+)?\s*L?$/i.test(p)) {
+                        litros = p.replace(/L/i, '').trim();
+                    } else if (/^(gasolina|diesel|etanol|óleo|oleo)/i.test(p)) {
+                        combustivel = p;
+                    } else {
+                        lote = p;
+                    }
+                });
+
+                if (endSeq >= startSeq) {
+                    for (let i = startSeq; i <= endSeq; i++) {
+                        const seqPad = String(i).padStart(padLength, '0');
+                        const fullCode = controlCode ? `${controlCode}-${seqPad}` : seqPad;
+                        const reqStr = `${fullCode} - ${combustivel} - ${litros}L (${lote})`;
+                        if (!resultPool.includes(reqStr)) {
+                            resultPool.push(reqStr);
+                        }
+                    }
+                }
+                return;
+            }
+        }
+
+        // Se for linha no formato individual expandido
+        if (!resultPool.includes(line)) {
+            resultPool.push(line);
+        }
+    });
+
+    return resultPool;
 }
 
 // FUNÇÃO AUXILIAR PARA ANALISAR NÚMEROS DE SEQUÊNCIA (TRATANDO FORMATOS COM HÍFEN E METADADOS COMO 1787595670733-001 - 30L (LOTE 4 (10K)))
@@ -234,6 +325,18 @@ function parseSeqString(str) {
         prefix: "",
         num: parseInt(s, 10)
     };
+}
+
+// FORMATAR O NÚMERO DA REQUISIÇÃO (GARANTINDO O NÚMERO APÓS O HÍFEN PADDED COM NO MÍNIMO 3 DÍGITOS - EX: 1786981045866-1 VIRA 1786981045866-001)
+function formatRequisicaoSeqPadded(seqStr) {
+    if (!seqStr) return '';
+    const s = seqStr.toString().trim();
+    const parsed = parseSeqString(s);
+    if (!isNaN(parsed.num)) {
+        const paddedNum = String(parsed.num).padStart(3, '0');
+        return parsed.prefix ? `${parsed.prefix}-${paddedNum}` : paddedNum;
+    }
+    return s;
 }
 
 // Auxiliar para preencher datalist
@@ -940,6 +1043,8 @@ function initEventListeners() {
 
                 localStorage.removeItem('combustivel_dashboard_data');
                 localStorage.removeItem('combustivel_dashboard_filename');
+                localStorage.removeItem(getEnvKey('combustivel_dashboard_data'));
+                localStorage.removeItem(getEnvKey('combustivel_dashboard_filename'));
 
                 // Limpar filtros também
                 state.filters.zonas.clear();
@@ -954,10 +1059,13 @@ function initEventListeners() {
                 buildFilterButtons();
                 updateDashboard();
 
+                // Sincronizar a remoção de lançamentos com o banco de dados MySQL no servidor
+                syncWithServerSilent();
+
                 // Exibir modal de importação para carregar nova planilha
                 const uploadModal = document.getElementById('upload-modal');
                 if (uploadModal) uploadModal.classList.add('active');
-                alert('Todos os dados foram limpos do navegador!');
+                alert('Todos os lançamentos foram limpos do ambiente ' + state.activeEnv + ' com sucesso!');
             }
         });
     }
@@ -1750,6 +1858,7 @@ function initEventListeners() {
             const startSeq = parseInt(document.getElementById('input-new-lote-start')?.value, 10) || 1;
             const endSeq = parseInt(document.getElementById('input-new-lote-end')?.value, 10) || 100;
             const litros = parseInt(document.getElementById('input-new-lote-litros')?.value, 10) || 30;
+            const combustivel = document.getElementById('input-new-lote-combustivel')?.value || 'Gasolina';
 
             if (endSeq < startSeq) {
                 alert('A sequência final deve ser maior ou igual à sequência inicial.');
@@ -1761,7 +1870,7 @@ function initEventListeners() {
             let addedCount = 0;
             for (let i = startSeq; i <= endSeq; i++) {
                 const seqPad = String(i).padStart(3, '0');
-                const reqStr = `${controlCode}-${seqPad} - ${litros}L (${loteNome})`;
+                const reqStr = `${controlCode}-${seqPad} - ${combustivel} - ${litros}L (${loteNome})`;
                 if (!state.customRequisicoes.includes(reqStr)) {
                     state.customRequisicoes.push(reqStr);
                     addedCount++;
@@ -2056,6 +2165,21 @@ function loadInitialData(forceFetch = false) {
                         } catch (e) {
                             console.error('Erro ao fundir configurações remotas:', e);
                         }
+                    } else {
+                        // Se o banco estiver zerado/sem configurações, limpa o estado local
+                        state.customBases = [];
+                        state.customPostos = [];
+                        state.customMotoristas = [];
+                        state.customVeiculos = [];
+                        state.customRequisicoes = [];
+                        
+                        localStorage.removeItem(getEnvKey('custom_bases'));
+                        localStorage.removeItem(getEnvKey('custom_postos'));
+                        localStorage.removeItem(getEnvKey('custom_motoristas'));
+                        localStorage.removeItem(getEnvKey('custom_veiculos'));
+                        localStorage.removeItem(getEnvKey('custom_requisicoes'));
+                        
+                        updateRelationsMappings();
                     }
 
                     // Sincronizar autocompletes dos veículos contratados em paralelo
@@ -2409,11 +2533,96 @@ function normalizeDate(d) {
     return newD;
 }
 
+// Auxiliar para buscar requisição correspondente cadastrada no estoque (customRequisicoes)
+function findMatchingStockTicket(seqStr) {
+    if (!seqStr || !state.customRequisicoes || state.customRequisicoes.length === 0) return null;
+    const cleanTargetSeq = parseSeqString(seqStr);
+    if (!cleanTargetSeq.prefix && isNaN(cleanTargetSeq.num)) return null;
+
+    const targetKey = cleanTargetSeq.prefix 
+        ? `${cleanTargetSeq.prefix}-${String(cleanTargetSeq.num).padStart(3, '0')}`
+        : String(cleanTargetSeq.num);
+
+    for (const line of state.customRequisicoes) {
+        const parts = splitByRelationalHyphen(line);
+        if (parts.length > 0) {
+            const stockId = parts[0].trim();
+            const stockSeqObj = parseSeqString(stockId);
+            const stockKey = stockSeqObj.prefix
+                ? `${stockSeqObj.prefix}-${String(stockSeqObj.num).padStart(3, '0')}`
+                : String(stockSeqObj.num);
+
+            if (stockKey.toLowerCase() === targetKey.toLowerCase()) {
+                const restStr = parts.slice(1).join(' - ');
+                
+                let litros = 15;
+                const matchLitros = restStr.match(/(\d+(?:\.\d+)?)\s*(?:L|Litros)/i);
+                if (matchLitros && matchLitros[1]) {
+                    litros = parseFloat(matchLitros[1]);
+                }
+
+                let combustivel = 'Gasolina';
+                if (/diesel/i.test(line)) combustivel = 'Diesel';
+                else if (/etanol/i.test(line)) combustivel = 'Etanol';
+                else if (/gasolina/i.test(line)) combustivel = 'Gasolina';
+
+                let lote = 'LOTE 1';
+                const matchLote = restStr.match(/\((LOTE[^)]*)\)/i) || restStr.match(/(LOTE\s*[^-\n,)]+)/i);
+                if (matchLote && matchLote[1]) {
+                    lote = matchLote[1].trim();
+                }
+
+                return {
+                    line: line,
+                    id: stockId,
+                    litros: litros,
+                    combustivel: combustivel,
+                    lote: lote
+                };
+            }
+        }
+    }
+    return null;
+}
+
+// Remove registros duplicados baseando-se no número de requisição/sequência ou assinatura única
+function deduplicateRecords(records) {
+    if (!Array.isArray(records)) return [];
+    const seen = new Set();
+    const result = [];
+
+    records.forEach(row => {
+        if (!row) return;
+        const inicioSeq = (row.inicioSeq || '').toString().trim();
+        let key = '';
+
+        if (inicioSeq) {
+            key = `seq_${inicioSeq.toLowerCase()}`;
+        } else {
+            const dStr = row.date ? formatDateIso(new Date(row.date)) : '';
+            const zona = (row.zona || '').toString().toLowerCase().trim();
+            const resp = (row.responsavel || '').toString().toLowerCase().trim();
+            const posto = (row.posto || '').toString().toLowerCase().trim();
+            const val = parseFloat(row.valor) || 0;
+            const placa = (row.placa || '').toString().toLowerCase().trim();
+            key = `row_${dStr}_${zona}_${resp}_${posto}_${val}_${placa}`;
+        }
+
+        if (!seen.has(key)) {
+            seen.add(key);
+            result.push(row);
+        }
+    });
+
+    return result;
+}
+
 // 6. PROCESSAMENTO DOS DADOS DA PLANILHA
 function processData(rows, shouldCache = false) {
     if (!rows) rows = [];
 
     const processed = [];
+    const usedStockLines = new Set();
 
     if (rows.length > 0) {
         rows.forEach((row, idx) => {
@@ -2528,13 +2737,67 @@ function processData(rows, shouldCache = false) {
             veiculo = state.mappings.placaToVeiculo[placaUpper];
         }
 
+        let inicioSeq = cleanedRow['inicio da sequencia'] 
+            || cleanedRow['inicio seq'] 
+            || cleanedRow['requisicao'] 
+            || cleanedRow['n requisicao'] 
+            || cleanedRow['num requisicao'] 
+            || cleanedRow['sequencia']
+            || cleanedRow['n sequencia']
+            || cleanedRow['num sequencia']
+            || row.inicioSeq 
+            || '';
+
+        if (!inicioSeq) {
+            for (const key in cleanedRow) {
+                if (key.includes('sequencia') || key.includes('requisicao') || key.includes('seq') || key.includes('ticket')) {
+                    const val = (cleanedRow[key] || '').toString().trim();
+                    if (val) {
+                        inicioSeq = val;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (inicioSeq) {
+            inicioSeq = formatRequisicaoSeqPadded(inicioSeq);
+        }
+
+        let fimSeq = cleanedRow['fim da sequencia'] || cleanedRow['fim seq'] || row.fimSeq || inicioSeq;
+        if (fimSeq) {
+            fimSeq = formatRequisicaoSeqPadded(fimSeq);
+        }
+
+        // Procura se a requisição/sequência pertence a um lote cadastrado no estoque (customRequisicoes)
+        const stockMatch = findMatchingStockTicket(inicioSeq);
+        let lote = cleanedRow['lote'] || row.lote || '';
+        let combustivel = cleanedRow['tipo combustivel'] || cleanedRow['combustivel'] || row.combustivel || '';
+        let finalLitros = litros;
+
+        if (stockMatch) {
+            if (!lote || lote === 'NÃO INFORMADO') lote = stockMatch.lote;
+            if (!combustivel || combustivel === 'Não Informado' || combustivel === 'NÃO INFORMADO') combustivel = stockMatch.combustivel;
+            if (!finalLitros || finalLitros === 0) finalLitros = stockMatch.litros;
+            usedStockLines.add(stockMatch.line);
+        }
+
+        if (!lote) {
+            const prefixObj = parseSeqString(inicioSeq);
+            if (prefixObj.prefix) {
+                lote = `LOTE (${prefixObj.prefix})`;
+            } else {
+                lote = 'LOTE 1';
+            }
+        }
+
         processed.push({
             id: Date.now() + '-' + Math.random() + '-' + idx,
             date: dateVal,
             month: dateVal.getMonth(),
             year: dateVal.getFullYear(),
-            inicioSeq: cleanedRow['inicio da sequencia'] || '',
-            fimSeq: cleanedRow['fim da sequencia'] || '',
+            inicioSeq: inicioSeq,
+            fimSeq: fimSeq,
             qtdRequisicoes: qtdRequisicoes,
             zona: zona,
             responsavel: responsavel,
@@ -2542,13 +2805,12 @@ function processData(rows, shouldCache = false) {
             motorista: motorista,
             veiculo: veiculo,
             placa: placaUpper,
-            lote: cleanedRow['lote'] || row.lote || (cleanedRow['inicio da sequencia'] && cleanedRow['inicio da sequencia'].startsWith('1787') ? 'LOTE 3 (15K)' : 'LOTE 1 (7K)'),
+            lote: lote,
             kmAnterior: parseBrazilianNumber(cleanedRow['km anterior']) || parseBrazilianNumber(cleanedRow['kilometragem anterior']) || 'NÃO INFORMADO',
             km: parseBrazilianNumber(cleanedRow['km']) || parseBrazilianNumber(cleanedRow['kilometragem']) || parseBrazilianNumber(cleanedRow['km/odor']) || parseBrazilianNumber(cleanedRow['km atual']) || 'NÃO INFORMADO',
-            combustivel: cleanedRow['tipo combustivel'] || 'Não Informado',
-            litros: litros,
+            combustivel: combustivel || 'Não Informado',
+            litros: finalLitros,
             precoLitro: precoLitro,
-            valor: valor
         });
     });
 }
@@ -2559,20 +2821,39 @@ function processData(rows, shouldCache = false) {
         return;
     }
 
+    // Se requisições cadastradas em estoque foram utilizadas na planilha importada, abater do estoque (customRequisicoes)
+    if (usedStockLines.size > 0) {
+        state.customRequisicoes = (state.customRequisicoes || []).filter(line => !usedStockLines.has(line));
+        localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
+        populateDatalist('datalist-requisicoes', state.customRequisicoes);
+    }
+
     // Verificar se o usuário escolheu o modo "append" (Mesclar dados com a base existente)
     const importMode = document.querySelector('input[name="upload-import-mode"]:checked')?.value || 'replace';
 
     if (importMode === 'append' && state.rawData && state.rawData.length > 0) {
-        const getFingerprint = r => `${r.date ? formatDateIso(new Date(r.date)) : ''}_${r.inicioSeq || ''}_${r.fimSeq || ''}_${r.valor || ''}_${r.veiculo || ''}_${r.placa || ''}_${r.responsavel || ''}`;
-        const existingSet = new Set(state.rawData.map(getFingerprint));
+        const existingSeqs = new Set(
+            state.rawData
+                .map(r => (r.inicioSeq || '').toString().trim().toLowerCase())
+                .filter(Boolean)
+        );
+        const existingFingerprints = new Set(
+            state.rawData.map(r => `${r.date ? formatDateIso(new Date(r.date)) : ''}_${(r.inicioSeq || '').toLowerCase()}_${(r.valor || 0)}_${(r.placa || '').toLowerCase()}`)
+        );
 
-        const newRecords = processed.filter(r => !existingSet.has(getFingerprint(r)));
+        const newRecords = processed.filter(r => {
+            const seq = (r.inicioSeq || '').toString().trim().toLowerCase();
+            if (seq && existingSeqs.has(seq)) return false; // Impede re-cadastramento da mesma requisição
+            const fp = `${r.date ? formatDateIso(new Date(r.date)) : ''}_${seq}_${r.valor || 0}_${(r.placa || '').toLowerCase()}`;
+            if (existingFingerprints.has(fp)) return false;
+            return true;
+        });
+
         const dupesCount = processed.length - newRecords.length;
-
         state.rawData = deduplicateRecords(state.rawData.concat(newRecords));
 
         setTimeout(() => {
-            alert(`➕ Carga Incremental Concluída!\n\n• ${newRecords.length} novos registros adicionados à base.\n• ${dupesCount} registros duplicados ignorados.`);
+            alert(`➕ Carga Incremental Concluída!\n\n• ${newRecords.length} novos lançamentos adicionados à base.\n• ${dupesCount} requisições duplicadas/já existentes ignoradas.`);
         }, 600);
     } else {
         state.rawData = deduplicateRecords(processed);
@@ -2895,7 +3176,7 @@ function renderStructuredCadastrosUI() {
     const groupsMap = new Map();
     
     // Identificar TODOS os lotes cadastrados ou distribuídos
-    const allKnownLotes = new Set(['LOTE 1 (7K)', 'LOTE 2 (2K)', 'LOTE 3 (15K)', 'LOTE 4 (10K)']);
+    const allKnownLotes = new Set();
     
     // Do pool disponível
     allReqs.forEach(item => {
@@ -3297,7 +3578,7 @@ window.resetHmlDatabase = async function() {
     if (!confirm('⚠️ ATENÇÃO: Deseja realmente zerar todo o banco de dados de Homologação (HML)?\n\nIsso limpará todas as tabelas de teste em HML (requisições, bases, postos e veículos) para que você comece as validações 100% do zero.')) return;
 
     try {
-        const response = await fetch('api/reset_hml_db.php', {
+        const response = await fetch('api/reset_hml_db.php?empty=true', {
             method: 'POST',
             headers: {
                 'X-Trace-ID': 'trace-reset-hml-' + Date.now()
@@ -3319,11 +3600,15 @@ window.resetHmlDatabase = async function() {
                 'custom_veiculos',
                 'custom_postos',
                 'custom_requisicoes',
-                'custom_motoristas'
+                'custom_motoristas',
+                'combustivel_dashboard_data'
             ];
+            if (typeof getEnvKey === 'function') {
+                keysToRemove.push(getEnvKey('combustivel_dashboard_data'));
+            }
             keysToRemove.forEach(k => localStorage.removeItem(k));
 
-            alert('✅ ' + result.message);
+            alert('✅ Banco HML zerado com sucesso!');
             location.reload();
         } else {
             alert('❌ ' + (result.error || 'Erro ao reinicializar banco HML'));
@@ -3413,6 +3698,30 @@ window.removeCadEntity = function(type, index) {
     renderStructuredCadastrosUI();
 };
 
+// Sincronização silenciosa do estado atual com o banco de dados MySQL
+function syncWithServerSilent() {
+    const isFileProtocol = window.location.protocol === 'file:';
+    if (isFileProtocol) return;
+
+    const syncPayload = {
+        environment: state.activeEnv || 'Frota Principal',
+        requisicoes: state.rawData || [],
+        custom_bases: state.customBases || [],
+        custom_postos: state.customPostos || [],
+        custom_motoristas: state.customMotoristas || [],
+        custom_veiculos: state.customVeiculos || [],
+        custom_requisicoes: state.customRequisicoes || []
+    };
+
+    fetch('./api/sync_data.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(syncPayload)
+    })
+    .then(res => res.json())
+    .catch(err => console.warn('Erro na sincronização silenciosa com o servidor:', err));
+}
+
 // Atualizar Datalists de sugestão
 function updateRelationsMappings() {
     // Bases
@@ -3454,7 +3763,7 @@ function updateRelationsMappings() {
     populateDatalist('datalist-requisicoes', state.customRequisicoes || []);
 
     // Lotes no formulário de inserção
-    const allKnownLotes = new Set(['LOTE 1 (7K)', 'LOTE 2 (2K)', 'LOTE 3 (15K)']);
+    const allKnownLotes = new Set();
     (state.customRequisicoes || []).forEach(str => {
         const m = str.match(/\((LOTE[^)]*)\)/i) || str.match(/(LOTE\s*[^-\n,)]+)/i);
         if (m && m[1]) allKnownLotes.add(m[1].trim());
@@ -3859,19 +4168,21 @@ function buildFilterButtons() {
             state.customRequisicoes.forEach(item => {
                 const match = item.match(/\((.*?)\)/);
                 if (match && match[1]) {
-                    lotesUnicos.add(match[1].trim());
+                    lotesUnicos.add(normalizeLoteName(match[1]));
                 } else {
                     const loteMatch = item.match(/(LOTE\s*\d+)/i);
-                    if (loteMatch) lotesUnicos.add(loteMatch[1].toUpperCase());
+                    if (loteMatch) lotesUnicos.add(normalizeLoteName(loteMatch[1]));
                 }
             });
         }
         if (state.rawData && state.rawData.length > 0) {
             state.rawData.forEach(row => {
-                if (row.lote && row.lote !== 'Não Informado') lotesUnicos.add(row.lote);
+                if (row.lote && row.lote !== 'Não Informado') lotesUnicos.add(normalizeLoteName(row.lote));
             });
         }
-        const sortedLotes = Array.from(lotesUnicos).sort();
+        const sortedLotes = Array.from(lotesUnicos).sort((a, b) => {
+            return a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' });
+        });
         
         selectLoteSidebar.innerHTML = '<option value="TODOS">Todos os Lotes</option>';
         sortedLotes.forEach(lote => {
@@ -7325,23 +7636,27 @@ function initDispensadorModule() {
             const parts = splitByRelationalHyphen(line);
             if (parts.length >= 2) {
                 const id = parts[0].trim();
-                const restStr = parts[1].trim();
+                const restStr = parts.slice(1).join(' - ');
                 
                 let litros = 15;
-                const matchLitros = restStr.match(/(\d+(?:\.\d+)?)\s*(?:L|Litros)/i);
+                const matchLitros = line.match(/(\d+(?:\.\d+)?)\s*(?:L|Litros)/i);
                 if (matchLitros && matchLitros[1]) {
                     litros = parseFloat(matchLitros[1]);
                 }
                 
+                let combustivel = 'Gasolina';
+                if (/diesel/i.test(line)) {
+                    combustivel = 'Diesel';
+                } else if (/etanol/i.test(line)) {
+                    combustivel = 'Etanol';
+                } else if (/gasolina/i.test(line)) {
+                    combustivel = 'Gasolina';
+                }
+
                 let lote = 'LOTE 1';
-                const matchLote = restStr.match(/\((LOTE[^)]*)\)/i) || restStr.match(/(LOTE\s*[^-\n,)]+)/i);
+                const matchLote = line.match(/\((LOTE[^)]*)\)/i) || line.match(/(LOTE\s*[^-\n,)]+)/i);
                 if (matchLote && matchLote[1]) {
                     lote = matchLote[1].trim();
-                } else {
-                    const matchLoteWhole = line.match(/\((LOTE[^)]*)\)/i) || line.match(/(LOTE\s*[^-\n,)]+)/i);
-                    if (matchLoteWhole && matchLoteWhole[1]) {
-                        lote = matchLoteWhole[1].trim();
-                    }
                 }
                 
                 const prefixObj = parseSeqString(id);
@@ -7350,6 +7665,7 @@ function initDispensadorModule() {
                 pool.push({
                     id: id,
                     litros: litros,
+                    combustivel: combustivel,
                     lote: lote,
                     grupo: grupo,
                     num: prefixObj.num
@@ -7978,7 +8294,7 @@ function initDispensadorModule() {
                     placa: placa || 'NÃO INFORMADO',
                     kmAnterior: kmAnterior || 0,
                     km: kmAtual || 0,
-                    combustivel: 'DIESEL',
+                    combustivel: t.combustivel || 'Gasolina',
                     lote: t.lote,
                     litros: t.litros,
                     precoLitro: precoLitro,
@@ -8092,5 +8408,41 @@ function initDispensadorModule() {
         }
     }
 }
+
+// FUNÇÃO GLOBAL DE RESET E RESTAURAÇÃO DE CADASTROS HML
+function resetHmlDatabase(cadastrosOnly = true) {
+    const msg = cadastrosOnly 
+        ? "Deseja limpar todas as requisições (estoque e distribuições) e restaurar os cadastros de Bases, Coordenadores, Postos e Veículos de Produção?"
+        : "Tem certeza de que deseja zerar totalmente o banco HML?";
+        
+    if (!confirm(msg)) return;
+
+    showLoading('Restaurando cadastros estruturados de Produção...');
+    
+    const url = cadastrosOnly ? './api/reset_hml_db.php?cadastros_only=true' : './api/reset_hml_db.php?empty=true';
+
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                alert(data.message || 'Operação realizada com sucesso!');
+                localStorage.removeItem(getEnvKey('combustivel_dashboard_data'));
+                localStorage.removeItem(getEnvKey('custom_requisicoes'));
+                localStorage.removeItem(getEnvKey('custom_bases'));
+                localStorage.removeItem(getEnvKey('custom_postos'));
+                localStorage.removeItem(getEnvKey('custom_motoristas'));
+                localStorage.removeItem(getEnvKey('custom_veiculos'));
+                loadInitialData(true);
+            } else {
+                alert('Erro ao processar: ' + (data.error || data.message));
+            }
+        })
+        .catch(err => {
+            hideLoading();
+            alert('Erro de conexão com o servidor: ' + err.message);
+        });
+}
+
 
 

@@ -50,7 +50,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <link rel="shortcut icon" href="favicon.ico">
     <link rel="apple-touch-icon" href="app_icon.png">
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=66">
+    <link rel="stylesheet" href="styles.css?v=<?= time() ?>">
 
     <!-- Bibliotecas Locais para funcionamento Offline -->
     <script src="libs/xlsx.mini.min.js"></script>
@@ -345,15 +345,6 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                             <line x1="12" y1="3" x2="12" y2="15" />
                         </svg>
                         Importar Planilha
-                    </button>
-                    <!-- Botão de Recarregar Rápido -->
-                    <button class="btn btn-secondary btn-icon" id="btn-refresh"
-                        title="Recarregar planilha local do disco">
-                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2"
-                            fill="none" style="vertical-align: middle;">
-                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                        </svg>
-                        Recarregar
                     </button>
                     <!-- Botão Salvar Backup -->
                     <button class="btn btn-save btn-icon" id="btn-save-data" title="Salvar dados no cache e enviar backup">
@@ -1030,7 +1021,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
 
     <!-- MODAL DE GERENCIAR CADASTROS (CENTRAL ESTRUTURADA) -->
     <div class="modal-overlay" id="cadastros-modal">
-        <div class="modal-content" style="max-width: 780px;">
+        <div class="modal-content" style="max-width: 880px;">
             <button class="modal-close" id="btn-close-cadastros">&times;</button>
             <h2>Central de Cadastros</h2>
             <p style="margin-bottom: 1.25rem; font-size: 0.85rem; color: var(--text-secondary);">
@@ -1153,7 +1144,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
             <div class="cadastro-tab-content" id="tab-cad-lotes" style="display: none;">
                 <div class="cad-form-card">
                     <h4>⚡ Gerar Faixa Sequencial de Requisições para o Lote</h4>
-                    <div class="cad-form-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr auto;">
+                    <div class="cad-form-grid" style="grid-template-columns: repeat(3, 1fr); gap: 1rem;">
                         <div class="form-group">
                             <label>Identificador do Lote</label>
                             <input type="text" id="input-new-lote-nome" placeholder="Ex: LOTE 4 (10K)">
@@ -1163,8 +1154,16 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                             <input type="text" id="input-new-lote-control" placeholder="Ex: 1787595670733">
                         </div>
                         <div class="form-group">
+                            <label>Tipo de Combustível</label>
+                            <select id="input-new-lote-combustivel">
+                                <option value="Gasolina" selected>Gasolina</option>
+                                <option value="Diesel">Diesel</option>
+                                <option value="Etanol">Etanol</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label>Sequência De -> Até</label>
-                            <div style="display: flex; gap: 0.25rem;">
+                            <div style="display: flex; gap: 0.5rem;">
                                 <input type="number" id="input-new-lote-start" placeholder="001" min="1" style="width: 50%;">
                                 <input type="number" id="input-new-lote-end" placeholder="100" min="1" style="width: 50%;">
                             </div>
@@ -1179,9 +1178,11 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                                 <option value="50">50 Litros</option>
                             </select>
                         </div>
-                        <button type="button" class="btn btn-primary" id="btn-add-lote-range">
-                            Gerar Faixa
-                        </button>
+                        <div class="form-group" style="justify-content: flex-end;">
+                            <button type="button" class="btn btn-primary" id="btn-add-lote-range" style="width: 100%; height: 38px; justify-content: center;">
+                                Gerar Faixa
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1218,7 +1219,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                     </div>
                     <div class="form-group">
                         <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Requisições em Estoque (um por linha: <code>Código-Seq - Litros (Lote)</code>)</label>
-                        <textarea id="textarea-custom-requisicoes" rows="4" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;"></textarea>
+                        <textarea id="textarea-custom-requisicoes" rows="4" placeholder="Ex: 1787595670733-001 - Gasolina - 30L (LOTE 1)" style="background-color: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.6rem; font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;"></textarea>
                     </div>
                     <div class="form-group">
                         <label style="font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.35rem;">Motoristas (um por linha - opcional: <code>Base - Motorista</code>)</label>
@@ -1229,9 +1230,11 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                <button type="button" class="btn-delete-active-lote" id="btn-reset-hml-db" onclick="resetHmlDatabase()" title="Limpar e Reinicializar o banco de dados HML para validação limpa" style="display: none;">
-                    🔄 Zerar Banco HML (Limpeza de Testes)
-                </button>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="button" class="btn btn-secondary" id="btn-reset-hml-cadastros" onclick="resetHmlDatabase(true)" title="Restaurar cadastros de Bases, Coordenadores, Postos e Veículos de PROD e limpar requisições" style="background: linear-gradient(135deg, #ffb703, #fb8500); color: #000; font-weight: 700; border: none; font-size: 0.8rem;">
+                        🔄 Restaurar Cadastros de PROD (Limpar Requisições)
+                    </button>
+                </div>
                 <button type="button" class="btn btn-secondary" id="btn-cancel-cadastros">Fechar Central</button>
             </div>
         </div>
@@ -1454,6 +1457,6 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <datalist id="datalist-combustiveis"></datalist>
 
     <!-- Script principal da aplicação -->
-    <script src="app.js?v=70" defer></script>
+    <script src="app.js?v=<?= time() ?>" defer></script>
 </body>
 </html>

@@ -1030,7 +1030,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
 
     <!-- MODAL DE GERENCIAR CADASTROS (CENTRAL ESTRUTURADA) -->
     <div class="modal-overlay" id="cadastros-modal">
-        <div class="modal-content" style="max-width: 780px;">
+        <div class="modal-content" style="max-width: 880px;">
             <button class="modal-close" id="btn-close-cadastros">&times;</button>
             <h2>Central de Cadastros</h2>
             <p style="margin-bottom: 1.25rem; font-size: 0.85rem; color: var(--text-secondary);">
@@ -1153,7 +1153,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
             <div class="cadastro-tab-content" id="tab-cad-lotes" style="display: none;">
                 <div class="cad-form-card">
                     <h4>⚡ Gerar Faixa Sequencial de Requisições para o Lote</h4>
-                    <div class="cad-form-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr auto;">
+                    <div class="cad-form-grid" style="grid-template-columns: repeat(3, 1fr); gap: 1rem;">
                         <div class="form-group">
                             <label>Identificador do Lote</label>
                             <input type="text" id="input-new-lote-nome" placeholder="Ex: LOTE 4 (10K)">
@@ -1163,8 +1163,16 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                             <input type="text" id="input-new-lote-control" placeholder="Ex: 1787595670733">
                         </div>
                         <div class="form-group">
+                            <label>Tipo de Combustível</label>
+                            <select id="input-new-lote-combustivel">
+                                <option value="Gasolina" selected>Gasolina</option>
+                                <option value="Diesel">Diesel</option>
+                                <option value="Etanol">Etanol</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label>Sequência De -> Até</label>
-                            <div style="display: flex; gap: 0.25rem;">
+                            <div style="display: flex; gap: 0.5rem;">
                                 <input type="number" id="input-new-lote-start" placeholder="001" min="1" style="width: 50%;">
                                 <input type="number" id="input-new-lote-end" placeholder="100" min="1" style="width: 50%;">
                             </div>
@@ -1179,9 +1187,11 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                                 <option value="50">50 Litros</option>
                             </select>
                         </div>
-                        <button type="button" class="btn btn-primary" id="btn-add-lote-range">
-                            Gerar Faixa
-                        </button>
+                        <div class="form-group" style="justify-content: flex-end;">
+                            <button type="button" class="btn btn-primary" id="btn-add-lote-range" style="width: 100%; height: 38px; justify-content: center;">
+                                Gerar Faixa
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1454,6 +1464,6 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
     <datalist id="datalist-combustiveis"></datalist>
 
     <!-- Script principal da aplicação -->
-    <script src="app.js?v=70" defer></script>
+    <script src="app.js?v=71" defer></script>
 </body>
 </html>

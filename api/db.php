@@ -47,30 +47,60 @@ try {
         $table_requisicoes = 'hml_requisicoes';
         $table_configuracoes = 'hml_configuracoes';
         $table_veiculos_contratados = 'hml_veiculos_contratados';
+        $table_activity_logs = 'hml_activity_logs';
 
         try {
             $pdo->exec("CREATE TABLE IF NOT EXISTS hml_activity_logs LIKE activity_logs");
         } catch (PDOException $exHmlLog) {
-            // Ignora falha
+            // Ignora se activity_logs ainda não existir
         }
 
-        // Criação automática das tabelas HML com a mesma estrutura das oficiais por segurança
+        // 1. Garante a tabela hml_requisicoes
         try {
-            // 1. Requisicoes
-            $pdo->exec("CREATE TABLE IF NOT EXISTS hml_requisicoes LIKE requisicoes");
-            try {
-                $pdo->exec("ALTER TABLE requisicoes ADD COLUMN lote VARCHAR(50) DEFAULT 'LOTE 1'");
-            } catch (Exception $e) {}
-            try {
-                $pdo->exec("ALTER TABLE hml_requisicoes ADD COLUMN lote VARCHAR(50) DEFAULT 'LOTE 1'");
-            } catch (Exception $e) {}
+            $pdo->exec("CREATE TABLE IF NOT EXISTS hml_requisicoes (
+                id VARCHAR(100) PRIMARY KEY,
+                date DATE,
+                month INT,
+                year INT,
+                inicioSeq VARCHAR(100),
+                fimSeq VARCHAR(100),
+                qtdRequisicoes INT DEFAULT 1,
+                zona VARCHAR(100),
+                responsavel VARCHAR(100),
+                posto VARCHAR(100),
+                motorista VARCHAR(100),
+                veiculo VARCHAR(100),
+                placa VARCHAR(50),
+                kmAnterior DECIMAL(10,2) DEFAULT 0,
+                km DECIMAL(10,2) DEFAULT 0,
+                combustivel VARCHAR(50),
+                lote VARCHAR(50) DEFAULT 'LOTE 1',
+                litros DECIMAL(10,2),
+                precoLitro DECIMAL(10,3),
+                valor DECIMAL(10,2),
+                environment VARCHAR(100) DEFAULT 'Frota Principal',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+        } catch (Exception $e) {}
 
-            // 2. Configuracoes
-            $pdo->exec("CREATE TABLE IF NOT EXISTS hml_configuracoes LIKE configuracoes");
-            
-            // 3. Veiculos Contratados
-            // Caso a tabela veiculos_contratados ainda não exista, cria a estrutura original básica primeiro
-            $pdo->exec("CREATE TABLE IF NOT EXISTS veiculos_contratados (
+        // 2. Garante a tabela hml_configuracoes
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS hml_configuracoes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                environment VARCHAR(100) NOT NULL UNIQUE,
+                custom_bases TEXT,
+                custom_postos TEXT,
+                custom_motoristas TEXT,
+                custom_veiculos TEXT,
+                custom_requisicoes LONGTEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )");
+        } catch (Exception $e) {}
+        
+        // 3. Garante a tabela hml_veiculos_contratados
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS hml_veiculos_contratados (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 tipo_veiculo VARCHAR(100) NOT NULL,
                 ano VARCHAR(10) DEFAULT '',
@@ -84,14 +114,17 @@ try {
                 environment VARCHAR(100) NOT NULL DEFAULT 'Frota Principal',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )");
-            $pdo->exec("CREATE TABLE IF NOT EXISTS hml_veiculos_contratados LIKE veiculos_contratados");
-        } catch (PDOException $ex) {
-            // Em caso de erro na cópia LIKE, prossegue (pode ser que já existam)
-        }
+        } catch (Exception $e) {}
     } else {
         $table_requisicoes = 'requisicoes';
         $table_configuracoes = 'configuracoes';
         $table_veiculos_contratados = 'veiculos_contratados';
+        $table_activity_logs = 'activity_logs';
+
+        // Garante colunas adicionais de produção sem tocar no HML
+        try {
+            $pdo->exec("ALTER TABLE requisicoes ADD COLUMN lote VARCHAR(50) DEFAULT 'LOTE 1'");
+        } catch (Exception $e) {}
     }
 
 } catch (PDOException $e) {
