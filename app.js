@@ -43,12 +43,9 @@ function getEnvKey(key) {
 
 // DEDUPLICAÇÃO E PURGAÇÃO ESTRITA DE DADOS DUPLICADOS (ANTI-DUPLICIDADE LAYER)
 function normalizeLoteName(lote) {
-    if (!lote) return 'LOTE 1 (7K)';
+    if (!lote) return 'LOTE 1';
     let str = String(lote).trim().toUpperCase();
-    if (str.includes('LOTE 1') || str.includes('7K')) return 'LOTE 1 (7K)';
-    if (str.includes('LOTE 2') || str.includes('2K')) return 'LOTE 2 (2K)';
-    if (str.includes('LOTE 3') || str.includes('15K')) return 'LOTE 3 (15K)';
-    if (str.includes('LOTE 4') || str.includes('10K')) return 'LOTE 4 (10K)';
+    str = str.replace(/\s*\((2K|7K|15K|10K)\)/gi, '').trim();
     return str;
 }
 
@@ -3509,9 +3506,9 @@ window.toggleLoteGroupCard = function(cardId) {
 window.removeLoteGroup = function(groupKey) {
     if (!confirm('Deseja realmente excluir toda esta faixa de requisições do estoque?')) return;
     const parts = groupKey.split('___');
-    const lote = parts[0];
-    const control = parts[1];
-    const litros = parts[2];
+    const targetLoteNorm = normalizeLoteName(parts[0] || '');
+    const targetControlUpper = (parts[1] || '').trim().toUpperCase();
+    const targetLitrosUpper = (parts[2] || '').trim().toUpperCase();
 
     function parseReqMetaLocal(str) {
         if (!str) return { control: 'AVULSO', seq: '000', litros: '30L', lote: 'OUTROS' };
@@ -3531,12 +3528,15 @@ window.removeLoteGroup = function(groupKey) {
             const first = str.split('-')[0].trim();
             ctrl = /^\d+$/.test(first) ? 'SEQUENCIAL' : (first || 'AVULSO');
         }
-        return { control: ctrl, litros: lit, lote: l };
+        return { control: ctrl.toUpperCase(), litros: lit.toUpperCase(), lote: normalizeLoteName(l) };
     }
 
     state.customRequisicoes = (state.customRequisicoes || []).filter(item => {
         const meta = parseReqMetaLocal(item);
-        return !(meta.lote === lote && meta.control === control && meta.litros === litros);
+        const matchesLote = meta.lote === targetLoteNorm;
+        const matchesCtrl = meta.control === targetControlUpper;
+        const matchesLit = meta.litros === targetLitrosUpper;
+        return !(matchesLote && matchesCtrl && matchesLit);
     });
 
     localStorage.setItem(getEnvKey('custom_requisicoes'), JSON.stringify(state.customRequisicoes));
@@ -3550,18 +3550,19 @@ window.removeLoteGroup = function(groupKey) {
 // Excluir lote inteiro e todas as suas requisições
 window.removeEntireLote = function(loteName) {
     if (!confirm(`Deseja realmente excluir o lote "${loteName}" e todas as suas requisições do estoque?`)) return;
+    const targetNorm = normalizeLoteName(loteName);
 
     function parseReqMetaLocal(str) {
         if (!str) return { lote: 'OUTROS' };
         let l = 'OUTROS';
         const mLote = str.match(/\((LOTE[^)]*)\)/i) || str.match(/(LOTE\s*[^-\n,)]+)/i);
         if (mLote && mLote[1]) l = mLote[1].trim();
-        return { lote: l };
+        return { lote: normalizeLoteName(l) };
     }
 
     state.customRequisicoes = (state.customRequisicoes || []).filter(item => {
         const meta = parseReqMetaLocal(item);
-        return meta.lote !== loteName && !item.includes(loteName);
+        return meta.lote !== targetNorm && !item.toUpperCase().includes(targetNorm.toUpperCase());
     });
 
     state.activeLoteCadTab = 'TODOS';
@@ -4670,12 +4671,17 @@ function calculateKPIs() {
             let lote = 'OUTROS';
             const match = item.match(/\((.*?)\)/);
             if (match && match[1]) {
-                lote = match[1].trim();
+                lote = normalizeLoteName(match[1]);
             } else {
-                const loteMatch = item.match(/(LOTE\s*\d+)/i);
-                if (loteMatch) lote = loteMatch[1].toUpperCase();
+                const loteMatch = item.match(/(LOTE\s*[^-\n,)]+)/i);
+                if (loteMatch) lote = normalizeLoteName(loteMatch[1]);
             }
-            if (state.filters.lotes.size === 0 || state.filters.lotes.has(lote)) {
+
+            const isLoteActive = state.filters.lotes.size === 0 || Array.from(state.filters.lotes).some(selectedLote => {
+                return normalizeLoteName(selectedLote) === normalizeLoteName(lote);
+            });
+
+            if (isLoteActive) {
                 totalDisponiveis++;
 
                 let litros = 15;
