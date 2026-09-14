@@ -103,6 +103,8 @@ Upload-File "$localDir\api\restore_backup_exact.php" "api/restore_backup_exact.p
 Upload-File "$localDir\api\find_backup_with_sequences.php" "api/find_backup_with_sequences.php"
 Upload-File "$localDir\api\debug_lote_groups.php" "api/debug_lote_groups.php"
 Upload-File "$localDir\api\dump_db_envs.php" "api/dump_db_envs.php"
+Upload-File "$localDir\api\adopt_hml_to_prod.php" "api/adopt_hml_to_prod.php"
+Upload-File "$localDir\api\verify_hml_summary.php" "api/verify_hml_summary.php"
 
 # 4. Cria e envia arquivos do subsistema de veículos contratados para PROD
 Create-FtpDirectory "veiculos"
