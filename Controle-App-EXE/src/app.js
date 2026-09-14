@@ -263,6 +263,25 @@ function splitByRelationalHyphen(str) {
     return [s];
 }
 
+// FUNÇÃO GLOBAL CANÔNICA PARA EXTRAIR O NOME DA BASE DE UMA STRING (EX: 'CENTRAL - MARCELO' -> 'CENTRAL')
+function extractCanonicalBaseName(str) {
+    if (!str) return '';
+    const upper = str.toString().trim().toUpperCase();
+    const knownBases = [
+        'CENTRO-SUL 1', 'CENTRO-SUL 2', 'CENTRO-SUL', 'CENTRO-OESTE',
+        'LESTE 1', 'LESTE 2', 'LESTE 3',
+        'NORTE 1', 'NORTE 2', 'NORTE 3', 'NORTE 4',
+        'CENTRAL', 'INTERIOR', 'OESTE', 'RURAL', 'SUL'
+    ];
+    for (const kb of knownBases) {
+        if (upper.startsWith(kb)) {
+            return kb;
+        }
+    }
+    const parts = splitByRelationalHyphen(str);
+    return parts[0] ? parts[0].trim().toUpperCase() : upper;
+}
+
 // PARSER INTELIGENTE DE REQUISIÇÕES EM MASSA (SUPORTA FORMATO EXPANDIDO E FORMATO SIMPLIFICADO POR FAIXA POR LINHA: LOTE, CONTROLE, FAIXA, COMBUSTIVEL, LITROS)
 function parseCustomRequisicoesInput(rawText) {
     if (!rawText) return [];
@@ -3099,24 +3118,8 @@ function renderStructuredCadastrosUI() {
     const baseGroupsMap = new Map();
     const baseCounts = { 'TODAS': allBases.length };
 
-    function extractCanonicalBaseNameLocal(str) {
-        if (!str) return '';
-        const upper = str.toString().trim().toUpperCase();
-        const knownBases = [
-            'CENTRO-SUL 1', 'CENTRO-SUL 2', 'CENTRO-SUL', 'CENTRO-OESTE',
-            'LESTE 1', 'LESTE 2', 'LESTE 3',
-            'NORTE 1', 'NORTE 2', 'NORTE 3', 'NORTE 4',
-            'CENTRAL', 'INTERIOR', 'OESTE', 'RURAL', 'SUL'
-        ];
-        for (const kb of knownBases) {
-            if (upper.startsWith(kb)) return kb;
-        }
-        const parts = splitByRelationalHyphen(str);
-        return parts[0] ? parts[0].trim().toUpperCase() : upper;
-    }
-
     allBases.forEach((item, originalIdx) => {
-        const baseName = extractCanonicalBaseNameLocal(item);
+        const baseName = extractCanonicalBaseName(item);
         const parts = splitByRelationalHyphen(item);
         const respName = parts.length > 1 ? parts[1].trim() : '';
 
@@ -8238,24 +8241,6 @@ function initDispensadorModule() {
         
         // Mapear Base Única Canônica -> Set de Responsáveis
         const baseMap = new Map();
-        
-        function extractCanonicalBaseName(str) {
-            if (!str) return '';
-            const upper = str.toString().trim().toUpperCase();
-            const knownBases = [
-                'CENTRO-SUL 1', 'CENTRO-SUL 2', 'CENTRO-SUL', 'CENTRO-OESTE',
-                'LESTE 1', 'LESTE 2', 'LESTE 3',
-                'NORTE 1', 'NORTE 2', 'NORTE 3', 'NORTE 4',
-                'CENTRAL', 'INTERIOR', 'OESTE', 'RURAL', 'SUL'
-            ];
-            for (const kb of knownBases) {
-                if (upper.startsWith(kb)) {
-                    return kb;
-                }
-            }
-            const parts = splitByRelationalHyphen(str);
-            return parts[0] ? parts[0].trim().toUpperCase() : upper;
-        }
 
         (state.customBases || []).forEach(line => {
             if (!line) return;
