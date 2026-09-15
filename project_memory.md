@@ -132,6 +132,13 @@ Caso a exportação Excel pare de responder:
 
 Use esta seção para documentar novas alterações manuais à medida que elas forem sendo introduzidas.
 
+*   **Funcionalidade: Trava de Proteção Anti-Purga de Dados & Recuperação Segura de PROD**
+    *   *Data:* 15/09/2026
+    *   *Implementações:*
+        1. **Trava de Proteção Anti-Purga (`api/sync_data.php`):** Implementada barreira defensiva que rejeita automaticamente (HTTP 400) qualquer tentativa de sincronização enviando payload vazio (`requisicoes: []`) quando a tabela remota MySQL já possuir lançamentos ativos. A remoção total de dados agora exige a autorização explícita `allow_empty_purge: true`.
+        2. **Recuperação de Produção via HML:** Adotada a base de Homologação (HML) como fonte primária válida de restauração. Executada a migração dos 1.198 lançamentos e cadastros unificados para PROD com salvamento automático prévio de tabelas de backup no MySQL (`prod_backup_requisicoes_*`).
+        3. **Isolamento e Preservação de HML:** O ambiente de homologação permaneceu 100% intocado durante todo o processo de auditoria e restauração.
+
 *   **Funcionalidade: Unificação Oficial de 15 Bases & Sanitização Estrita de Responsáveis/Motoristas**
     *   *Data:* 13/09/2026
     *   *Implementações:*

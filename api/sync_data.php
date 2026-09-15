@@ -21,10 +21,28 @@ if (empty($env)) {
 }
 
 try {
+    $reqsCount = isset($input['requisicoes']) && is_array($input['requisicoes']) ? count($input['requisicoes']) : 0;
+
     writeLog('INFO', "Início do processo de sincronização para o ambiente '$env'", [
         'environment' => $env,
-        'requisicoes_count' => isset($input['requisicoes']) ? count($input['requisicoes']) : 0
+        'requisicoes_count' => $reqsCount
     ]);
+
+    // Trava de proteção anti-purga: Se o payload enviar 0 requisições e o banco de dados possuir registros ativos, bloqueia a zeragem acidental
+    if ($reqsCount === 0 && (!isset($input['allow_empty_purge']) || $input['allow_empty_purge'] !== true)) {
+        $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM $table_requisicoes WHERE environment = :env");
+        $stmtCheck->execute(['env' => $env]);
+        $existingCount = (int)$stmtCheck->fetchColumn();
+
+        if ($existingCount > 0) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Sincronização rejeitada por proteção anti-purga: O payload possui 0 lançamentos, mas o servidor possui ' . $existingCount . ' lançamentos ativos.'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
 
     $pdo->beginTransaction();
 
