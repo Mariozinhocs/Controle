@@ -186,7 +186,7 @@ if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/hml/') !
                             <select id="report-group-by" class="select-custom">
                                 <option value="responsavel">👤 Responsável</option>
                                 <option value="base">📍 Base de Atuação</option>
-                                <option value="litragem">⛽ Litragem (15L, 20L, 25L...)</option>
+                                <option value="litragem">⛽ Litragem (10L, 15L, 20L, 25L...)</option>
                                 <option value="lote">🏷️ Lote de Requisição</option>
                                 <option value="motorista">🚗 Motorista</option>
                             </select>
@@ -196,6 +196,7 @@ if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/hml/') !
                             <label>Filtrar Litragem:</label>
                             <select id="report-filter-litro" class="select-custom">
                                 <option value="TODOS">Todas as Litragens</option>
+                                <option value="10">10 Litros</option>
                                 <option value="15">15 Litros</option>
                                 <option value="20">20 Litros</option>
                                 <option value="25">25 Litros</option>

@@ -30,7 +30,7 @@ try {
 
     // Trava de proteção anti-purga: Se o payload enviar 0 requisições e o banco de dados possuir registros ativos, bloqueia a zeragem acidental
     if ($reqsCount === 0 && (!isset($input['allow_empty_purge']) || $input['allow_empty_purge'] !== true)) {
-        $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM $table_requisicoes WHERE environment = :env");
+        $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM $table_requisicoes WHERE environment = :env OR (:env = 'Frota Principal' AND (environment IS NULL OR environment = ''))");
         $stmtCheck->execute(['env' => $env]);
         $existingCount = (int)$stmtCheck->fetchColumn();
 

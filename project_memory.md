@@ -132,6 +132,13 @@ Caso a exportação Excel pare de responder:
 
 Use esta seção para documentar novas alterações manuais à medida que elas forem sendo introduzidas.
 
+*   **Funcionalidade: Adição de Litragem 10L & Checkpoint Oficial de Restauração de HML**
+    *   *Data:* 20/09/2026
+    *   *Implementações:*
+        1. **Adição da Opção 10 Litros (`index.php`, `index.html`, `app.js`, `lab/`):** Criada a opção `<option value="10">10 Litros</option>` no dropdown de Litragem (L) da Central de Cadastros e o chip de atalho rápido `10L` no formulário de Nova Requisição. Atualizado o validador de litragens (`[10, 15, 20, 25, 30, 50]`) no módulo dispensador e relatórios.
+        2. **Sistema de Checkpoint Oficial de HML (`api/save_hml_checkpoint.php` & `api/restore_hml_checkpoint.php`):** Criados scripts PHP para snapshot completo e restauração transacional das tabelas de Homologação (`hml_configuracoes`, `hml_requisicoes`, `hml_veiculos_contratados`). O snapshot foi gerado e salvo em `api/backups/hml_checkpoint_official.json`.
+        3. **Deploy & Registro no Audit Log:** Efetuada a publicação das alterações no ambiente de Homologação via `deploy-hml.ps1` com geração de log de auditoria `CREATE_HML_CHECKPOINT`.
+
 *   **Funcionalidade: Trava de Proteção Anti-Purga de Dados & Recuperação Segura de PROD**
     *   *Data:* 15/09/2026
     *   *Implementações:*

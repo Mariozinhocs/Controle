@@ -101,6 +101,8 @@ Upload-File "$localDir\api\dump_db_envs.php" "hml/api/dump_db_envs.php"
 Upload-File "$localDir\api\verify_hml_summary.php" "hml/api/verify_hml_summary.php"
 Upload-File "$localDir\api\load_lotes_into_hml.php" "hml/api/load_lotes_into_hml.php"
 Upload-File "$localDir\api\lotes_payload.json" "hml/api/lotes_payload.json"
+Upload-File "$localDir\api\save_hml_checkpoint.php" "hml/api/save_hml_checkpoint.php"
+Upload-File "$localDir\api\restore_hml_checkpoint.php" "hml/api/restore_hml_checkpoint.php"
 
 # 4. Cria e envia arquivos do subsistema de veículos contratados para HML
 Create-FtpDirectory "hml/veiculos"

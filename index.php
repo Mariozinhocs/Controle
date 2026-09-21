@@ -840,6 +840,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                     <div class="form-group" id="group-litros">
                         <label for="input-litros">Litros por Requisição</label>
                         <div class="quick-litros-chips">
+                            <button type="button" class="btn-quick-litro" data-litro="10">10L</button>
                             <button type="button" class="btn-quick-litro" data-litro="15">15L</button>
                             <button type="button" class="btn-quick-litro" data-litro="20">20L</button>
                             <button type="button" class="btn-quick-litro" data-litro="25">25L</button>
@@ -1171,6 +1172,7 @@ header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                         <div class="form-group">
                             <label>Litragem (L)</label>
                             <select id="input-new-lote-litros">
+                                <option value="10">10 Litros</option>
                                 <option value="15">15 Litros</option>
                                 <option value="20">20 Litros</option>
                                 <option value="25">25 Litros</option>

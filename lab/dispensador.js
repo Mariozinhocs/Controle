@@ -466,7 +466,7 @@ function renderLitrosCards() {
     const grid = document.getElementById('litros-cards-grid');
     if (!grid) return;
 
-    const litragens = [15, 20, 25, 30, 50];
+    const litragens = [10, 15, 20, 25, 30, 50];
     grid.innerHTML = '';
 
     litragens.forEach(litro => {

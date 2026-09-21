@@ -2124,7 +2124,7 @@ function checkUrlParams() {
 }
 
 // FUNÇÃO DE SANITIZAÇÃO, UNIFICAÇÃO E MIGRAÇÃO DE CADASTROS (CONFORME PO MARIO HENRIQUE)
-function sanitizeAndUnifyCadastros() {
+function sanitizeAndUnifyCadastros(skipSync = false) {
     // 1. Lista Unificada Oficial de Bases & Responsáveis
     const officialBases = [
         'CENTRAL - MARCELO CAMPBELL',
@@ -2228,7 +2228,9 @@ function sanitizeAndUnifyCadastros() {
     localStorage.setItem(getEnvKey('custom_veiculos'), JSON.stringify(state.customVeiculos));
 
     updateRelationsMappings();
-    syncWithServerSilent();
+    if (!skipSync) {
+        syncWithServerSilent();
+    }
 }
 
 // 3. CARREGAR DADOS INICIAIS (AUTO-LINK E LOCALSTORAGE FALLBACK)
@@ -2264,7 +2266,7 @@ function loadInitialData(forceFetch = false) {
         state.customMotoristas = JSON.parse(localStorage.getItem(getEnvKey('custom_motoristas')) || '[]');
         state.customVeiculos = JSON.parse(localStorage.getItem(getEnvKey('custom_veiculos')) || '[]');
         state.customRequisicoes = JSON.parse(localStorage.getItem(getEnvKey('custom_requisicoes')) || '[]');
-        sanitizeAndUnifyCadastros();
+        sanitizeAndUnifyCadastros(true);
     } catch (e) {}
 
     const isFileProtocol = window.location.protocol === 'file:';
@@ -3907,6 +3909,11 @@ window.removeCadEntity = function(type, index) {
 function syncWithServerSilent() {
     const isFileProtocol = window.location.protocol === 'file:';
     if (isFileProtocol) return;
+
+    // Trava de proteção: Não envia sync com 0 lançamentos durante o boot ou antes do carregamento completo do banco
+    if (!state.rawData || state.rawData.length === 0) {
+        return;
+    }
 
     const syncPayload = {
         environment: state.activeEnv || 'Frota Principal',
@@ -7963,7 +7970,7 @@ function initDispensadorModule() {
         }
         
         const lotePool = pool.filter(p => p.lote === dispState.selectedLote);
-        const litragensValidas = [15, 20, 25, 30, 50];
+        const litragensValidas = [10, 15, 20, 25, 30, 50];
         
         let autoSelectLiters = dispState.selectedLiters;
         if (!autoSelectLiters) {
