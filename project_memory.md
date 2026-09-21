@@ -132,6 +132,13 @@ Caso a exportação Excel pare de responder:
 
 Use esta seção para documentar novas alterações manuais à medida que elas forem sendo introduzidas.
 
+*   **Funcionalidade: Publicação em Produção (PROD) & Sincronização 100% com HML**
+    *   *Data:* 20/09/2026
+    *   *Implementações:*
+        1. **Deploy de Código em Produção (`deploy-prod.ps1`):** Publicação das atualizações de frontend e backend em `https://controle.hubdigital360.com/`, disponibilizando a litragem de `10 Litros` no dropdown e chips rápidos, além dos novos scripts de API (`compare_hml_vs_prod.php`, `save_hml_checkpoint.php`, `restore_hml_checkpoint.php`).
+        2. **Adopção Transacional do Banco HML -> PROD (`api/adopt_hml_to_prod.php`):** Executado o backup prévio das tabelas de produção (`prod_backup_requisicoes_*`, `prod_backup_configuracoes_*`) e efetuada a migração completa do estado do banco.
+        3. **Auditoria e Paridade Total:** Verificado via `compare_hml_vs_prod.php` que PROD e HML estão em 100% de paridade em lançamentos (1.198 reqs | R$ 221.980,50), estoque do dispensador (1.398 reqs incluindo LOTE 5 e LOTE 6) e cadastros de 15 bases oficiais.
+
 *   **Funcionalidade: Adição de Litragem 10L & Checkpoint Oficial de Restauração de HML**
     *   *Data:* 20/09/2026
     *   *Implementações:*
