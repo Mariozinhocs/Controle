@@ -132,6 +132,13 @@ Caso a exportação Excel pare de responder:
 
 Use esta seção para documentar novas alterações manuais à medida que elas forem sendo introduzidas.
 
+*   **Funcionalidade: Re-injeção da Faixa LOTE 6 (1789771755740-001 a 100), Paridade Total 100% PROD/HML & Checkpoint Oficial**
+    *   *Data:* 24/09/2026
+    *   *Implementações:*
+        1. **Re-injeção de Sequência LOTE 6 (`api/inject_lote6_sequence.php`):** Restaurada a faixa de 100 requisições (`1789771755740-001` a `100` - 30 Litros cada = 3.000 Litros) no estoque do Dispensador para o LOTE 6 simultaneamente nas tabelas de Produção (`configuracoes`) e Homologação (`hml_configuracoes`).
+        2. **Paridade Total e Espelhamento (PROD vs HML):** Verificado via `compare_hml_vs_prod.php` que PROD e HML atingiram 100% de paridade absoluta (2.305 lançamentos distribuídos | R$ 441.045,00 | 60.500L | 391 tickets no dispensador | 700 tickets totais no LOTE 6).
+        3. **Geração de Checkpoint Oficial HML (`save_hml_checkpoint.php`):** Snapshot completo gerado e registrado no Audit Log e persistido em `api/backups/hml_checkpoint_official.json` e `hml_checkpoint_2026-09-24_170404.json`.
+
 *   **Funcionalidade: Publicação em Produção (PROD) & Sincronização 100% com HML**
     *   *Data:* 20/09/2026
     *   *Implementações:*

@@ -104,6 +104,8 @@ Upload-File "$localDir\api\lotes_payload.json" "hml/api/lotes_payload.json"
 Upload-File "$localDir\api\save_hml_checkpoint.php" "hml/api/save_hml_checkpoint.php"
 Upload-File "$localDir\api\restore_hml_checkpoint.php" "hml/api/restore_hml_checkpoint.php"
 Upload-File "$localDir\api\compare_hml_vs_prod.php" "hml/api/compare_hml_vs_prod.php"
+Upload-File "$localDir\api\sync_hml_from_prod.php" "hml/api/sync_hml_from_prod.php"
+Upload-File "$localDir\api\inject_lote6_sequence.php" "hml/api/inject_lote6_sequence.php"
 
 # 4. Cria e envia arquivos do subsistema de veículos contratados para HML
 Create-FtpDirectory "hml/veiculos"

@@ -108,6 +108,10 @@ Upload-File "$localDir\api\verify_hml_summary.php" "api/verify_hml_summary.php"
 Upload-File "$localDir\api\save_hml_checkpoint.php" "api/save_hml_checkpoint.php"
 Upload-File "$localDir\api\restore_hml_checkpoint.php" "api/restore_hml_checkpoint.php"
 Upload-File "$localDir\api\compare_hml_vs_prod.php" "api/compare_hml_vs_prod.php"
+Upload-File "$localDir\api\sync_hml_from_prod.php" "api/sync_hml_from_prod.php"
+Upload-File "$localDir\api\deep_compare.php" "api/deep_compare.php"
+Upload-File "$localDir\api\check_stock.php" "api/check_stock.php"
+Upload-File "$localDir\api\inject_lote6_sequence.php" "api/inject_lote6_sequence.php"
 
 # 4. Cria e envia arquivos do subsistema de veículos contratados para PROD
 Create-FtpDirectory "veiculos"
